@@ -2,14 +2,28 @@ export interface CatalogModel {
   catalogoId: number;
   nombre: string;
   descripcion: string;
+  estatus: number;
+  options: CatalogOptionModel[];
 }
 
 export interface CatalogOptionModel {
   catalogoOpcionesId: number;
+  catalogoId: number;
   nombre: string;
   descripcion: string;
+  estatus: number;
 }
 
+export interface CatalogRestResponse {
+  data: CatalogModel[];
+  metadata: {
+    code: string;
+    message: string;
+    detail: string;
+  };
+}
+
+// Mantenido para compatibilidad con módulos existentes
 export interface CatalogData {
   cat1: CatalogOptionModel[];
   cat2: CatalogOptionModel[];

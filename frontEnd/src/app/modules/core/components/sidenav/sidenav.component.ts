@@ -11,19 +11,19 @@ export class SidenavComponent implements OnInit {
   username:any;
 
   menuNav = [
-    { name: 'Home', route: 'home', icon: 'home' },
-    { name: 'Valvulas', route: 'waterValves', icon: 'location_on' },
-    { name: 'Casas', route: 'houseList', icon: 'group' },
-    { name: 'Grupos', route: 'groupList', icon: 'group' },
-    { name: 'Personas', route: 'personList', icon: 'group' },
-    { name: 'Usuarios', route: 'user', icon: 'group' },
-    { name: 'Pagos', route: 'receipt', icon: 'paid' },
-    { name: 'Historial', route: 'receiptHistory', icon: 'receipt' },
-    { name: 'Asambleas', route: 'assemblyList', icon: 'group' },
-    { name: 'Delegación', route: 'peopleList', icon: 'group' },
-    
+    { name: 'Home',       route: 'home',        icon: 'home' },
+    { name: 'Valvulas',   route: 'waterValves',  icon: 'location_on' },
+    { name: 'Casas',      route: 'houseList',    icon: 'house' },
+    { name: 'Grupos',     route: 'groupList',    icon: 'groups' },
+    { name: 'Personas',   route: 'personList',   icon: 'person' },
+    { name: 'Usuarios',   route: 'user',         icon: 'manage_accounts' },
+    { name: 'Pagos',      route: 'receipt',      icon: 'paid' },
+    { name: 'Historial',  route: 'receiptHistory', icon: 'receipt' },
+    { name: 'Asambleas',  route: 'assemblyList', icon: 'groups' },
+    { name: 'Delegación', route: 'peopleList',   icon: 'group' },
+    { name: 'Catálogos',  route: 'catalogList',  icon: 'library_books' },
   ];
-  
+
   constructor(media: MediaMatcher) {
     this.mobileQuery = media.matchMedia('(max-witdth:600px)');
   }

@@ -6,8 +6,10 @@ import java.io.Serializable;
 
 @Data
 public class CatalogOptionsDto implements Serializable {
+
     private Integer catalogoOpcionesId;
+    private Integer catalogoId;
     private String nombre;
     private String descripcion;
-
+    private Integer estatus;
 }
