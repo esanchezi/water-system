@@ -1,0 +1,78 @@
+<mat-expansion-panel (opened)="getReceipt()" hideToggle>
+  <mat-expansion-panel-header>
+    <mat-panel-title>
+      Detalle pagos
+    </mat-panel-title>
+    <mat-panel-description>
+      Historial de pagos
+    </mat-panel-description>
+  </mat-expansion-panel-header>
+
+   <mat-card-header>
+        <div>
+            <mat-form-field appearance="fill">
+                <mat-label>Concepto</mat-label>
+                <input matInput (keyup)="applyConceptoFilter($event)" placeholder="Concepto">
+            </mat-form-field>
+        </div>
+        <div>
+            <mat-form-field appearance="fill">
+                <mat-label>Año</mat-label>
+                <input matInput (keyup)="applyAnioFilter($event)" placeholder="Año">
+            </mat-form-field>
+        </div>
+    </mat-card-header>
+
+  <table mat-table [dataSource]="dataSource" class="mat-cell">
+
+    <ng-container matColumnDef="noFolio">
+      <th mat-header-cell *matHeaderCellDef> N° Folio</th>
+      <td mat-cell *matCellDef="let element">{{element.noFolio}}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="fecha">
+      <th mat-header-cell *matHeaderCellDef> Fecha</th>
+      <td mat-cell *matCellDef="let element">{{element.fechaPago}}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="concepto">
+      <th mat-header-cell *matHeaderCellDef> Concepto </th>
+      <td mat-cell *matCellDef="let element">{{element.conceptoReceipt}}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="total">
+      <th mat-header-cell *matHeaderCellDef> Total</th>
+      <td mat-cell *matCellDef="let element">$ {{element.total}}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="observaciones">
+      <th mat-header-cell *matHeaderCellDef> Observaciones</th>
+      <td mat-cell *matCellDef="let element">{{element.observaciones}}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="conceptoPayment">
+      <th mat-header-cell *matHeaderCellDef> Concepto </th>
+      <td mat-cell *matCellDef="let element">{{element.concepto}}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="montoRecibido">
+      <th mat-header-cell *matHeaderCellDef> Monto Recibido </th>
+      <td mat-cell *matCellDef="let element">{{element.montoRecibido}}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="montoAplicado">
+      <th mat-header-cell *matHeaderCellDef> Monto Aplicado </th>
+      <td mat-cell *matCellDef="let element">{{element.montoAplicado}}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="anio">
+      <th mat-header-cell *matHeaderCellDef> Año </th>
+      <td mat-cell *matCellDef="let element">{{element.anio}}</td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayColumns"></tr>
+  </table>
+
+  <mat-paginator [pageSizeOptions]="[10,20,30]" showFirstLastButtons></mat-paginator>
+</mat-expansion-panel>

@@ -1,0 +1,69 @@
+<mat-card>
+  <h2 class="alinear">Casas</h2>
+  <mat-card-header>
+    <div>
+      <mat-form-field appearance="fill">
+        <mat-label>Buscar por sección</mat-label>
+        <input matInput (keyup)="applyZonaFilter($event)" placeholder="Ej. Sección 1">
+      </mat-form-field>
+    </div>
+    <div>
+        <mat-form-field appearance="fill">
+          <mat-label>Nombre</mat-label>
+          <input matInput (keyup)="applyNombreFilter($event)" placeholder="Nombre">
+        </mat-form-field>
+    </div>
+    <div class="actions">
+    <button mat-raised-button color="primary" (click)="addHouse()">
+        <mat-icon>add</mat-icon> Nueva Casa
+    </button>
+  </div>
+  </mat-card-header>
+
+  <mat-card-content>
+    <table mat-table [dataSource]="dataSource" class="mat-cell">
+
+      <ng-container matColumnDef="casaId">
+        <th mat-header-cell *matHeaderCellDef> Id Casa</th>
+        <td mat-cell *matCellDef="let element">{{element.casaId}}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="seccionId">
+        <th mat-header-cell *matHeaderCellDef> Sección</th>
+        <td mat-cell *matCellDef="let element">{{element.zona}}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="casaNo">
+        <th mat-header-cell *matHeaderCellDef> No Casa</th>
+        <td mat-cell *matCellDef="let element">{{element.casaNo}}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="nombre">
+        <th mat-header-cell *matHeaderCellDef> Nombre</th>
+        <td mat-cell *matCellDef="let element">{{element.nombre}}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="observaciones">
+        <th mat-header-cell *matHeaderCellDef> Observaciones</th>
+        <td mat-cell *matCellDef="let element">{{element.observaciones}}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef> Acciones</th>
+        <td mat-cell *matCellDef="let element">
+          <button mat-icon-button color="accent" (click)="edit(element)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button color="warn">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayColumns"></tr>
+    </table>
+
+    <mat-paginator [pageSizeOptions]="[5, 10, 20]" showFirstLastButtons></mat-paginator>
+  </mat-card-content>
+</mat-card>

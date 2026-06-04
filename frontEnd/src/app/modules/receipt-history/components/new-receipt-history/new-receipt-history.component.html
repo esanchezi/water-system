@@ -1,0 +1,55 @@
+<mat-dialog-content>
+    <form [formGroup]="receiptForm">
+        <div class="category-container">
+            <mat-card>
+                <mat-card-title>Historial recibo</mat-card-title>
+                <mat-card-content>
+                    <mat-form-field>
+                        <mat-label>N° Folio</mat-label>
+                        <input matInput placeholder="noFolio" formControlName="noFolio" readonly="true"/>
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Fecha</mat-label>
+                        <input matInput placeholder="fecha" formControlName="fecha" readonly="true" />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Concepto</mat-label>
+                        <input matInput placeholder="concepto" formControlName="concepto" readonly="true" />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Total</mat-label>
+                        $ <input matInput placeholder="monto" formControlName="monto" readonly="true" />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Nombre</mat-label>
+                        <input matInput placeholder="nombre" formControlName="nombre" readonly="true" />
+                    </mat-form-field>
+                </mat-card-content>
+            </mat-card>
+            <mat-card>
+                <mat-card-content>
+                    <mat-form-field>
+                        <mat-label>N° Usuario</mat-label>
+                        <input matInput placeholder="N° Usuario" formControlName="noUsuario" required />
+                    </mat-form-field> 
+                    <mat-form-field>
+                        <mat-label>Año pago</mat-label>
+                        <input matInput placeholder="Año pago" formControlName="anio" required />
+                    </mat-form-field> 
+                    <mat-form-field>
+                        <mat-label>Fecha pago</mat-label>
+                        <input matInput placeholder="Fecha pago" formControlName="fechaStr" required />
+                    </mat-form-field> 
+                </mat-card-content>
+            </mat-card>
+        </div>
+    </form>
+</mat-dialog-content>
+<mat-dialog-actions>
+    <button mat-button color="primary" (click)="onSave()">
+        <mat-icon>save</mat-icon> Guardar
+    </button>
+    <button mat-button color="primary" (click)="onCancel()">
+        <mat-icon>cancel</mat-icon> Cancelar
+    </button>
+</mat-dialog-actions>

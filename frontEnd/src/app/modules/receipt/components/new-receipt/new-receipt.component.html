@@ -1,0 +1,160 @@
+<mat-dialog-content>
+  <form [formGroup]="receiptForm">
+    <div class="category-container">
+
+      <!-- PRIMER CARD -->
+      <mat-card>
+        <mat-card-title>Agregar nuevo recibo</mat-card-title>
+        <mat-card-content>
+
+          <!-- 🔹 AUTOCOMPLETE USUARIO -->
+          <mat-form-field>
+            <mat-label>N° Usuario</mat-label>
+
+            <input matInput
+                    placeholder="N° Usuario"
+                    formControlName="noUsuario"
+                    [matAutocomplete]="auto"
+                    required />
+
+            <mat-autocomplete #auto="matAutocomplete"
+                                [displayWith]="displayUser"
+                                (optionSelected)="onUsuarioSelected($event.option.value)">
+
+                <mat-option *ngFor="let user of usuariosFiltrados"
+                            [value]="user">
+                {{ user.noUsuario }} - {{ user.nombreCompleto }}
+                </mat-option>
+
+            </mat-autocomplete>
+
+            </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>N° Folio</mat-label>
+            <input matInput placeholder="noFolio" formControlName="noFolio" />
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Fecha</mat-label>
+            <input matInput type="date"
+                   placeholder="fecha"
+                   formControlName="fecha"
+                   (change)="onChange($event)"
+                   required />
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Concepto</mat-label>
+            <input matInput placeholder="concepto" formControlName="concepto" required />
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Observaciones</mat-label>
+            <input matInput placeholder="observaciones" formControlName="observaciones" />
+          </mat-form-field>
+
+        </mat-card-content>
+      </mat-card>
+
+      <!-- SEGUNDO CARD -->
+      <mat-card>
+        <mat-card-content>
+
+          <mat-form-field>
+            <mat-label>Comite</mat-label>
+            <mat-select formControlName="comiteId">
+              <mat-option *ngFor="let cat of catalogData.cat2"
+                          [value]="cat.catalogoOpcionesId">
+                {{ cat.nombre }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Tipo pago</mat-label>
+            <mat-select formControlName="tipoPagoId">
+              <mat-option *ngFor="let cat of catalogData.cat3"
+                          [value]="cat.catalogoOpcionesId">
+                {{ cat.nombre }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Fecha Pago</mat-label>
+            <input matInput type="datetime-local"
+                   placeholder="fechaPago"
+                   formControlName="fechaPago" />
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Monto Recibido</mat-label>
+            <input matInput
+                   placeholder="montoRecibido"
+                   formControlName="montoRecibido" />
+          </mat-form-field>
+
+          <!-- MONTO APLICADO ARRAY -->
+          <div formArrayName="montoAplicadoArray">
+            <div *ngFor="let control of montoAplicadoArray.controls; let i = index"
+                 [formGroupName]="i">
+
+              <button mat-icon-button color="warn" (click)="removeMonto(i)">
+                <mat-icon>delete</mat-icon>
+              </button>
+
+              <mat-form-field>
+                <mat-label>Monto Aplicado</mat-label>
+                <input matInput
+                       placeholder="Monto Aplicado"
+                       formControlName="montoAplicado" />
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>Concepto</mat-label>
+                <mat-select formControlName="conceptoIdM">
+                  <mat-option *ngFor="let cat of catalogData.cat1"
+                              [value]="cat.catalogoOpcionesId">
+                    {{ cat.nombre }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>Año</mat-label>
+                <input matInput placeholder="Año" formControlName="anio" />
+              </mat-form-field>
+
+            </div>
+          </div>
+           <button mat-raised-button color="primary" (click)="addMonto()">
+            Agregar Monto Aplicado
+          </button>
+
+        <div class="years-card">
+            <h3>Años liquidados con este recibo</h3>
+            <div class="years-grid" formArrayName="aniosPagadosArray">
+                <mat-checkbox
+                *ngFor="let ctrl of aniosPagadosArray.controls; let i = index"
+                [formControlName]="i">
+                {{ years[i] }}
+                </mat-checkbox>
+            </div>
+        </div>
+
+        </mat-card-content>
+      </mat-card>
+
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-button color="primary" (click)="onSave()">
+    <mat-icon>save</mat-icon> Guardar
+  </button>
+  <button mat-button color="primary" (click)="onCancel()">
+    <mat-icon>cancel</mat-icon> Cancelar
+  </button>
+</mat-dialog-actions>

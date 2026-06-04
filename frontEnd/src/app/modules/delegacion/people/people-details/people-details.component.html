@@ -1,0 +1,102 @@
+<div>
+    <mat-card>
+        <mat-card-content>
+            <form [formGroup]="detailsForm">
+                <div>
+                    <mat-form-field>
+                        <mat-label>Nombre</mat-label>
+                        <input matInput placeholder="nombre" formControlName="nombre" required />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Nombre 2</mat-label>
+                        <input matInput placeholder="nombre2" formControlName="nombre2" />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Apellido Paterno</mat-label>
+                        <input matInput placeholder="app" formControlName="app" required />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Apellido Materno</mat-label>
+                        <input matInput placeholder="apm" formControlName="apm" required />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Email</mat-label>
+                        <input matInput placeholder="email" formControlName="email" />
+                    </mat-form-field>
+                </div>
+            </form>
+        </mat-card-content>
+    </mat-card>
+    <mat-expansion-panel  hideToggle class="">
+        <mat-expansion-panel-header>
+            <mat-panel-title>
+                Dirección
+            </mat-panel-title>
+            <mat-panel-description>
+                Información sobre la ubicación del ciudadano
+            </mat-panel-description>
+        </mat-expansion-panel-header>
+    </mat-expansion-panel>
+    <mat-expansion-panel (opened)="getFamily()" hideToggle class="">
+        <mat-expansion-panel-header>
+            <mat-panel-title>
+                Familia
+            </mat-panel-title>
+            <mat-panel-description>
+                Información sobre integrantes de la familia
+            </mat-panel-description>
+        </mat-expansion-panel-header>
+        <table mat-table [dataSource]="dataSource" class="mat-cell">
+            <ng-container matColumnDef="nombre">
+                <th mat-header-cell *matHeaderCellDef> Nombre</th>
+                <td mat-cell *matCellDef="let element">{{element.person.nombre}} {{element.person.nombre2}} {{element.person.app}} {{element.person.apm}}</td>
+            </ng-container>
+            <ng-container matColumnDef="parentesco">
+                <th mat-header-cell *matHeaderCellDef> parentesco</th>
+                <td mat-cell *matCellDef="let element">{{element.tipoFamilia.nombre}}</td>|
+            </ng-container>
+            <ng-container matColumnDef="observaciones">
+                <th mat-header-cell *matHeaderCellDef> Observaciones</th>
+                <td mat-cell *matCellDef="let element">{{element.observaciones}} </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="displayColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns:displayColumns"></tr>
+        </table>
+        <mat-paginator [pageSizeOptions]="[10,20,30]" showFirstLastButtons=""></mat-paginator>
+    </mat-expansion-panel>
+    <mat-expansion-panel  (opened)="getProcess()" hideToggle class="">
+        <mat-expansion-panel-header>
+            <mat-panel-title>
+                Apoyos
+            </mat-panel-title>
+            <mat-panel-description>
+                Información sobre apoyos
+            </mat-panel-description>
+        </mat-expansion-panel-header>
+        <table mat-table [dataSource]="dataSourceProcess" class="mat-cell">
+            <ng-container matColumnDef="nombre">
+                <th mat-header-cell *matHeaderCellDef> Nombre</th>
+                <td mat-cell *matCellDef="let element">{{element.person.nombre}} {{element.person.nombre2}} {{element.person.app}} {{element.person.apm}}</td>
+            </ng-container>
+            <ng-container matColumnDef="tramite">
+                <th mat-header-cell *matHeaderCellDef> Tramite</th>
+                <td mat-cell *matCellDef="let element">{{element.tipoTramite.nombre}}</td>|
+            </ng-container>
+            <ng-container matColumnDef="estatus">
+                <th mat-header-cell *matHeaderCellDef> Estatus</th>
+                <td mat-cell *matCellDef="let element">{{element.estatusTramite.nombre}}</td>|
+            </ng-container>
+            <ng-container matColumnDef="fecha">
+                <th mat-header-cell *matHeaderCellDef> Fecha</th>
+                <td mat-cell *matCellDef="let element">{{element.fechaEntrega}}</td>|
+            </ng-container>
+            <ng-container matColumnDef="observaciones">
+                <th mat-header-cell *matHeaderCellDef> Observaciones</th>
+                <td mat-cell *matCellDef="let element">{{element.observaciones}} </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="displayColumnsProcess"></tr>
+            <tr mat-row *matRowDef="let row; columns:displayColumnsProcess"></tr>
+        </table>
+        <mat-paginator [pageSizeOptions]="[10,20,30]" showFirstLastButtons=""></mat-paginator>
+    </mat-expansion-panel>
+</div>

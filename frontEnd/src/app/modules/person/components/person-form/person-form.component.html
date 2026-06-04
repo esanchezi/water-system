@@ -1,0 +1,17 @@
+<form [formGroup]="form" class="form-container">
+  <mat-form-field>
+    <mat-label>Id persona</mat-label>
+    <input matInput formControlName="personaId" placeholder="Id persona" required />
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Nombre</mat-label>
+    <input matInput formControlName="nombre" placeholder="Nombre" required />
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Apellido Paterno</mat-label>
+    <input matInput formControlName="app" placeholder="Apellido Paterno" />
+  </mat-form-field>
+
+</form>

@@ -1,0 +1,19 @@
+<div>
+  <mat-card>
+    <mat-card-content>
+      <app-person-form [person]="person"></app-person-form>
+    </mat-card-content>
+  </mat-card>
+
+    <mat-expansion-panel *ngFor="let user of listWaterUser; trackBy: trackByUser">
+        <mat-expansion-panel-header>
+            <mat-panel-title>
+            {{ user.person.nombre }} {{ user.person.app }} {{ user.person.apm }}
+            </mat-panel-title>
+            <mat-panel-description>
+            Usuario #{{ user.noUsuario }} - {{ user.observaciones }}
+            </mat-panel-description>
+        </mat-expansion-panel-header>
+        <app-user-receipt [usuario]="user"></app-user-receipt>
+    </mat-expansion-panel>
+</div>

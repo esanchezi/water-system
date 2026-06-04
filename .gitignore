@@ -1,0 +1,42 @@
+# ======================
+# ANGULAR
+# ======================
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/coverage/
+
+# ======================
+# JAVA / MAVEN
+# ======================
+backend/target/
+backend/logs/
+backend/bin/
+
+# Eclipse
+backend/.classpath
+backend/.project
+backend/.settings/
+
+# IntelliJ
+.idea/
+*.iml
+
+# VSCode
+.vscode/
+
+# Logs
+*.log
+
+# Environment
+.env
+
+# Compress files
+*.tar
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# Mac
+.DS_Store

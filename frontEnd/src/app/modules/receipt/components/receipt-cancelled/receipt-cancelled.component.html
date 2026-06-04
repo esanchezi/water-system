@@ -1,0 +1,27 @@
+<mat-dialog-content>
+    <form [formGroup]="receiptForm">
+        <div class="category-container">
+            <mat-card>
+                <mat-card-title>Agregar nuevo recibo</mat-card-title>
+                <mat-card-content>
+                    <mat-form-field>
+                        <mat-label>N° Folio</mat-label>
+                        <input matInput placeholder="noFolio" formControlName="noFolio" />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Fecha</mat-label>
+                        <input matInput placeholder="fecha" formControlName="fecha" required />
+                    </mat-form-field>
+                </mat-card-content>
+            </mat-card>
+        </div>
+    </form>
+</mat-dialog-content>
+<mat-dialog-actions>
+    <button mat-button color="primary" (click)="onSave()">
+        <mat-icon>save</mat-icon> Guardar
+    </button>
+    <button mat-button color="primary" (click)="onCancel()">
+        <mat-icon>cancel</mat-icon> Cancelar
+    </button>
+</mat-dialog-actions>

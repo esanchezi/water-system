@@ -1,0 +1,3 @@
+const ID_CUOTA_DEFAULT = '3';
+const ID_FRECUENCIA_DEFAULT = '54';
+const ID_SECCION_DEFAULT = '1'

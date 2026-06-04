@@ -1,0 +1,17 @@
+.user-headers-align .mat-expansion-panel-header-description {
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .user-headers-align .mat-mdc-form-field + .mat-mdc-form-field {
+    margin-left: 8px;
+  }
+
+.mat-expansion-panel-header.mat-expanded,
+.mat-expansion-panel-header.mat-expanded:hover {
+  background: #730adc40;
+}
+.mat-expansion-panel-header {
+    --color: white;
+    background-color: rgba(139, 19, 219, 0.07);
+ }

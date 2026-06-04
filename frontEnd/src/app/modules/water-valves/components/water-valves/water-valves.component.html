@@ -1,0 +1,14 @@
+<google-map
+  height="500px"
+  [center]="center"
+  [zoom]="zoom"
+  [options]="{ disableDefaultUI: true }"
+>
+  <map-marker
+    *ngFor="let marker of markers"
+    [position]="marker.position ?? { lat: 0, lng: 0 }"
+    [label]="marker.label ?? ''" 
+    [title]="marker.title ?? ''" 
+  >
+  </map-marker>
+</google-map>

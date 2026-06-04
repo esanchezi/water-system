@@ -1,0 +1,33 @@
+<form [formGroup]="form" class="form-container">
+  <mat-form-field>
+    <mat-label>Id casa</mat-label>
+    <input matInput formControlName="casaId" placeholder="Id casa" required />
+  </mat-form-field>
+
+  <mat-form-field class="full-width">
+    <mat-label>Zona</mat-label>
+    <mat-select formControlName="zonaId">
+      <mat-option *ngFor="let cat of zonas$ | async" [value]="cat.catalogoOpcionesId">
+        {{ cat.nombre }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>N° casa</mat-label>
+    <input matInput formControlName="casaNo" placeholder="N° casa" required />
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Nombre</mat-label>
+    <input matInput formControlName="nombre" placeholder="Nombre" />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="w-100">
+    <mat-label>Observaciones</mat-label>
+    <textarea matInput rows="3" formControlName="observaciones" placeholder="Observaciones"></textarea>
+  </mat-form-field>
+
+  <button mat-raised-button color="primary" (click)="save()">Guardar cambios</button>
+  
+</form>

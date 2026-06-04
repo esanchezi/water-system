@@ -1,0 +1,114 @@
+<h2 mat-dialog-title>Agregar nuevo usuario</h2>
+<mat-dialog-content>
+    <form [formGroup]="userForm">
+        <div class="category-container">
+            <mat-card>
+                <mat-card-title>Usuario</mat-card-title>
+                <mat-card-content>
+                    <mat-form-field>
+                        <mat-label>Nombre</mat-label>
+                        <input matInput placeholder="nombre" formControlName="nombre" required />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Nombre 2</mat-label>
+                        <input matInput placeholder="nombre2" formControlName="nombre2" />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Apellido Paterno</mat-label>
+                        <input matInput placeholder="app" formControlName="app" required />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Apellido Materno</mat-label>
+                        <input matInput placeholder="apm" formControlName="apm" required />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Email</mat-label>
+                        <input matInput placeholder="email" formControlName="email" />
+                    </mat-form-field>
+                </mat-card-content>
+            </mat-card>
+            <mat-card>
+                <mat-card-title>Dirección</mat-card-title>
+                <mat-card-content>
+                    <mat-form-field>
+                        <mat-label>Sección</mat-label>
+                        <mat-select formControlName="fkIdSeccion">
+                            <mat-option *ngFor="let cat of catalogData.cat1" [value]="cat.catalogoOpcionesId">
+                                {{ cat.nombre }}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Calle</mat-label>
+                        <input matInput placeholder="calle" formControlName="calle" required />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Numero</mat-label>
+                        <input matInput placeholder="numero" formControlName="numero" required />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Referencia </mat-label>
+                        <input matInput placeholder="referencia" formControlName="referencia" />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Entre calle</mat-label>
+                        <input matInput placeholder="entreCalle1" formControlName="entreCalle1" />
+                    </mat-form-field>
+                </mat-card-content>
+            </mat-card>
+            <mat-card>
+                <mat-card-title>Usuario</mat-card-title>
+                <mat-card-content>
+                    <mat-form-field>
+                        <mat-label>Cuota</mat-label>
+                        <mat-select formControlName="fkIdCuota">
+                            <mat-option *ngFor="let amount of amounts" [value]="amount.cuotaMontoId">
+                                {{ amount.type }} - {{ amount.cuota }}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Frecuencia Pago</mat-label>
+                        <mat-select formControlName="fkFrecuenciaPagoId">
+                            <mat-option *ngFor="let cat of catalogData.cat3" [value]="cat.catalogoOpcionesId">
+                                {{ cat.nombre }}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>Estatus Pago</mat-label>
+                        <mat-select formControlName="estatusPagoId">
+                            <mat-option *ngFor="let cat of catalogData.cat4" [value]="cat.catalogoOpcionesId">
+                                {{ cat.nombre }}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-label>N° Usuario</mat-label>
+                        <input matInput placeholder="noUsuario" formControlName="noUsuario" required />
+                    </mat-form-field>
+                    <mat-checkbox color="primary" formControlName="habitaDomicilio">
+                        Habita domicilio</mat-checkbox>
+                    <mat-checkbox color="primary" formControlName="tieneToma">
+                        Tiene toma</mat-checkbox>
+                    <mat-form-field>
+                        <mat-label>Observaciones</mat-label>
+                        <textarea matInput placeholder="observaciones" formControlName="observaciones"></textarea>
+                    </mat-form-field>
+                </mat-card-content>
+            </mat-card>
+
+
+
+
+        </div>
+    </form>
+</mat-dialog-content>
+<mat-dialog-actions>
+    <button mat-button color="primary" (click)="onSave()">
+        <mat-icon>save</mat-icon> Guardar
+    </button>
+    <button mat-button color="primary" (click)="onCancel()">
+        <mat-icon>cancel</mat-icon> Cancelar
+    </button>
+</mat-dialog-actions>

@@ -1,0 +1,19 @@
+runtime: python27
+api_version: 1
+threadsafe: true
+handlers:
+  - url: /
+    static_files: dist/front-los-lopez/index.html
+    upload: dist/front-los-lopez/index.html
+  - url: /
+    static_dir: dist/front-los-lopez
+skip_files:
+  - e2e/
+  - node_modules/
+  - src/
+  - coverage
+  - ^(.*/)?\..*$
+  - ^(.*/)?.*\.json$
+  - ^(.*/)?.*\.md$
+  - ^(.*/)?.*\.yaml$
+  - ^LICENSE

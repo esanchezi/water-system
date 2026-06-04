@@ -1,0 +1,48 @@
+<h2 mat-dialog-title>Nueva Casa</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="form-container">
+
+    <mat-form-field>
+      <mat-label>N° casa</mat-label>
+      <input matInput formControlName="casaNo" placeholder="N° casa" required />
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Zona</mat-label>
+      <mat-select formControlName="zonaId">
+        <mat-option *ngFor="let cat of zonas$ | async" [value]="cat.catalogoOpcionesId">
+          {{ cat.nombre }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Nombre</mat-label>
+      <input matInput formControlName="nombre" placeholder="Nombre" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Observaciones</mat-label>
+      <textarea matInput rows="3" formControlName="observaciones" placeholder="Observaciones"></textarea>
+    </mat-form-field>
+
+    <p class="coords">
+      Latitud: {{ form.value.lat | number:'1.6-6' }} |
+      Longitud: {{ form.value.lng | number:'1.6-6' }}
+    </p>
+
+    <google-map height="400px" width="100%"
+      [center]="center"
+      [zoom]="zoom"
+      (mapClick)="onMapClick($event)">
+      <map-marker [position]="markerPosition" title="Nueva Casa"></map-marker>
+    </google-map>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="save()">Guardar</button>
+</mat-dialog-actions>

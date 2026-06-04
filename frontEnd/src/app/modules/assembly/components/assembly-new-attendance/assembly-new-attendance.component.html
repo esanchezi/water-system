@@ -1,0 +1,44 @@
+<mat-dialog-content>
+    <form [formGroup]="receiptAttendance">
+        <div class="category-container">
+            <mat-card>
+                <mat-card-title>Asistencia</mat-card-title>
+                <mat-card-content>
+                    <mat-form-field appearance="outline">
+                        <mat-label>N° Usuario</mat-label>
+                        <input matInput placeholder="N° Usuario" formControlName="noUsuario" readonly />
+                    </mat-form-field>
+              
+                    <mat-form-field appearance="outline">
+                        <mat-label>Usuario</mat-label>
+                        <input type="text"
+                               placeholder="Buscar usuario"
+                               matInput
+                               formControlName="usuario"
+                               [matAutocomplete]="auto">
+                        <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn.bind(this)" (optionSelected)="onUserSelected($event.option.value)">
+                          <mat-option *ngFor="let user of filteredUsers | async" [value]="user">
+                            {{ user.nombre }}
+                          </mat-option>
+                        </mat-autocomplete>
+                    </mat-form-field>
+                    <mat-checkbox formControlName="asistencia">
+                        Asistencia
+                    </mat-checkbox>
+                    <mat-form-field>
+                        <mat-label>Observaciones</mat-label>
+                        <input matInput placeholder="observaciones" formControlName="observaciones" required />
+                    </mat-form-field>
+                </mat-card-content>
+            </mat-card>
+        </div>
+    </form>
+</mat-dialog-content>
+<mat-dialog-actions>
+    <button mat-button color="primary" (click)="onSave()">
+        <mat-icon>save</mat-icon> Guardar
+    </button>
+    <button mat-button color="primary" (click)="onCancel()">
+        <mat-icon>cancel</mat-icon> Cancelar
+    </button>
+</mat-dialog-actions>
