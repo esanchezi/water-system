@@ -26,6 +26,18 @@ export class CatalogService {
     );
   }
 
+  getByClave(clave: string): Observable<CatalogModel> {
+    return this.http.get<CatalogRestResponse>(`${BASE}/clave/${clave}`).pipe(
+      map(resp => resp.data[0])
+    );
+  }
+
+  getOptionsByClave(clave: string): Observable<CatalogOptionModel[]> {
+    return this.getByClave(clave).pipe(
+      map(cat => cat.options ?? [])
+    );
+  }
+
   getOptions(id: number): Observable<CatalogOptionModel[]> {
     return this.getById(id).pipe(
       map(cat => cat.options ?? [])

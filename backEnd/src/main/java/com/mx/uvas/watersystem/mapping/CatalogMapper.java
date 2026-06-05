@@ -37,10 +37,11 @@ public class CatalogMapper {
     // ── Dto → Entity (create) ────────────────────────────────────────────────
     public CatalogEntity dtoToEntity(CatalogDto dto) {
         return CatalogEntity.builder()
+                .clave(dto.getClave().toUpperCase().trim())
                 .nombre(dto.getNombre())
                 .descripcion(dto.getDescripcion())
                 .estatus(1)
-                .userIdAdd(1)   // TODO: reemplazar con usuario autenticado (Keycloak)
+                .userIdAdd(1)   // TODO: Keycloak
                 .dateAdd(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))
                 .build();
     }
@@ -50,7 +51,7 @@ public class CatalogMapper {
                 .nombre(dto.getNombre())
                 .descripcion(dto.getDescripcion())
                 .estatus(1)
-                .userIdAdd(1)   // TODO: reemplazar con usuario autenticado
+                .userIdAdd(1)   // TODO: Keycloak
                 .dateAdd(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))
                 .catalog(catalog)
                 .build();

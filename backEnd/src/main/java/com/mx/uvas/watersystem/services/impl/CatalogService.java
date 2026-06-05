@@ -33,16 +33,16 @@ public class CatalogService implements ICatalogService {
     private final ICatalogOptionsRepository catalogOptionsRepository;
     private final CatalogMapper catalogMapper;
 
-    private static final String FOUND_ALL      = "Catálogos encontrados";
-    private static final String FOUND          = "Catálogo encontrado";
-    private static final String NOT_FOUND      = "Catálogo no encontrado";
-    private static final String CREATED        = "Catálogo creado correctamente";
-    private static final String UPDATED        = "Catálogo actualizado correctamente";
-    private static final String DEACTIVATED    = "Catálogo desactivado";
-    private static final String OPT_CREATED    = "Opción agregada correctamente";
-    private static final String OPT_UPDATED    = "Opción actualizada correctamente";
+    private static final String FOUND_ALL       = "Catálogos encontrados";
+    private static final String FOUND           = "Catálogo encontrado";
+    private static final String NOT_FOUND       = "Catálogo no encontrado";
+    private static final String CREATED         = "Catálogo creado correctamente";
+    private static final String UPDATED         = "Catálogo actualizado correctamente";
+    private static final String DEACTIVATED     = "Catálogo desactivado";
+    private static final String OPT_CREATED     = "Opción agregada correctamente";
+    private static final String OPT_UPDATED     = "Opción actualizada correctamente";
     private static final String OPT_DEACTIVATED = "Opción desactivada";
-    private static final String OPT_NOT_FOUND  = "Opción de catálogo no encontrada";
+    private static final String OPT_NOT_FOUND   = "Opción de catálogo no encontrada";
 
     // ── GET ALL (solo activos) ─────────────────────────────────────────────
     @Override
@@ -81,6 +81,25 @@ public class CatalogService implements ICatalogService {
         }
     }
 
+    // ── GET BY CLAVE ───────────────────────────────────────────────────────
+    @Override
+    @Transactional(readOnly = true)
+    public ResponseEntity<CatalogRestResponse> searchByClave(String clave) {
+        CatalogRestResponse response = new CatalogRestResponse();
+        try {
+            catalogRepository.findByClave(clave).ifPresentOrElse(
+                    entity -> {
+                        response.setData(Collections.singletonList(catalogMapper.entityToDto(entity)));
+                        response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, FOUND);
+                    },
+                    () -> ResponseHandler.handleNotFoundException(response, NOT_FOUND + " [CLAVE: " + clave + "]")
+            );
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, "Error al consultar catálogo por clave", e);
+        }
+    }
+
     // ── CREATE ─────────────────────────────────────────────────────────────
     @Override
     public ResponseEntity<CatalogRestResponse> create(CatalogDto dto) {
@@ -106,6 +125,7 @@ public class CatalogService implements ICatalogService {
                 return ResponseHandler.handleNotFoundException(response, NOT_FOUND + " [ID: " + id + "]");
             }
             CatalogEntity entity = optional.get();
+            entity.setClave(dto.getClave());
             entity.setNombre(dto.getNombre());
             entity.setDescripcion(dto.getDescripcion());
             entity.setUserIdUpdate(1); // TODO: Keycloak

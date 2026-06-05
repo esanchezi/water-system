@@ -1,5 +1,6 @@
 export interface CatalogModel {
   catalogoId: number;
+  clave: string;
   nombre: string;
   descripcion: string;
   estatus: number;
