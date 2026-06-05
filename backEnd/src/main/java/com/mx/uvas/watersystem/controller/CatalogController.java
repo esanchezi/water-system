@@ -28,6 +28,11 @@ public class CatalogController {
         return catalogService.searchById(id);
     }
 
+    @GetMapping("/clave/{clave}")
+    public ResponseEntity<CatalogRestResponse> getByClave(@PathVariable String clave) {
+        return catalogService.searchByClave(clave);
+    }
+
     @PostMapping("/")
     public ResponseEntity<CatalogRestResponse> create(@RequestBody CatalogDto dto) {
         return catalogService.create(dto);

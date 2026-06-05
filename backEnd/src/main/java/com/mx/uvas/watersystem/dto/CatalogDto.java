@@ -10,6 +10,7 @@ import java.util.List;
 public class CatalogDto implements Serializable {
 
     private Integer catalogoId;
+    private String clave;
     private String nombre;
     private String descripcion;
     private Integer estatus;

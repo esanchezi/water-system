@@ -15,13 +15,14 @@ import java.util.Set;
 @AllArgsConstructor
 @Data
 @Builder
-public class CatalogEntity implements Serializable  {
+public class CatalogEntity implements Serializable {
     @Serial
     private static final long serialVersionUID = 1905122041950251207L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer catalogoId;
+    private String clave;
     private String nombre;
     private String descripcion;
     private Integer estatus;

@@ -14,11 +14,11 @@ import { CatalogFormComponent } from '../../components/catalog-form/catalog-form
 })
 export class CatalogListComponent implements OnInit {
 
-  private readonly router  = inject(Router);
-  private readonly dialog  = inject(MatDialog);
+  private readonly router         = inject(Router);
+  private readonly dialog         = inject(MatDialog);
   private readonly catalogService = inject(CatalogService);
 
-  displayColumns: string[] = ['catalogoId', 'nombre', 'descripcion', 'totalOpciones', 'estatus', 'actions'];
+  displayColumns: string[] = ['catalogoId', 'clave', 'nombre', 'descripcion', 'totalOpciones', 'estatus', 'actions'];
   dataSource = new MatTableDataSource<CatalogModel>();
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -33,9 +33,9 @@ export class CatalogListComponent implements OnInit {
         this.dataSource = new MatTableDataSource<CatalogModel>(data);
         this.dataSource.paginator = this.paginator;
         this.dataSource.filterPredicate = (row, filter) =>
-          `${row.nombre} ${row.descripcion}`.toLowerCase().includes(filter);
+          `${row.clave} ${row.nombre} ${row.descripcion}`.toLowerCase().includes(filter);
       },
-      error: (e) => console.error(e)
+      error: (e: any) => console.error(e)
     });
   }
 
@@ -71,7 +71,7 @@ export class CatalogListComponent implements OnInit {
     if (!confirm(`¿Desactivar el catálogo "${catalog.nombre}"?`)) return;
     this.catalogService.deactivate(catalog.catalogoId).subscribe({
       next: () => this.load(),
-      error: (e) => console.error(e)
+      error: (e: any) => console.error(e)
     });
   }
 }
