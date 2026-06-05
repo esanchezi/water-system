@@ -1,7 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
-import { map } from 'rxjs';
 import { WaterHouseModel } from 'src/app/modules/shared/models/WaterUser.model';
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { HouseService } from 'src/app/modules/shared/services/house.service';
@@ -14,39 +13,34 @@ import { HouseService } from 'src/app/modules/shared/services/house.service';
 export class HouseNewComponent implements OnInit {
 
   private readonly catalogService = inject(CatalogService);
-
-  constructor(
-    private houseService: HouseService,
-    private fb: FormBuilder,
-    private dialogRef: MatDialogRef<HouseNewComponent>
-  ) {}
+  private readonly houseService   = inject(HouseService);
+  private readonly fb             = inject(FormBuilder);
+  private readonly dialogRef      = inject(MatDialogRef<HouseNewComponent>);
 
   waterHouse!: WaterHouseModel;
-
   form!: FormGroup;
 
-  zonas$ = this.catalogService.getCatalogByIdResponse(20).pipe(
-    map(resp => resp.data[0].options)
-  );
+  // Usa clave en lugar de ID hardcodeado
+  zonas$ = this.catalogService.getOptionsByClave('ZONAS_CASA');
 
-  // mapa default (León, Los López)
-  center = { lat: 21.0447844, lng: -101.5706873 };
-  zoom = 15;
-  markerPosition = { lat: 21.0447844, lng: -101.5706873 };
+  // Mapa default (León, Los López)
+  center           = { lat: 21.0447844, lng: -101.5706873 };
+  zoom             = 15;
+  markerPosition   = { lat: 21.0447844, lng: -101.5706873 };
 
   ngOnInit(): void {
-   this.form = this.fb.group({
-      casaId: [null],
-      zonaId: [null, Validators.required],
-      casaNo: [null, Validators.required],
-      nombre: [''],
+    this.form = this.fb.group({
+      casaId:        [null],
+      zonaId:        [null, Validators.required],
+      casaNo:        [null, Validators.required],
+      nombre:        [''],
       observaciones: [''],
-      lat: [this.center.lat],
-      lng: [this.center.lng]
+      lat:           [this.center.lat],
+      lng:           [this.center.lng]
     });
   }
 
-  onMapClick(event: google.maps.MapMouseEvent) {
+  onMapClick(event: google.maps.MapMouseEvent): void {
     if (event.latLng) {
       this.markerPosition = {
         lat: event.latLng.lat(),
@@ -59,24 +53,15 @@ export class HouseNewComponent implements OnInit {
     }
   }
 
-  save() {
+  save(): void {
     if (this.form.invalid) return;
-
-    const newHouse = this.form.value;
-    this.houseService.addHouse(newHouse).subscribe({
-      next: (resp) => {
-        console.log('Casa creada:', resp);
-        this.dialogRef.close(true); // ✅ sin warning
-      },
-      error: (err) => {
-        console.error('Error al crear casa', err);
-      }
+    this.houseService.addHouse(this.form.value).subscribe({
+      next: () => this.dialogRef.close(true),
+      error: (e: any) => console.error('Error al crear casa', e)
     });
   }
 
-  cancel(success = false) {
-    if (this.dialogRef) {
-      this.dialogRef.close(success);
-    }
+  cancel(): void {
+    this.dialogRef.close(false);
   }
 }

@@ -6,7 +6,6 @@ import { MatTableDataSource } from '@angular/material/table';
 import { ReceiptService } from 'src/app/modules/shared/services/receipt.service';
 import { WaterReceiptModel } from 'src/app/modules/shared/models/WaterReceipt.model';
 import { HouseService } from 'src/app/modules/shared/services/house.service';
-
 import Swal from 'sweetalert2';
 
 @Component({
@@ -18,7 +17,7 @@ export class HouseDetailsComponent implements OnInit {
 
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly receiptService = inject(ReceiptService);
-  private readonly houseService= inject(HouseService);
+  private readonly houseService   = inject(HouseService);
 
   constructor(private currencyPipe: CurrencyPipe) {}
 
@@ -26,15 +25,15 @@ export class HouseDetailsComponent implements OnInit {
   listWaterUser: (WaterUserModel & { dataSource: MatTableDataSource<any>, paginatorRef?: any })[] = [];
 
   colHeaders: Record<string, string> = {
-    noFolio: 'N° Folio',
-    fechaPago: 'Fecha',
+    noFolio:         'N° Folio',
+    fechaPago:       'Fecha',
     conceptoReceipt: 'Concepto',
-    total: 'Total',
-    observaciones: 'Observaciones',
-    concepto: 'Concepto',
-    montoRecibido: 'Monto Recibido',
-    montoAplicado: 'Monto Aplicado',
-    anio: 'Año'
+    total:           'Total',
+    observaciones:   'Observaciones',
+    concepto:        'Concepto',
+    montoRecibido:   'Monto Recibido',
+    montoAplicado:   'Monto Aplicado',
+    anio:            'Año'
   };
 
   displayColumns = Object.keys(this.colHeaders);
@@ -66,19 +65,19 @@ export class HouseDetailsComponent implements OnInit {
   }
 
   private inicializarUsuarios(): void {
-  this.listWaterUser = (this.waterHouse?.listWaterUser || []).map(
-    (user: WaterUserModel) => ({
-      ...user,
-      dataSource: new MatTableDataSource<WaterUserModel>([])
-    })
-  );
-}
+    this.listWaterUser = (this.waterHouse?.listWaterUser || []).map(
+      (user: WaterUserModel) => ({
+        ...user,
+        dataSource: new MatTableDataSource<WaterUserModel>([])
+      })
+    );
+  }
 
   getReceipt(user: any): void {
-    this.receiptService.getReceiptByNoUser(user.noUsuario)
-      .subscribe({
-        next: resp => this.processReceiptResponse(resp, user)
-      });
+    this.receiptService.getReceiptByNoUser(user.noUsuario).subscribe({
+      next: (resp: any) => this.processReceiptResponse(resp, user),
+      error: (e: any) => console.error('Error al obtener recibos', e)
+    });
   }
 
   private processReceiptResponse(resp: any, user: any): void {
@@ -92,32 +91,26 @@ export class HouseDetailsComponent implements OnInit {
         recibo.waterReceiptPayment.forEach(pago => {
           flatData.push({
             ...pago,
-            fechaPago: pago.fechaPago ? formatDate(pago.fechaPago, 'dd/MM/yyyy', 'es-MX'): '',
-            montoRecibido: this.currencyPipe.transform(
-              pago.montoRecibido, 'MXN', 'symbol', '1.2-2'
-            ),
-            montoAplicado: this.currencyPipe.transform(
-              pago.montoAplicado, 'MXN', 'symbol', '1.2-2'
-            ),
-            total: this.currencyPipe.transform(
-              recibo.total, 'MXN', 'symbol', '1.2-2'
-            ),
-            noFolio: recibo.noFolio,
+            fechaPago:       pago.fechaPago ? formatDate(pago.fechaPago, 'dd/MM/yyyy', 'es-MX') : '',
+            montoRecibido:   this.currencyPipe.transform(pago.montoRecibido, 'MXN', 'symbol', '1.2-2'),
+            montoAplicado:   this.currencyPipe.transform(pago.montoAplicado, 'MXN', 'symbol', '1.2-2'),
+            total:           this.currencyPipe.transform(recibo.total, 'MXN', 'symbol', '1.2-2'),
+            noFolio:         recibo.noFolio,
             conceptoReceipt: recibo.concepto,
-            observaciones: recibo.observaciones,
-            waterUser: recibo.waterUser
+            observaciones:   recibo.observaciones,
+            waterUser:       recibo.waterUser
           });
         });
       } else {
         flatData.push({
-          noFolio: recibo.noFolio,
+          noFolio:         recibo.noFolio,
           conceptoReceipt: recibo.concepto,
-          observaciones: recibo.observaciones,
-          total: recibo.total,
-          waterUser: recibo.waterUser,
-          concepto: null,
-          montoAplicado: null,
-          anio: null
+          observaciones:   recibo.observaciones,
+          total:           recibo.total,
+          waterUser:       recibo.waterUser,
+          concepto:        null,
+          montoAplicado:   null,
+          anio:            null
         });
       }
     });
@@ -129,13 +122,12 @@ export class HouseDetailsComponent implements OnInit {
   }
 
   trackByUser(index: number, user: WaterUserModel): number {
-    return user.aguaUsuarioId; // o el id único que tengas
+    return user.aguaUsuarioId;
   }
 
   save(updatedHouse: WaterHouseModel): void {
-    console.log(updatedHouse);
-    this.houseService.updateWaterHouse(updatedHouse.casaId,updatedHouse).subscribe({
-      next: (resp) => {
+    this.houseService.updateWaterHouse(updatedHouse.casaId, updatedHouse).subscribe({
+      next: () => {
         Swal.fire({
           icon: 'success',
           title: 'Guardado correctamente',
@@ -143,9 +135,7 @@ export class HouseDetailsComponent implements OnInit {
           confirmButtonText: 'Aceptar'
         });
       },
-      error: (err) => {
-        console.error('Error al actualizar casa', err);
-      }
+      error: (e: any) => console.error('Error al actualizar casa', e)
     });
   }
 }

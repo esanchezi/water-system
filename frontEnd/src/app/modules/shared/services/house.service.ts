@@ -1,19 +1,17 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { WaterHouseModel } from '../models/WaterUser.model';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { environment } from 'src/environments/environment';
+import { WaterHouseModel } from '../models/WaterUser.model';
 
-
-@Injectable({providedIn: 'root'})
+@Injectable({ providedIn: 'root' })
 export class HouseService {
 
-  private readonly baseUrl = 'http://localhost:8080/Los_Lopez/api/v1/waterHouse'; // 🔹
+  private readonly http    = inject(HttpClient);
+  private readonly baseUrl = `${environment.apiUrl}/waterHouse`;
 
-  constructor(private http:HttpClient) {}
-
-  getListWaterHouse(){
-    const endpoint = `${this.baseUrl}/`;
-    return this.http.get(endpoint);
+  getListWaterHouse(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/`);
   }
 
   addHouse(house: Partial<WaterHouseModel>): Observable<WaterHouseModel> {
@@ -23,5 +21,4 @@ export class HouseService {
   updateWaterHouse(casaId: number, request: WaterHouseModel): Observable<any> {
     return this.http.put<any>(`${this.baseUrl}/${casaId}`, request);
   }
-
 }
