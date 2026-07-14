@@ -1,6 +1,7 @@
 package com.mx.uvas.watersystem.controller;
 
 
+import com.mx.uvas.watersystem.dto.WaterUserNoticeDto;
 import com.mx.uvas.watersystem.response.WaterUserNoticeRestResponse;
 import com.mx.uvas.watersystem.services.IWaterUserNoticeService;
 import lombok.AllArgsConstructor;
@@ -18,6 +19,11 @@ public class WaterUserNoticeController {
     @GetMapping("/{noUser}")
     public ResponseEntity<WaterUserNoticeRestResponse> searchNoticeByUser(@PathVariable Integer noUser) {
         return waterUserNoticeService.findByNoUser(noUser);
+    }
+
+    @PostMapping("/")
+    public ResponseEntity<WaterUserNoticeRestResponse> create(@RequestBody WaterUserNoticeDto request) {
+        return waterUserNoticeService.create(request);
     }
 
 }

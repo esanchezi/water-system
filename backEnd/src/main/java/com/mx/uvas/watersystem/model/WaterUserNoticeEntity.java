@@ -37,4 +37,14 @@ public class WaterUserNoticeEntity implements Serializable {
     @JoinColumn(name="aviso_estatus_id", nullable=true)
     private CatalogOptionsEntity estatusAviso;
 
+    // Aviso / Nota / Pendiente
+    @OneToOne
+    @JoinColumn(name="tipo_id", nullable=true)
+    private CatalogOptionsEntity tipo;
+
+    // Solo aplica cuando tipo = Pendiente: de quién es la acción (Comité o Usuario)
+    @OneToOne
+    @JoinColumn(name="responsable_id", nullable=true)
+    private CatalogOptionsEntity responsable;
+
 }

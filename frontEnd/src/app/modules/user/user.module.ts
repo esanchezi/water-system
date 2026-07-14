@@ -6,6 +6,7 @@ import { NewUserComponent } from './components/new-user/new-user.component';
 import { DetailsUserComponent } from './components/details-user/details-user.component';
 import { MaterialModule } from '../core/material.module';
 import { SharedModule } from '../shared/shared.module';
+import { ConvenioModule } from '../convenio/convenio.module';
 
 @NgModule({
   declarations: [
@@ -19,6 +20,7 @@ import { SharedModule } from '../shared/shared.module';
     MaterialModule,
     FormsModule,
     ReactiveFormsModule,
+    ConvenioModule,
   ]
 })
 export class UserModule { }

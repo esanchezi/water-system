@@ -2,8 +2,12 @@ import { Component, OnInit, ViewChild, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
+import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute } from '@angular/router';
 import { Observable } from 'rxjs';
+import { WaterAgreementModel } from 'src/app/modules/shared/models/WaterAgreement.model';
+import { AgreementService } from 'src/app/modules/shared/services/agreement.service';
+import { NewConvenioComponent } from 'src/app/modules/convenio/components/new-convenio/new-convenio.component';
 import { AssemblyModel } from 'src/app/modules/shared/models/Assembly.model';
 import { CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model';
 import { FeeAmountModel, FeeModel } from 'src/app/modules/shared/models/Fee.model';
@@ -11,12 +15,14 @@ import { PersonModel } from 'src/app/modules/shared/models/Person.model';
 import { WaterReceiptModel } from 'src/app/modules/shared/models/WaterReceipt.model';
 import { WaterUserDetailModel, WaterUserModel } from 'src/app/modules/shared/models/WaterUser.model';
 import { WaterUserNotifyModel } from 'src/app/modules/shared/models/WaterUserNotify.model';
+import { WaterUserChargeModel } from 'src/app/modules/shared/models/WaterUserCharge.model';
 import { AssemblyService } from 'src/app/modules/shared/services/assembly.service';
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { FeeService } from 'src/app/modules/shared/services/fee.service';
 import { PersonService } from 'src/app/modules/shared/services/person.service';
 import { ReceiptService } from 'src/app/modules/shared/services/receipt.service';
 import { UserNoticeService } from 'src/app/modules/shared/services/user.notice.service';
+import { UserChargeService } from 'src/app/modules/shared/services/user-charge.service';
 import { UserService } from 'src/app/modules/shared/services/user.service';
 import Swal from 'sweetalert2';
 
@@ -34,18 +40,28 @@ export class DetailsUserComponent implements OnInit {
   private readonly receiptService   = inject(ReceiptService);
   private readonly assemblyService  = inject(AssemblyService);
   private readonly userNoticeService = inject(UserNoticeService);
+  private readonly userChargeService = inject(UserChargeService);
+  private readonly agreementService = inject(AgreementService);
   private readonly personService    = inject(PersonService);
   private readonly userService      = inject(UserService);
+  private readonly dialog           = inject(MatDialog);
 
   public detailsForm: FormGroup = this.fb.group({});
+  public noticeForm:  FormGroup = this.fb.group({});
+  public chargeForm:  FormGroup = this.fb.group({});
+  public paymentForm: FormGroup = this.fb.group({});
 
   displayColumns:         string[] = ['noFolio','fecha','concepto','total','conceptoPayment','montoRecibido','montoAplicado','anio'];
-  displayColumnsNotify:   string[] = ['aviso','comentario','estatus'];
+  displayColumnsNotify:   string[] = ['tipo','aviso','comentario','estatus','responsable'];
   displayColumnsAssembly: string[] = ['dateS','asistencia','observaciones'];
+  displayColumnsCharge:   string[] = ['concepto','descripcion','monto','fechaStr','montoPagado','montoCondonado','saldo','estatusPago'];
+  displayColumnsAgreement: string[] = ['noFolio','fechaStr','motivo','montoCondonadoTotal','estatusConvenio'];
 
   dataSource         = new MatTableDataSource<any>();
   dataSourceNotify   = new MatTableDataSource<WaterUserNotifyModel>();
   dataSourceAssembly = new MatTableDataSource<AssemblyModel>();
+  dataSourceCharge   = new MatTableDataSource<WaterUserChargeModel>();
+  dataSourceAgreement = new MatTableDataSource<WaterAgreementModel>();
 
   usuario!: WaterUserModel;
   user!:    WaterUserDetailModel;
@@ -53,6 +69,7 @@ export class DetailsUserComponent implements OnInit {
 
   @ViewChild(MatPaginator) paginator!:       MatPaginator;
   @ViewChild(MatPaginator) paginatorNotify!: MatPaginator;
+  @ViewChild(MatPaginator) paginatorCharge!: MatPaginator;
 
   listFee: FeeModel[]       = [];
   amounts: FeeAmountModel[] = [];
@@ -63,6 +80,10 @@ export class DetailsUserComponent implements OnInit {
   estatusPago:   CatalogOptionModel[] = [];
   estatusComite: CatalogOptionModel[] = [];
   estatusToma:   CatalogOptionModel[] = [];
+  estatusAviso:  CatalogOptionModel[] = [];
+  conceptosCargo: CatalogOptionModel[] = [];
+  tiposAviso:      CatalogOptionModel[] = [];
+  responsablesPendiente: CatalogOptionModel[] = [];
 
   ngOnInit(): void {
     this.detailsForm = this.fb.group({
@@ -89,6 +110,28 @@ export class DetailsUserComponent implements OnInit {
       referencia:         [''],
       entrecalle1:        [''],
       entrecalle2:        [''],
+    });
+
+    this.noticeForm = this.fb.group({
+      aviso:          ['', Validators.required],
+      comentario:     [''],
+      avisoEstatusId: [''],
+      tipoId:         [''],
+      responsableId:  ['']
+    });
+
+    this.chargeForm = this.fb.group({
+      conceptoId:  ['', Validators.required],
+      descripcion: [''],
+      monto:       ['', Validators.required],
+      fecha:       ['', Validators.required],
+      comentario:  ['']
+    });
+
+    this.paymentForm = this.fb.group({
+      aguaUsuarioCargoId: ['', Validators.required],
+      noFolio:            ['', Validators.required],
+      montoAplicado:      ['', Validators.required]
     });
 
     this.loadCatalogs();
@@ -122,6 +165,22 @@ export class DetailsUserComponent implements OnInit {
     });
     this.catalogService.getOptionsByClave('ESTATUS_TOMA').subscribe({
       next: (opts) => this.estatusToma = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('ESTATUS_AVISO').subscribe({
+      next: (opts) => this.estatusAviso = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('CONCEPTO_CARGO_EXTRA').subscribe({
+      next: (opts) => this.conceptosCargo = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('TIPO_AVISO').subscribe({
+      next: (opts) => this.tiposAviso = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('RESPONSABLE_PENDIENTE').subscribe({
+      next: (opts) => this.responsablesPendiente = opts,
       error: (e: any) => console.error(e)
     });
   }
@@ -195,6 +254,112 @@ export class DetailsUserComponent implements OnInit {
     const dataNotify: WaterUserNotifyModel[] = resp.data;
     this.dataSourceNotify = new MatTableDataSource<WaterUserNotifyModel>(dataNotify);
     this.dataSourceNotify.paginator = this.paginatorNotify;
+  }
+
+  onSaveNotice(): void {
+    const form = this.noticeForm.value;
+    const data = {
+      noUsuario:      this.usuario.noUsuario,
+      aviso:          form.aviso,
+      comentario:     form.comentario,
+      avisoEstatusId: form.avisoEstatusId || null,
+      tipoId:         form.tipoId || null,
+      responsableId:  form.responsableId || null
+    };
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    this.userNoticeService.saveNotice(data).subscribe({
+      next: () => {
+        Swal.fire({ icon: 'success', title: 'Aviso registrado', confirmButtonText: 'Aceptar' });
+        this.noticeForm.reset();
+        this.getNotify();
+      },
+      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un problema al guardar el aviso.', confirmButtonText: 'Cerrar' })
+    });
+  }
+
+  getCharges(): void {
+    this.userChargeService.getChargesByUser(this.usuario.noUsuario).subscribe({
+      next: (v: any) => this.processChargeResponse(v),
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  private processChargeResponse(resp: any): void {
+    if (resp.metadata[0].code !== '00') return;
+    const dataCharge: WaterUserChargeModel[] = resp.data;
+    this.dataSourceCharge = new MatTableDataSource<WaterUserChargeModel>(dataCharge);
+    this.dataSourceCharge.paginator = this.paginatorCharge;
+  }
+
+  onSaveCharge(): void {
+    const form = this.chargeForm.value;
+    const data = {
+      noUsuario:   this.usuario.noUsuario,
+      conceptoId:  form.conceptoId,
+      descripcion: form.descripcion,
+      monto:       form.monto,
+      fecha:       form.fecha,
+      comentario:  form.comentario
+    };
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    this.userChargeService.saveCharge(data).subscribe({
+      next: () => {
+        Swal.fire({ icon: 'success', title: 'Cargo registrado', confirmButtonText: 'Aceptar' });
+        this.chargeForm.reset();
+        this.getCharges();
+      },
+      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un problema al guardar el cargo.', confirmButtonText: 'Cerrar' })
+    });
+  }
+
+  // Un cargo puede saldarse en uno o varios abonos, cada uno con su propio
+  // folio de recibo. Esto se puede llamar varias veces hasta que saldo=0.
+  onAddPayment(): void {
+    const form = this.paymentForm.value;
+    const data = {
+      noFolio:       form.noFolio,
+      montoAplicado: form.montoAplicado
+    };
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    this.userChargeService.addPayment(form.aguaUsuarioCargoId, data).subscribe({
+      next: () => {
+        Swal.fire({ icon: 'success', title: 'Abono registrado', confirmButtonText: 'Aceptar' });
+        this.paymentForm.reset();
+        this.getCharges();
+      },
+      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un problema al registrar el abono. Verifica que el folio exista.', confirmButtonText: 'Cerrar' })
+    });
+  }
+
+  getAgreements(): void {
+    this.agreementService.getByNoUser(this.usuario.noUsuario).subscribe({
+      next: (resp: any) => this.processAgreementResponse(resp),
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  private processAgreementResponse(resp: any): void {
+    if (resp.metadata[0].code !== '00') return;
+    const dataAgreement: WaterAgreementModel[] = resp.data;
+    this.dataSourceAgreement = new MatTableDataSource<WaterAgreementModel>(dataAgreement);
+  }
+
+  openNewConvenioDialog(): void {
+    const nombreUsuario = `${this.person?.nombre || ''} ${this.person?.app || ''}`.trim();
+    const dialogRef = this.dialog.open(NewConvenioComponent, {
+      width: '900px',
+      data: { noUsuario: this.usuario.noUsuario, nombreUsuario }
+    });
+
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result === 1) {
+        Swal.fire({ icon: 'success', title: 'Convenio registrado', confirmButtonText: 'Aceptar' });
+        this.getAgreements();
+        this.getCharges();
+      } else if (result === 2) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un problema al guardar el convenio.', confirmButtonText: 'Cerrar' });
+      }
+    });
   }
 
   onSaveUser(): void {

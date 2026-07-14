@@ -14,6 +14,7 @@ import { CoreModule } from '../core/core.module';
 import { PersonModule } from '../person/person-module.module';
 import { GroupModule } from '../group/group-module.module';
 import { CatalogModule } from '../catalog/catalog.module';
+import { ConvenioModule } from '../convenio/convenio.module';
 
 @NgModule({
   declarations: [
@@ -33,7 +34,8 @@ import { CatalogModule } from '../catalog/catalog.module';
     CoreModule,
     PersonModule,
     GroupModule,
-    CatalogModule
+    CatalogModule,
+    ConvenioModule
   ]
 })
 export class DashboardModule { }

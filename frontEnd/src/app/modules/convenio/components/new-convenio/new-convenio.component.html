@@ -1,0 +1,84 @@
+<mat-dialog-content>
+  <form [formGroup]="convenioForm">
+    <mat-card>
+      <mat-card-title>Nuevo convenio</mat-card-title>
+      <mat-card-content>
+
+        <!-- Si ya viene el usuario desde la ficha de usuario, no se pide autocomplete -->
+        <mat-form-field *ngIf="!data?.noUsuario" class="w-100">
+          <mat-label>N° Usuario</mat-label>
+          <input matInput
+                 placeholder="N° Usuario"
+                 formControlName="noUsuario"
+                 [matAutocomplete]="auto"
+                 required />
+          <mat-autocomplete #auto="matAutocomplete"
+                             [displayWith]="displayUsuario"
+                             (optionSelected)="onUsuarioSelected($event.option.value)">
+            <mat-option *ngFor="let user of usuariosFiltrados" [value]="user">
+              {{ user.noUsuario }} - {{ user.nombreCompleto }}
+            </mat-option>
+          </mat-autocomplete>
+        </mat-form-field>
+
+        <p *ngIf="data?.noUsuario"><strong>Usuario:</strong> {{ data?.noUsuario }} - {{ data?.nombreUsuario }}</p>
+
+        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
+          <mat-form-field appearance="outline" fxFlex="20%">
+            <mat-label>N° Folio (si aplica)</mat-label>
+            <input matInput type="number" placeholder="Folio del talonario" formControlName="noFolio" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="30%">
+            <mat-label>Fecha</mat-label>
+            <input matInput type="date" formControlName="fecha" required />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="30%">
+            <mat-label>Estatus del convenio</mat-label>
+            <mat-select formControlName="estatusConvenioId">
+              <mat-option *ngFor="let cat of estatusConvenio" [value]="cat.catalogoOpcionesId">
+                {{ cat.nombre }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="45%">
+            <mat-label>Motivo</mat-label>
+            <input matInput placeholder="motivo" formControlName="motivo" required />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Comentario</mat-label>
+            <textarea matInput rows="2" placeholder="comentario" formControlName="comentario"></textarea>
+          </mat-form-field>
+        </div>
+
+        <h4>Cargos pendientes a condonar</h4>
+        <p *ngIf="!cargosPendientes.length">Este usuario no tiene cargos pendientes.</p>
+
+        <div formArrayName="lineasArray">
+          <div *ngFor="let linea of lineasArray.controls; let i = index" [formGroupName]="i"
+               fxLayout="row" fxLayoutGap="16px" fxLayoutAlign="start center">
+            <span fxFlex="35%">{{ linea.get('concepto')?.value }}</span>
+            <span fxFlex="20%">Saldo: {{ linea.get('saldo')?.value | currency }}</span>
+            <mat-form-field appearance="outline" fxFlex="30%">
+              <mat-label>Monto a condonar</mat-label>
+              <input matInput type="number" formControlName="montoCondonado" />
+            </mat-form-field>
+          </div>
+        </div>
+
+      </mat-card-content>
+    </mat-card>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-button color="primary" (click)="onSave()">
+    <mat-icon>save</mat-icon> Guardar
+  </button>
+  <button mat-button color="primary" (click)="onCancel()">
+    <mat-icon>cancel</mat-icon> Cancelar
+  </button>
+</mat-dialog-actions>
