@@ -1,0 +1,79 @@
+<mat-card>
+  <h2 class="page-title">Catálogos</h2>
+
+  <mat-card-header>
+    <mat-form-field appearance="fill">
+      <mat-label>Buscar catálogo</mat-label>
+      <input matInput (keyup)="applyFilter($event)" placeholder="Clave, nombre o descripción...">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+
+    <div class="actions">
+      <button mat-raised-button color="primary" (click)="openCreate()">
+        <mat-icon>add</mat-icon> Nuevo Catálogo
+      </button>
+    </div>
+  </mat-card-header>
+
+  <mat-card-content>
+    <table mat-table [dataSource]="dataSource" class="mat-elevation-z1 full-width">
+
+      <ng-container matColumnDef="catalogoId">
+        <th mat-header-cell *matHeaderCellDef>ID</th>
+        <td mat-cell *matCellDef="let row">{{ row.catalogoId }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="clave">
+        <th mat-header-cell *matHeaderCellDef>Clave</th>
+        <td mat-cell *matCellDef="let row"><code>{{ row.clave }}</code></td>
+      </ng-container>
+
+      <ng-container matColumnDef="nombre">
+        <th mat-header-cell *matHeaderCellDef>Nombre</th>
+        <td mat-cell *matCellDef="let row">{{ row.nombre }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="descripcion">
+        <th mat-header-cell *matHeaderCellDef>Descripción</th>
+        <td mat-cell *matCellDef="let row">{{ row.descripcion }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="totalOpciones">
+        <th mat-header-cell *matHeaderCellDef>Opciones</th>
+        <td mat-cell *matCellDef="let row">
+          <mat-chip>{{ row.options?.length ?? 0 }}</mat-chip>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="estatus">
+        <th mat-header-cell *matHeaderCellDef>Estatus</th>
+        <td mat-cell *matCellDef="let row">
+          <mat-chip [color]="row.estatus === 1 ? 'primary' : 'warn'" selected>
+            {{ row.estatus === 1 ? 'Activo' : 'Inactivo' }}
+          </mat-chip>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Acciones</th>
+        <td mat-cell *matCellDef="let row">
+          <button mat-icon-button color="primary" matTooltip="Ver opciones" (click)="goToDetail(row)">
+            <mat-icon>list</mat-icon>
+          </button>
+          <button mat-icon-button color="accent" matTooltip="Editar" (click)="openEdit(row)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" matTooltip="Desactivar" (click)="deactivate(row)"
+                  [disabled]="row.estatus === 0">
+            <mat-icon>block</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayColumns;"></tr>
+    </table>
+
+    <mat-paginator [pageSizeOptions]="[10, 25, 50]" showFirstLastButtons></mat-paginator>
+  </mat-card-content>
+</mat-card>

@@ -13,7 +13,8 @@ import { MaterialModule } from '../core/material.module';
 import { CoreModule } from '../core/core.module';
 import { PersonModule } from '../person/person-module.module';
 import { GroupModule } from '../group/group-module.module';
-
+import { CatalogModule } from '../catalog/catalog.module';
+import { ConvenioModule } from '../convenio/convenio.module';
 
 @NgModule({
   declarations: [
@@ -24,7 +25,7 @@ import { GroupModule } from '../group/group-module.module';
     CommonModule,
     SharedModule,
     UserModule,
-    ReceiptModule, 
+    ReceiptModule,
     ReceiptHistoryModule,
     PeopleModuleModule,
     AssemblyModule,
@@ -32,7 +33,9 @@ import { GroupModule } from '../group/group-module.module';
     MaterialModule,
     CoreModule,
     PersonModule,
-    GroupModule
+    GroupModule,
+    CatalogModule,
+    ConvenioModule
   ]
 })
 export class DashboardModule { }

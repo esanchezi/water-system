@@ -5,5 +5,6 @@ export interface WaterUserNotifyModel{
     estatusAviso:CatalogOptionModel;
     aviso : string;
     comentario: string;
+    tipo: CatalogOptionModel;
+    responsable: CatalogOptionModel;
   }
-  

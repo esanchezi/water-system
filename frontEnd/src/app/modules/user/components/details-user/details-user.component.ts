@@ -2,23 +2,28 @@ import { Component, OnInit, ViewChild, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
-import { ActivatedRoute, Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { ActivatedRoute } from '@angular/router';
 import { Observable } from 'rxjs';
+import { WaterAgreementModel } from 'src/app/modules/shared/models/WaterAgreement.model';
+import { AgreementService } from 'src/app/modules/shared/services/agreement.service';
+import { NewConvenioComponent } from 'src/app/modules/convenio/components/new-convenio/new-convenio.component';
 import { AssemblyModel } from 'src/app/modules/shared/models/Assembly.model';
-import { CatalogData } from 'src/app/modules/shared/models/Catalog.model';
+import { CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model';
 import { FeeAmountModel, FeeModel } from 'src/app/modules/shared/models/Fee.model';
 import { PersonModel } from 'src/app/modules/shared/models/Person.model';
 import { WaterReceiptModel } from 'src/app/modules/shared/models/WaterReceipt.model';
 import { WaterUserDetailModel, WaterUserModel } from 'src/app/modules/shared/models/WaterUser.model';
 import { WaterUserNotifyModel } from 'src/app/modules/shared/models/WaterUserNotify.model';
+import { WaterUserChargeModel } from 'src/app/modules/shared/models/WaterUserCharge.model';
 import { AssemblyService } from 'src/app/modules/shared/services/assembly.service';
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { FeeService } from 'src/app/modules/shared/services/fee.service';
 import { PersonService } from 'src/app/modules/shared/services/person.service';
 import { ReceiptService } from 'src/app/modules/shared/services/receipt.service';
 import { UserNoticeService } from 'src/app/modules/shared/services/user.notice.service';
+import { UserChargeService } from 'src/app/modules/shared/services/user-charge.service';
 import { UserService } from 'src/app/modules/shared/services/user.service';
-
 import Swal from 'sweetalert2';
 
 @Component({
@@ -26,322 +31,420 @@ import Swal from 'sweetalert2';
   templateUrl: './details-user.component.html',
   styleUrls: ['./details-user.component.css']
 })
-export class DetailsUserComponent implements OnInit{
- 
-  private readonly fb = inject(FormBuilder);
-  public detailsForm: FormGroup = this.fb.group({});
-  private readonly activatedRoute = inject(ActivatedRoute);
-  private readonly catalogService = inject(CatalogService);
-  private readonly feeService = inject(FeeService);
-  private readonly receiptService = inject(ReceiptService);
-  private readonly assemblyService = inject(AssemblyService);
+export class DetailsUserComponent implements OnInit {
+
+  private readonly fb               = inject(FormBuilder);
+  private readonly activatedRoute   = inject(ActivatedRoute);
+  private readonly catalogService   = inject(CatalogService);
+  private readonly feeService       = inject(FeeService);
+  private readonly receiptService   = inject(ReceiptService);
+  private readonly assemblyService  = inject(AssemblyService);
   private readonly userNoticeService = inject(UserNoticeService);
-  private readonly personService = inject(PersonService);
-  private readonly userService = inject(UserService);
-  displayColumns: string[]=['noFolio','fecha','concepto','total','conceptoPayment','montoRecibido','montoAplicado','anio'];
-  displayColumnsNotify: string[]=['aviso','comentario','estatus'];
-  displayColumnsAssembly: string[]=['dateS','asistencia','observaciones'];
-  dataSource = new MatTableDataSource<any>();
-  dataSourceNotify = new MatTableDataSource<WaterUserNotifyModel>();
+  private readonly userChargeService = inject(UserChargeService);
+  private readonly agreementService = inject(AgreementService);
+  private readonly personService    = inject(PersonService);
+  private readonly userService      = inject(UserService);
+  private readonly dialog           = inject(MatDialog);
+
+  public detailsForm: FormGroup = this.fb.group({});
+  public noticeForm:  FormGroup = this.fb.group({});
+  public chargeForm:  FormGroup = this.fb.group({});
+  public paymentForm: FormGroup = this.fb.group({});
+
+  displayColumns:         string[] = ['noFolio','fecha','concepto','total','conceptoPayment','montoRecibido','montoAplicado','anio'];
+  displayColumnsNotify:   string[] = ['tipo','aviso','comentario','estatus','responsable'];
+  displayColumnsAssembly: string[] = ['dateS','asistencia','observaciones'];
+  displayColumnsCharge:   string[] = ['concepto','descripcion','monto','fechaStr','montoPagado','montoCondonado','saldo','estatusPago'];
+  displayColumnsAgreement: string[] = ['noFolio','fechaStr','motivo','montoCondonadoTotal','estatusConvenio'];
+
+  dataSource         = new MatTableDataSource<any>();
+  dataSourceNotify   = new MatTableDataSource<WaterUserNotifyModel>();
   dataSourceAssembly = new MatTableDataSource<AssemblyModel>();
+  dataSourceCharge   = new MatTableDataSource<WaterUserChargeModel>();
+  dataSourceAgreement = new MatTableDataSource<WaterAgreementModel>();
+
   usuario!: WaterUserModel;
-  user!: WaterUserDetailModel;
-  person !:PersonModel;
+  user!:    WaterUserDetailModel;
+  person!:  PersonModel;
 
-  @ViewChild(MatPaginator)
-  paginator !: MatPaginator;
-  @ViewChild(MatPaginator)
-  paginatorNotify !: MatPaginator;
-  listFee: FeeModel[]=[];
-  amounts: FeeAmountModel[]=[];
+  @ViewChild(MatPaginator) paginator!:       MatPaginator;
+  @ViewChild(MatPaginator) paginatorNotify!: MatPaginator;
+  @ViewChild(MatPaginator) paginatorCharge!: MatPaginator;
 
-  catalogData: CatalogData = {
-    cat1: [],
-    cat2: [],
-    cat3: [],
-    cat4: [],
-    cat5: [],
-    cat6: [],
-  };
+  listFee: FeeModel[]       = [];
+  amounts: FeeAmountModel[] = [];
+
+  // Catálogos por clave — sin IDs hardcodeados
+  secciones:     CatalogOptionModel[] = [];
+  frecuencias:   CatalogOptionModel[] = [];
+  estatusPago:   CatalogOptionModel[] = [];
+  estatusComite: CatalogOptionModel[] = [];
+  estatusToma:   CatalogOptionModel[] = [];
+  estatusAviso:  CatalogOptionModel[] = [];
+  conceptosCargo: CatalogOptionModel[] = [];
+  tiposAviso:      CatalogOptionModel[] = [];
+  responsablesPendiente: CatalogOptionModel[] = [];
 
   ngOnInit(): void {
     this.detailsForm = this.fb.group({
-      fkIdCuota: [''],
+      fkIdCuota:          [''],
       fkFrecuenciaPagoId: ['', Validators.required],
-      estatusPagoId: [''],
-      estatusComiteId: [''],
-      fkEstatusTomaId: [''],
-      noUsuario: ['', Validators.required],
-      habitaDomicilio: ['', Validators.required],
-      tieneToma: ['', Validators.required],
-      inmuebleRenta: ['', Validators.required],
-      observaciones: [''],
-      casaNo: [''],
-      grupoId: [''],
-      email: [''],
-      nombre: ['', Validators.required],
-      nombre2: [''],
-      app: ['', Validators.required],
-      apm: [''],
-      fkIdSeccion: ['', Validators.required],
-      calle: ['', Validators.required],
-      numero: ['', Validators.required],
-      referencia: [''],
-      entrecalle1: [''],
-      entrecalle2: [''],
+      estatusPagoId:      [''],
+      estatusComiteId:    [''],
+      fkEstatusTomaId:    [''],
+      noUsuario:          ['', Validators.required],
+      habitaDomicilio:    ['', Validators.required],
+      tieneToma:          ['', Validators.required],
+      inmuebleRenta:      ['', Validators.required],
+      observaciones:      [''],
+      casaNo:             [''],
+      grupoId:            [''],
+      email:              [''],
+      nombre:             ['', Validators.required],
+      nombre2:            [''],
+      app:                ['', Validators.required],
+      apm:                [''],
+      fkIdSeccion:        ['', Validators.required],
+      calle:              ['', Validators.required],
+      numero:             ['', Validators.required],
+      referencia:         [''],
+      entrecalle1:        [''],
+      entrecalle2:        [''],
     });
 
-    this.getCatalogs();
+    this.noticeForm = this.fb.group({
+      aviso:          ['', Validators.required],
+      comentario:     [''],
+      avisoEstatusId: [''],
+      tipoId:         [''],
+      responsableId:  ['']
+    });
+
+    this.chargeForm = this.fb.group({
+      conceptoId:  ['', Validators.required],
+      descripcion: [''],
+      monto:       ['', Validators.required],
+      fecha:       ['', Validators.required],
+      comentario:  ['']
+    });
+
+    this.paymentForm = this.fb.group({
+      aguaUsuarioCargoId: ['', Validators.required],
+      noFolio:            ['', Validators.required],
+      montoAplicado:      ['', Validators.required]
+    });
+
+    this.loadCatalogs();
     this.getAmounts();
+
     this.activatedRoute.queryParams.subscribe(params => {
-      if (params && params['element']) {
+      if (params?.['element']) {
         this.usuario = JSON.parse(params['element']);
-        this.user = JSON.parse(params['element']);
+        this.user    = JSON.parse(params['element']);
       }
-    });
-
-    this.getUserDetails();
-  }
-
-  getReceipt(){
-    this.receiptService.getReceiptByNoUser(this.usuario.noUsuario)
-      .subscribe({
-      next: (v) => this.processReceiptResponse(v)
+      this.getUserDetails();
     });
   }
 
-  processReceiptResponse(resp:any){
-    const dataUser: WaterReceiptModel[] = [];
-    const flatData: any[] = [];
-    if (resp.metadata[0].code == "00"){
-      let listUser = resp.data;
-
-      listUser.forEach((recibo:WaterReceiptModel)=> {
-        dataUser.push(recibo);
-        recibo.waterReceiptPayment.forEach(pago => {
-            flatData.push({
-              ...pago,
-              fechaPago: recibo.fecha,
-              noFolio: recibo.noFolio,
-              conceptoReceipt: recibo.concepto,
-              observaciones: recibo.observaciones,
-              total: recibo.total,
-              waterUser: recibo.waterUser
-            });
-          });
-      });
-      this.dataSource = new MatTableDataSource<any>(flatData);
-      this.dataSource.paginator = this.paginator;
-    }
+  private loadCatalogs(): void {
+    this.catalogService.getOptionsByClave('SECCIONES_COLONIA').subscribe({
+      next: (opts) => this.secciones = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('FRECUENCIA_PAGO').subscribe({
+      next: (opts) => this.frecuencias = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('ESTATUS_PAGO').subscribe({
+      next: (opts) => this.estatusPago = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('ESTATUS_COMITES').subscribe({
+      next: (opts) => this.estatusComite = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('ESTATUS_TOMA').subscribe({
+      next: (opts) => this.estatusToma = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('ESTATUS_AVISO').subscribe({
+      next: (opts) => this.estatusAviso = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('CONCEPTO_CARGO_EXTRA').subscribe({
+      next: (opts) => this.conceptosCargo = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('TIPO_AVISO').subscribe({
+      next: (opts) => this.tiposAviso = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('RESPONSABLE_PENDIENTE').subscribe({
+      next: (opts) => this.responsablesPendiente = opts,
+      error: (e: any) => console.error(e)
+    });
   }
 
-  getAssembly(){
-    this.assemblyService.getAssemblyByNoUser(this.usuario.noUsuario)
-        .subscribe({
-          next: (v) => this.processAssemblyResponse(v)
-        });
-  }
-
-  processAssemblyResponse(resp:any){
-    const dataAssembly: AssemblyModel[] = [];
-    if (resp.metadata[0].code == "00"){
-      let listAssembly = resp.data;
-
-      listAssembly.forEach((element:AssemblyModel)=> {
-        dataAssembly.push(element);
-        console.log(element);
-      });
-      this.dataSourceAssembly = new MatTableDataSource<AssemblyModel>(dataAssembly);
-      this.dataSourceAssembly.paginator = this.paginator;
-    }
-  }
-
-  getNotify() {
-    this.userNoticeService.getUsersNotice(this.usuario.noUsuario)
-    .subscribe({
-      next: (v) => this.processNotifyResponse(v)
-    })
-
-  }
-
-  getCenso() {
-    console.log("get censo");
-  }
-
-  private getCatalogs(): void {
-    this.getOptionsById(1, 'cat2', 'cuotas');
-    this.getOptionsById(1, 'cat1', 'seccion');
-    this.getOptionsById(11, 'cat3', 'frecuencia');
-    this.getOptionsById(13, 'cat4', 'estatusPago');
-    this.getOptionsById(12, 'cat5', 'estatusComite');
-    this.getOptionsById(14, 'cat6', 'estatusToma');
-  }
-
-  private getOptionsById(id: any, property: keyof CatalogData, catalogType: string): void {
-    this.catalogService.getCatalogById(id)
-      .subscribe({
-        next: (v: any) => {
-          this.catalogData[property] = v.data[0].options;
-        },
-        error: (e) => console.error(e),
-        complete: () => console.info(`Obtención de ${catalogType} completada`)
-      });
-  }
-
-  private getAmounts(){
-  this.feeService.getFeeAmount()
-    .subscribe({
+  private getAmounts(): void {
+    this.feeService.getFeeAmount().subscribe({
       next: (v: any) => {
         this.listFee = v.data;
-      },
-      error: (e) => console.error(e),
-      complete: () => {
         this.listFee.forEach((fee) => {
           fee.amount.forEach((amount) => {
-            amount.uso = fee.uso.nombre;
+            amount.uso  = fee.uso.nombre;
             amount.type = fee.userType.nombre;
             this.amounts.push(amount);
           });
         });
+      },
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  getReceipt(): void {
+    this.receiptService.getReceiptByNoUser(this.usuario.noUsuario).subscribe({
+      next: (v: any) => this.processReceiptResponse(v),
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  processReceiptResponse(resp: any): void {
+    if (resp.metadata[0].code !== '00') return;
+    const flatData: any[] = [];
+    (resp.data as WaterReceiptModel[]).forEach(recibo => {
+      recibo.waterReceiptPayment.forEach(pago => {
+        flatData.push({
+          ...pago,
+          fechaPago:       recibo.fecha,
+          noFolio:         recibo.noFolio,
+          conceptoReceipt: recibo.concepto,
+          observaciones:   recibo.observaciones,
+          total:           recibo.total,
+          waterUser:       recibo.waterUser
+        });
+      });
+    });
+    this.dataSource = new MatTableDataSource<any>(flatData);
+    this.dataSource.paginator = this.paginator;
+  }
+
+  getAssembly(): void {
+    this.assemblyService.getAssemblyByNoUser(this.usuario.noUsuario).subscribe({
+      next: (v: any) => this.processAssemblyResponse(v),
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  processAssemblyResponse(resp: any): void {
+    if (resp.metadata[0].code !== '00') return;
+    const dataAssembly: AssemblyModel[] = resp.data;
+    this.dataSourceAssembly = new MatTableDataSource<AssemblyModel>(dataAssembly);
+    this.dataSourceAssembly.paginator = this.paginator;
+  }
+
+  getNotify(): void {
+    this.userNoticeService.getUsersNotice(this.usuario.noUsuario).subscribe({
+      next: (v: any) => this.processNotifyResponse(v),
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  private processNotifyResponse(resp: any): void {
+    if (resp.metadata[0].code !== '00') return;
+    const dataNotify: WaterUserNotifyModel[] = resp.data;
+    this.dataSourceNotify = new MatTableDataSource<WaterUserNotifyModel>(dataNotify);
+    this.dataSourceNotify.paginator = this.paginatorNotify;
+  }
+
+  onSaveNotice(): void {
+    const form = this.noticeForm.value;
+    const data = {
+      noUsuario:      this.usuario.noUsuario,
+      aviso:          form.aviso,
+      comentario:     form.comentario,
+      avisoEstatusId: form.avisoEstatusId || null,
+      tipoId:         form.tipoId || null,
+      responsableId:  form.responsableId || null
+    };
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    this.userNoticeService.saveNotice(data).subscribe({
+      next: () => {
+        Swal.fire({ icon: 'success', title: 'Aviso registrado', confirmButtonText: 'Aceptar' });
+        this.noticeForm.reset();
+        this.getNotify();
+      },
+      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un problema al guardar el aviso.', confirmButtonText: 'Cerrar' })
+    });
+  }
+
+  getCharges(): void {
+    this.userChargeService.getChargesByUser(this.usuario.noUsuario).subscribe({
+      next: (v: any) => this.processChargeResponse(v),
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  private processChargeResponse(resp: any): void {
+    if (resp.metadata[0].code !== '00') return;
+    const dataCharge: WaterUserChargeModel[] = resp.data;
+    this.dataSourceCharge = new MatTableDataSource<WaterUserChargeModel>(dataCharge);
+    this.dataSourceCharge.paginator = this.paginatorCharge;
+  }
+
+  onSaveCharge(): void {
+    const form = this.chargeForm.value;
+    const data = {
+      noUsuario:   this.usuario.noUsuario,
+      conceptoId:  form.conceptoId,
+      descripcion: form.descripcion,
+      monto:       form.monto,
+      fecha:       form.fecha,
+      comentario:  form.comentario
+    };
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    this.userChargeService.saveCharge(data).subscribe({
+      next: () => {
+        Swal.fire({ icon: 'success', title: 'Cargo registrado', confirmButtonText: 'Aceptar' });
+        this.chargeForm.reset();
+        this.getCharges();
+      },
+      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un problema al guardar el cargo.', confirmButtonText: 'Cerrar' })
+    });
+  }
+
+  // Un cargo puede saldarse en uno o varios abonos, cada uno con su propio
+  // folio de recibo. Esto se puede llamar varias veces hasta que saldo=0.
+  onAddPayment(): void {
+    const form = this.paymentForm.value;
+    const data = {
+      noFolio:       form.noFolio,
+      montoAplicado: form.montoAplicado
+    };
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    this.userChargeService.addPayment(form.aguaUsuarioCargoId, data).subscribe({
+      next: () => {
+        Swal.fire({ icon: 'success', title: 'Abono registrado', confirmButtonText: 'Aceptar' });
+        this.paymentForm.reset();
+        this.getCharges();
+      },
+      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un problema al registrar el abono. Verifica que el folio exista.', confirmButtonText: 'Cerrar' })
+    });
+  }
+
+  getAgreements(): void {
+    this.agreementService.getByNoUser(this.usuario.noUsuario).subscribe({
+      next: (resp: any) => this.processAgreementResponse(resp),
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  private processAgreementResponse(resp: any): void {
+    if (resp.metadata[0].code !== '00') return;
+    const dataAgreement: WaterAgreementModel[] = resp.data;
+    this.dataSourceAgreement = new MatTableDataSource<WaterAgreementModel>(dataAgreement);
+  }
+
+  openNewConvenioDialog(): void {
+    const nombreUsuario = `${this.person?.nombre || ''} ${this.person?.app || ''}`.trim();
+    const dialogRef = this.dialog.open(NewConvenioComponent, {
+      width: '900px',
+      data: { noUsuario: this.usuario.noUsuario, nombreUsuario }
+    });
+
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result === 1) {
+        Swal.fire({ icon: 'success', title: 'Convenio registrado', confirmButtonText: 'Aceptar' });
+        this.getAgreements();
+        this.getCharges();
+      } else if (result === 2) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un problema al guardar el convenio.', confirmButtonText: 'Cerrar' });
       }
     });
-}
-
-  private processNotifyResponse(resp:any){
-    const dataNotify: WaterUserNotifyModel[] = [];
-    if (resp.metadata[0].code == "00"){
-      let listNotify = resp.data;
-
-      listNotify.forEach((element:WaterUserNotifyModel)=> {
-        dataNotify.push(element);
-      });
-      this.dataSourceNotify = new MatTableDataSource<WaterUserNotifyModel>(dataNotify);
-      this.dataSourceNotify.paginator = this.paginatorNotify;
-    }
   }
 
   onSaveUser(): void {
     const form = this.detailsForm.value;
-  
-    const person = {
-      personaId: this.user.personaId,
-      nombre: form.nombre,
-      nombre2: form.nombre2,
-      app: form.app,
-      apm: form.apm
+    const data = {
+      person: {
+        personaId: this.user.personaId,
+        nombre:    form.nombre,
+        nombre2:   form.nombre2,
+        app:       form.app,
+        apm:       form.apm
+      },
+      adress: {
+        direccionId: this.user.direccionId,
+        seccionId:   form.fkIdSeccion,
+        calle:       form.calle,
+        numero:      form.numero,
+        referencia:  form.referencia,
+        entrecalle1: form.entrecalle1,
+        entrecalle2: form.entrecalle2
+      }
     };
-  
-    const adress = {
-      direccionId: this.user.direccionId,
-      seccionId: form.fkIdSeccion,
-      calle: form.calle,
-      numero: form.numero,
-      referencia: form.referencia,
-      entrecalle1: form.entrecalle1,
-      entrecalle2: form.entrecalle2
-    };
-  
-    const data = { person, adress };
-  
     this.saveData(() => this.personService.savePersonAndAddress(data));
   }
-  
+
   onSaveWaterUser(): void {
     const form = this.detailsForm.value;
-  
     const data = {
-      aguaUsuarioId: this.user.aguaUsuarioId,
-      noUsuario: form.noUsuario,
+      aguaUsuarioId:   this.user.aguaUsuarioId,
+      noUsuario:       form.noUsuario,
       habitaDomicilio: form.habitaDomicilio,
-      tieneToma: form.tieneToma,
-      inmuebleRenta: form.inmuebleRenta,
-      observaciones: form.observaciones,
-      cuotaId: form.fkIdCuota, // corregido
-      estatusPagoId: form.estatusPagoId,
+      tieneToma:       form.tieneToma,
+      inmuebleRenta:   form.inmuebleRenta,
+      observaciones:   form.observaciones,
+      cuotaId:         form.fkIdCuota,
+      estatusPagoId:   form.estatusPagoId,
       frecuenciaPagoId: form.fkFrecuenciaPagoId,
       estatusComiteId: form.estatusComiteId,
-      estatusTomaId: form.fkEstatusTomaId,
-      casaNo: form.casaNo,
-      grupoId: form.grupoId
+      estatusTomaId:   form.fkEstatusTomaId,
+      casaNo:          form.casaNo,
+      grupoId:         form.grupoId
     };
-  
-    console.log(data);
     this.saveData(() => this.userService.saveWaterUser(data));
   }
-  
+
   private saveData(requestFn: () => Observable<any>): void {
-    Swal.fire({
-      title: 'Guardando...',
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading()
-    });
-  
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     requestFn().subscribe({
-      next: () => {
-        Swal.fire({
-          icon: 'success',
-          title: 'Guardado correctamente',
-          text: 'La información se actualizó.',
-          confirmButtonText: 'Aceptar'
-        });
-        // this.dialogRef.close(1);
-      },
-      error: () => {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Ocurrió un problema al guardar la información.',
-          confirmButtonText: 'Cerrar'
-        });
-        // this.dialogRef.close(2);
-      }
+      next: () => Swal.fire({ icon: 'success', title: 'Guardado correctamente', text: 'La información se actualizó.', confirmButtonText: 'Aceptar' }),
+      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un problema al guardar.', confirmButtonText: 'Cerrar' })
     });
   }
 
-getUserDetails() {
-  this.userService.getUserDetails(this.user.usuarioId)
-    .subscribe({
+  getUserDetails(): void {
+    this.userService.getUserDetails(this.user.usuarioId).subscribe({
       next: (resp: any) => {
-        if (resp.metadata[0].code === "00") {
-          const userDetails = resp.data[0]; 
-          this.user = userDetails;
-
-          this.person = {
-            personaId: userDetails.personaId,
-            nombre: userDetails.nombre,
-            nombre2: userDetails.nombre2,
-            app: userDetails.app,
-            apm: userDetails.apm
-          };
-
-          // Patch del formulario
-          this.detailsForm.patchValue({
-            fkIdCuota: userDetails.cuotaId,
-            fkFrecuenciaPagoId: userDetails.frecuenciaPagoId,
-            estatusPagoId: userDetails.estatusPagoId,
-            estatusComiteId: userDetails.estatusComiteId,
-            fkEstatusTomaId: userDetails.estatusTomaId || null,
-            noUsuario: userDetails.noUsuario,
-            habitaDomicilio: userDetails.habitaDomicilio,
-            tieneToma: userDetails.tieneToma,
-            inmuebleRenta: userDetails.inmuebleRenta,
-            casaNo: userDetails.casaId,
-            grupoId: userDetails.grupoId,
-            nombre: userDetails.nombre,
-            nombre2: userDetails.nombre2,
-            app: userDetails.app,
-            apm: userDetails.apm,
-            fkIdSeccion: userDetails.seccionId,
-            calle: userDetails.calle,
-            numero: userDetails.numero,
-            referencia: userDetails.referencia,
-            entrecalle1: userDetails.entrecalle1,
-            entrecalle2: userDetails.entrecalle2
-          });
-        }
+        if (resp.metadata[0].code !== '00') return;
+        const u = resp.data[0];
+        this.user = u;
+        this.person = { personaId: u.personaId, nombre: u.nombre, nombre2: u.nombre2, app: u.app, apm: u.apm };
+        this.detailsForm.patchValue({
+          fkIdCuota:          u.cuotaId,
+          fkFrecuenciaPagoId: u.frecuenciaPagoId,
+          estatusPagoId:      u.estatusPagoId,
+          estatusComiteId:    u.estatusComiteId,
+          fkEstatusTomaId:    u.estatusTomaId || null,
+          noUsuario:          u.noUsuario,
+          habitaDomicilio:    u.habitaDomicilio,
+          tieneToma:          u.tieneToma,
+          inmuebleRenta:      u.inmuebleRenta,
+          casaNo:             u.casaId,
+          grupoId:            u.grupoId,
+          nombre:             u.nombre,
+          nombre2:            u.nombre2,
+          app:                u.app,
+          apm:                u.apm,
+          fkIdSeccion:        u.seccionId,
+          calle:              u.calle,
+          numero:             u.numero,
+          referencia:         u.referencia,
+          entrecalle1:        u.entrecalle1,
+          entrecalle2:        u.entrecalle2
+        });
       },
-      error: (err) => console.error('Error al cargar usuario', err)
+      error: (e: any) => console.error('Error al cargar usuario', e)
     });
-}
-
+  }
 }

@@ -1,0 +1,19 @@
+.page-title {
+  margin: 0 0 8px 0;
+}
+
+mat-card-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+}
+
+.actions {
+  margin-left: auto;
+}
+
+.full-width {
+  width: 100%;
+}

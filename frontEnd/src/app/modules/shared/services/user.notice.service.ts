@@ -14,4 +14,9 @@ export class UserNoticeService {
     const endpoint = `${base_url}/${noUser}`;
     return this.http.get(endpoint);
   }
+
+  saveNotice(body:any){
+    const endpoint = `${base_url}/`;
+    return this.http.post(endpoint, body);
+  }
 }
