@@ -23,4 +23,6 @@ import java.io.Serializable;
         private Integer calleId;
         private Integer casaNo;
         private String calleNombre;
+        private String calleTexto;
+        private String numeroTexto;
     }

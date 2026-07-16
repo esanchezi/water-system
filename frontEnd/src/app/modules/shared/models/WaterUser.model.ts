@@ -39,6 +39,8 @@ export interface WaterUserModel{
     calleId: number;
     casaNo: number;
     calleNombre: string;
+    calleTexto: string;
+    numeroTexto: string;
   }
 
   export interface WaterUserDetailModel{

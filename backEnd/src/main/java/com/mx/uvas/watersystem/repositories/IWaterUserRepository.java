@@ -29,14 +29,14 @@ public interface IWaterUserRepository extends JpaRepository<WaterUserEntity,Inte
             "wu.noUsuario,wu.aguaUsuarioId, p.personaId,a.direccionId,h.casaId, " +
             "p.nombre, COALESCE(p.nombre2, ''), p.app, COALESCE(p.apm, ''), " +
             "CONCAT(a.calle, ' #', a.numero),h.nombre, " +
-            "cc.catalogoOpcionesId, h.casaNo, cc.nombre) " +
+            "cc.catalogoOpcionesId, h.casaNo, cc.nombre, a.calle, a.numero) " +
             "FROM  WaterUserEntity wu " +
             "JOIN  wu.person p " +
             "JOIN  wu.address a " +
             "LEFT JOIN wu.waterHouse h " +
             "LEFT JOIN h.catCalle cc " +
             "WHERE wu.estatus = 1 " +
-            "ORDER BY cc.nombre ASC NULLS LAST, h.casaNo ASC NULLS LAST")
+            "ORDER BY COALESCE(cc.nombre, a.calle) ASC NULLS LAST, h.casaNo ASC NULLS LAST, a.numero ASC NULLS LAST")
     List<WaterUserBasicDto> getListUsers();
 
     @Query("SELECT new com.mx.uvas.watersystem.dto.WaterUserDetailsDto(" +
