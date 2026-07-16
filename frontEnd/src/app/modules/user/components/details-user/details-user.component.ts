@@ -57,6 +57,12 @@ export class DetailsUserComponent implements OnInit {
   displayColumnsCharge:   string[] = ['concepto','descripcion','monto','fechaStr','montoPagado','montoCondonado','saldo','estatusPago'];
   displayColumnsAgreement: string[] = ['noFolio','fechaStr','motivo','montoCondonadoTotal','estatusConvenio'];
 
+  // Totales de la tabla de Cargos / Multas (fila de pie de tabla)
+  totalMonto      = 0;
+  totalPagado     = 0;
+  totalCondonado  = 0;
+  totalSaldo      = 0;
+
   dataSource         = new MatTableDataSource<any>();
   dataSourceNotify   = new MatTableDataSource<WaterUserNotifyModel>();
   dataSourceAssembly = new MatTableDataSource<AssemblyModel>();
@@ -289,6 +295,16 @@ export class DetailsUserComponent implements OnInit {
     const dataCharge: WaterUserChargeModel[] = resp.data;
     this.dataSourceCharge = new MatTableDataSource<WaterUserChargeModel>(dataCharge);
     this.dataSourceCharge.paginator = this.paginatorCharge;
+    this.calculateChargeTotals(dataCharge);
+  }
+
+  // Suma Monto, Pagado, Condonado y Saldo de todos los cargos del usuario
+  // para mostrarlos en la fila de totales al pie de la tabla.
+  private calculateChargeTotals(dataCharge: WaterUserChargeModel[]): void {
+    this.totalMonto     = dataCharge.reduce((acc, c) => acc + (Number(c.monto) || 0), 0);
+    this.totalPagado    = dataCharge.reduce((acc, c) => acc + (Number(c.montoPagado) || 0), 0);
+    this.totalCondonado = dataCharge.reduce((acc, c) => acc + (Number(c.montoCondonado) || 0), 0);
+    this.totalSaldo     = dataCharge.reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
   }
 
   onSaveCharge(): void {

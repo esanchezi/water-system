@@ -21,6 +21,7 @@ export interface WaterUserChargeModel {
   comentario: string;
   pagos: WaterUserChargePaymentModel[];
   montoPagado: number;
+  montoCondonado: number;
   saldo: number;
   pagado: boolean;
 }
