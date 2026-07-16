@@ -82,8 +82,12 @@ public class WaterHouseService extends BaseService<WaterHouseEntity, WaterHouseD
             // Actualiza campos usando el DTO
             existing.setCasaNo(dto.getCasaNo());
             existing.setNombre(dto.getNombre());
-           // existing.setLat(dto.getLat());
-            //existing.setLng(dto.getLng());
+            if (dto.getLat() != null) {
+                existing.setLat(dto.getLat());
+            }
+            if (dto.getLng() != null) {
+                existing.setLng(dto.getLng());
+            }
             existing.setObservaciones(dto.getObservaciones());
             existing.setLado(dto.getLado());
 

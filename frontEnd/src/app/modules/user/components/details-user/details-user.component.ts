@@ -3,7 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { WaterAgreementModel } from 'src/app/modules/shared/models/WaterAgreement.model';
 import { AgreementService } from 'src/app/modules/shared/services/agreement.service';
@@ -36,6 +36,7 @@ export class DetailsUserComponent implements OnInit {
 
   private readonly fb               = inject(FormBuilder);
   private readonly activatedRoute   = inject(ActivatedRoute);
+  private readonly router           = inject(Router);
   private readonly catalogService   = inject(CatalogService);
   private readonly feeService       = inject(FeeService);
   private readonly receiptService   = inject(ReceiptService);
@@ -103,8 +104,9 @@ export class DetailsUserComponent implements OnInit {
   mapCenter: google.maps.LatLngLiteral = this.DEFAULT_COORDS;
   mapMarker: google.maps.LatLngLiteral = this.DEFAULT_COORDS;
   mapZoom = 17;
+  ubicacionModificada = false;
 
-  displayColumnsRoommates: string[] = ['noUsuario', 'nombreCompleto'];
+  displayColumnsRoommates: string[] = ['noUsuario', 'nombreCompleto', 'verDetalle'];
 
   ngOnInit(): void {
     this.detailsForm = this.fb.group({
@@ -207,7 +209,7 @@ export class DetailsUserComponent implements OnInit {
       error: (e: any) => console.error(e)
     });
     this.catalogService.getOptions(15).subscribe({
-      next: (opts) => this.calles = opts,
+      next: (opts) => this.calles = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)),
       error: (e: any) => console.error(e)
     });
   }
@@ -258,17 +260,68 @@ export class DetailsUserComponent implements OnInit {
     const coords = (house?.lat && house?.lng) ? { lat: house.lat, lng: house.lng } : this.DEFAULT_COORDS;
     this.mapCenter = coords;
     this.mapMarker = coords;
+    this.ubicacionModificada = false;
   }
 
   // Otros usuarios que viven en la misma casa (excluye al usuario actual)
-  get vecinos(): (WaterUserModel & { nombreCompleto: string })[] {
+  get vecinos(): (WaterUserModel & { usuarioId: number; nombreCompleto: string })[] {
     const lista = this.casaSeleccionada?.listWaterUser ?? [];
     return lista
       .filter((u: any) => String(u.noUsuario) !== String(this.usuario?.noUsuario))
       .map((u: any) => ({
         ...u,
+        usuarioId: u.aguaUsuarioId,
         nombreCompleto: `${u.person?.nombre ?? ''} ${u.person?.nombre2 ?? ''} ${u.person?.app ?? ''} ${u.person?.apm ?? ''}`.replace(/\s+/g, ' ').trim()
       }));
+  }
+
+  verVecino(vecino: any): void {
+    this.router.navigate(['dashboard/detailsUser'], {
+      queryParams: { element: JSON.stringify(vecino) }
+    });
+  }
+
+  // Permite reubicar el marcador de la casa haciendo click o arrastrando el pin
+  onDomicilioMapClick(event: google.maps.MapMouseEvent): void {
+    if (!this.casaSeleccionada || !event.latLng) return;
+    this.mapMarker = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+    this.ubicacionModificada = true;
+  }
+
+  onDomicilioMarkerDragEnd(event: google.maps.MapMouseEvent): void {
+    if (!this.casaSeleccionada || !event.latLng) return;
+    this.mapMarker = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+    this.ubicacionModificada = true;
+  }
+
+  guardarUbicacion(): void {
+    if (!this.casaSeleccionada) return;
+    const data = {
+      casaNo:       this.casaSeleccionada.casaNo,
+      nombre:       this.casaSeleccionada.nombre,
+      observaciones: this.casaSeleccionada.observaciones,
+      lado:         this.casaSeleccionada.lado,
+      calleId:      this.casaSeleccionada.calleId,
+      lat:          this.mapMarker.lat,
+      lng:          this.mapMarker.lng
+    };
+    Swal.fire({ title: 'Guardando ubicación...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    this.houseService.updateWaterHouse(this.casaSeleccionada.casaId, data).subscribe({
+      next: () => {
+        if (this.casaSeleccionada) {
+          this.casaSeleccionada.lat = this.mapMarker.lat;
+          this.casaSeleccionada.lng = this.mapMarker.lng;
+          const house = this.allHouses.find(h => h.casaId === this.casaSeleccionada?.casaId);
+          if (house) {
+            house.lat = this.mapMarker.lat;
+            house.lng = this.mapMarker.lng;
+          }
+        }
+        this.ubicacionModificada = false;
+        Swal.fire({ icon: 'success', title: 'Ubicación actualizada', confirmButtonText: 'Aceptar' });
+      },
+      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un problema al guardar la ubicación.', confirmButtonText: 'Cerrar' })
+    });
   }
 
   private getAmounts(): void {

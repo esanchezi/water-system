@@ -29,7 +29,7 @@ export class HouseListComponent implements OnInit {
   ];
 
   calles$ = this.catalogService.getCatalogByIdResponse(15).pipe(
-    map(resp => resp.data[0].options)
+    map(resp => [...resp.data[0].options].sort((a, b) => a.nombre.localeCompare(b.nombre)))
   );
 
   displayColumns: string[] = ['casaId', 'calleId', 'casaNo', 'lado', 'nombre', 'actions'];

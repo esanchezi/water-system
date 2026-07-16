@@ -18,7 +18,7 @@ export class HouseService {
     return this.http.post<WaterHouseModel>(`${this.baseUrl}/`, house);
   }
 
-  updateWaterHouse(casaId: number, request: WaterHouseModel): Observable<any> {
+  updateWaterHouse(casaId: number, request: Partial<WaterHouseModel>): Observable<any> {
     return this.http.put<any>(`${this.baseUrl}/${casaId}`, request);
   }
 }

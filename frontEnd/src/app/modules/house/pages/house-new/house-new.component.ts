@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
+import { map } from 'rxjs/operators';
 import { WaterHouseModel } from 'src/app/modules/shared/models/WaterUser.model';
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { HouseService } from 'src/app/modules/shared/services/house.service';
@@ -20,8 +21,10 @@ export class HouseNewComponent implements OnInit {
   waterHouse!: WaterHouseModel;
   form!: FormGroup;
 
-  // Catálogo de calles (id 15)
-  calles$ = this.catalogService.getOptions(15);
+  // Catálogo de calles (id 15), en orden alfabético
+  calles$ = this.catalogService.getOptions(15).pipe(
+    map(opts => [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+  );
 
   readonly lados = [
     { value: 'D', label: 'Derecho' },
