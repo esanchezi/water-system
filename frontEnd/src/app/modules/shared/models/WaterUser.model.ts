@@ -65,10 +65,11 @@ export interface WaterUserModel{
 
   export interface WaterHouseModel {
     casaId: number;
-    zonaId: number;
+    calleId: number;
     casaNo: number;
     nombre: string;
-    zona:string;
+    calle: string;
+    lado: string;
     observaciones: string;
     lat: number; // coordenada en grados decimales
     lng: number; // coordenada en grados decimales

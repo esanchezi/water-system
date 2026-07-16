@@ -5,9 +5,9 @@
   </mat-form-field>
 
   <mat-form-field class="full-width">
-    <mat-label>Zona</mat-label>
-    <mat-select formControlName="zonaId">
-      <mat-option *ngFor="let cat of zonas$ | async" [value]="cat.catalogoOpcionesId">
+    <mat-label>Calle</mat-label>
+    <mat-select formControlName="calleId">
+      <mat-option *ngFor="let cat of calles$ | async" [value]="cat.catalogoOpcionesId">
         {{ cat.nombre }}
       </mat-option>
     </mat-select>
@@ -21,6 +21,11 @@
   <mat-form-field>
     <mat-label>Nombre</mat-label>
     <input matInput formControlName="nombre" placeholder="Nombre" />
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Lado</mat-label>
+    <input matInput formControlName="lado" placeholder="Lado" />
   </mat-form-field>
 
   <mat-form-field appearance="outline" class="w-100">

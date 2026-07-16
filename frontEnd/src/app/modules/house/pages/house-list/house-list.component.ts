@@ -18,9 +18,9 @@ export class HouseListComponent implements OnInit {
   private readonly houseService = inject(HouseService);
   private readonly dialog       = inject(MatDialog);
 
-  filters = { zona: '', nombre: '' };
+  filters = { calle: '', nombre: '' };
 
-  displayColumns: string[] = ['casaId', 'seccionId', 'casaNo', 'nombre', 'actions'];
+  displayColumns: string[] = ['casaId', 'calleId', 'casaNo', 'lado', 'nombre', 'actions'];
   dataSource = new MatTableDataSource<WaterHouseModel>();
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -49,9 +49,9 @@ export class HouseListComponent implements OnInit {
       this.dataSource.paginator = this.paginator;
       this.dataSource.filterPredicate = (row: any, filter: string) => {
         const searchTerms = JSON.parse(filter);
-        const matchZona   = !searchTerms.zona   || row.zona?.toLowerCase().includes(searchTerms.zona);
+        const matchCalle  = !searchTerms.calle  || row.calle?.toLowerCase().includes(searchTerms.calle);
         const matchNombre = !searchTerms.nombre || row.nombre?.toLowerCase().includes(searchTerms.nombre);
-        return matchZona && matchNombre;
+        return matchCalle && matchNombre;
       };
     }
   }
@@ -68,8 +68,8 @@ export class HouseListComponent implements OnInit {
     this.dataSource.filter = JSON.stringify(this.filters);
   }
 
-  applyZonaFilter(event: Event): void {
-    this.filters.zona = (event.target as HTMLInputElement).value.trim().toLowerCase();
+  applyCalleFilter(event: Event): void {
+    this.filters.calle = (event.target as HTMLInputElement).value.trim().toLowerCase();
     this.applyFilters();
   }
 

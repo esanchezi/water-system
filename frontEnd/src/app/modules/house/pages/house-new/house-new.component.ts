@@ -20,8 +20,8 @@ export class HouseNewComponent implements OnInit {
   waterHouse!: WaterHouseModel;
   form!: FormGroup;
 
-  // Usa clave en lugar de ID hardcodeado
-  zonas$ = this.catalogService.getOptionsByClave('ZONAS_CASA');
+  // Catálogo de calles (id 15)
+  calles$ = this.catalogService.getOptions(15);
 
   // Mapa default (León, Los López)
   center           = { lat: 21.0447844, lng: -101.5706873 };
@@ -31,9 +31,10 @@ export class HouseNewComponent implements OnInit {
   ngOnInit(): void {
     this.form = this.fb.group({
       casaId:        [null],
-      zonaId:        [null, Validators.required],
+      calleId:       [null, Validators.required],
       casaNo:        [null, Validators.required],
       nombre:        [''],
+      lado:          [''],
       observaciones: [''],
       lat:           [this.center.lat],
       lng:           [this.center.lng]

@@ -36,7 +36,7 @@ public class WaterHouseService extends BaseService<WaterHouseEntity, WaterHouseD
 
     @Override
     public ResponseEntity<WaterHouseRestResponse> findAll() {
-        List<WaterHouseEntity> entities = waterHouseRepository.findAllByOrderByCatSeccion_NombreAscCasaNoAsc();
+        List<WaterHouseEntity> entities = waterHouseRepository.findAllByOrderByCatCalle_NombreAscLadoAscCasaNoAsc();
 
         return handleFindAll(
                 entities,
@@ -51,10 +51,10 @@ public class WaterHouseService extends BaseService<WaterHouseEntity, WaterHouseD
     public ResponseEntity<WaterHouseRestResponse> createWaterHouse(WaterHouseDto dto) {
         WaterHouseRestResponse response = new WaterHouseRestResponse();
         try {
-            CatalogOptionsEntity zona = catalogOptionsRepository.findById(dto.getZonaId())
+            CatalogOptionsEntity calle = catalogOptionsRepository.findById(dto.getCalleId())
                     .orElse(null); // o lanzar excepción si es obligatorio
 
-            WaterHouseEntity entity = waterHouseMapper.dtoToEntity(dto, zona);
+            WaterHouseEntity entity = waterHouseMapper.dtoToEntity(dto, calle);
             WaterHouseEntity savedEntity = waterHouseRepository.save(entity);
             WaterHouseDto savedDto = waterHouseMapper.entityToDto(savedEntity);
             response.setData(List.of(savedDto));
@@ -84,9 +84,10 @@ public class WaterHouseService extends BaseService<WaterHouseEntity, WaterHouseD
            // existing.setLat(dto.getLat());
             //existing.setLng(dto.getLng());
             existing.setObservaciones(dto.getObservaciones());
+            existing.setLado(dto.getLado());
 
-            CatalogOptionsEntity zona = catalogOptionsRepository.findById(dto.getZonaId()).orElse(null);
-            existing.setCatSeccion(zona);
+            CatalogOptionsEntity calle = catalogOptionsRepository.findById(dto.getCalleId()).orElse(null);
+            existing.setCatCalle(calle);
 
             existing.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
 

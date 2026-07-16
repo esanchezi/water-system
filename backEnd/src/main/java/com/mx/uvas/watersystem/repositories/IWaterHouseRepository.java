@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface IWaterHouseRepository extends JpaRepository <WaterHouseEntity,Integer>{
 
-    List<WaterHouseEntity> findAllByOrderByCatSeccion_NombreAscCasaNoAsc();
+    List<WaterHouseEntity> findAllByOrderByCatCalle_NombreAscLadoAscCasaNoAsc();
 }
