@@ -10,10 +10,11 @@ import java.util.List;
 public class WaterHouseDto implements Serializable {
 
     private Integer casaId;
-    private Integer zonaId;
+    private Integer calleId;
     private Integer casaNo;
     private String nombre;
-    private String zona;
+    private String calle;
+    private String lado;
     private BigDecimal lat;
     private BigDecimal lng;
     private String observaciones;

@@ -3,8 +3,24 @@
   <mat-card-header>
     <div>
       <mat-form-field appearance="fill">
-        <mat-label>Buscar por sección</mat-label>
-        <input matInput (keyup)="applyZonaFilter($event)" placeholder="Ej. Sección 1">
+        <mat-label>Calle</mat-label>
+        <mat-select (selectionChange)="applyCalleFilter($event.value)">
+          <mat-option [value]="null">Todas</mat-option>
+          <mat-option *ngFor="let cat of calles$ | async" [value]="cat.catalogoOpcionesId">
+            {{ cat.nombre }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field appearance="fill">
+        <mat-label>Lado</mat-label>
+        <mat-select (selectionChange)="applyLadoFilter($event.value)">
+          <mat-option [value]="null">Todos</mat-option>
+          <mat-option *ngFor="let l of lados" [value]="l.value">
+            {{ l.label }}
+          </mat-option>
+        </mat-select>
       </mat-form-field>
     </div>
     <div>
@@ -28,14 +44,19 @@
         <td mat-cell *matCellDef="let element">{{element.casaId}}</td>
       </ng-container>
 
-      <ng-container matColumnDef="seccionId">
-        <th mat-header-cell *matHeaderCellDef> Sección</th>
-        <td mat-cell *matCellDef="let element">{{element.zona}}</td>
+      <ng-container matColumnDef="calleId">
+        <th mat-header-cell *matHeaderCellDef> Calle</th>
+        <td mat-cell *matCellDef="let element">{{element.calle}}</td>
       </ng-container>
 
       <ng-container matColumnDef="casaNo">
         <th mat-header-cell *matHeaderCellDef> No Casa</th>
         <td mat-cell *matCellDef="let element">{{element.casaNo}}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="lado">
+        <th mat-header-cell *matHeaderCellDef> Lado</th>
+        <td mat-cell *matCellDef="let element">{{ladoLabel(element.lado)}}</td>
       </ng-container>
 
       <ng-container matColumnDef="nombre">

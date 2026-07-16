@@ -1,0 +1,53 @@
+<h2 mat-dialog-title>{{ isEdit ? 'Editar Cuota' : 'Nueva Cuota' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="form-container">
+
+    <p class="mat-hint">Uso</p>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Catálogo de Uso</mat-label>
+      <mat-select formControlName="catalogoUsoId" (selectionChange)="onCatalogoUsoChange($event.value)">
+        <mat-option *ngFor="let cat of catalogos" [value]="cat.catalogoId">{{ cat.nombre }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Uso</mat-label>
+      <mat-select formControlName="usoId">
+        <mat-option *ngFor="let opt of opcionesUso" [value]="opt.catalogoOpcionesId">{{ opt.nombre }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <p class="mat-hint">Tipo de usuario</p>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Catálogo de Tipo de usuario</mat-label>
+      <mat-select formControlName="catalogoTipoId" (selectionChange)="onCatalogoTipoChange($event.value)">
+        <mat-option *ngFor="let cat of catalogos" [value]="cat.catalogoId">{{ cat.nombre }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Tipo de usuario</mat-label>
+      <mat-select formControlName="userTypeId">
+        <mat-option *ngFor="let opt of opcionesTipo" [value]="opt.catalogoOpcionesId">{{ opt.nombre }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Observaciones</mat-label>
+      <textarea matInput formControlName="observaciones" rows="3"
+                placeholder="Descripción de esta categoría de cuota"></textarea>
+    </mat-form-field>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancelar</button>
+  <button mat-raised-button color="primary"
+          (click)="save()"
+          [disabled]="form.invalid || saving">
+    <mat-icon>save</mat-icon>
+    {{ saving ? 'Guardando...' : 'Guardar' }}
+  </button>
+</mat-dialog-actions>

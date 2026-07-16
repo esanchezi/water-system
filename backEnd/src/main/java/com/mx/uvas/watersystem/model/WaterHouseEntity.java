@@ -30,14 +30,15 @@ public class WaterHouseEntity implements Serializable {
     @Column(precision = 38, scale = 13)
     private BigDecimal lng;
     private String observaciones;
+    private String lado;
     private Integer userIdAdd;
     private LocalDateTime dateAdd;
     private Integer userIdUpdate;
     private LocalDateTime dateUpdate;
 
     @OneToOne
-    @JoinColumn(name="zona_id", nullable=true)
-    private CatalogOptionsEntity catSeccion;
+    @JoinColumn(name="calle_id", nullable=true)
+    private CatalogOptionsEntity catCalle;
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

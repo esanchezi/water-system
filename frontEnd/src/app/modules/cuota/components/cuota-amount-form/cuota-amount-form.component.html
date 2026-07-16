@@ -1,0 +1,35 @@
+<h2 mat-dialog-title>{{ isEdit ? 'Editar monto' : 'Nuevo monto' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="form-container">
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Año (vigencia)</mat-label>
+      <input matInput type="number" formControlName="vigencia" placeholder="Ej. 2025" />
+      <mat-error *ngIf="form.get('vigencia')?.hasError('required')">El año es requerido</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Monto</mat-label>
+      <input matInput type="number" formControlName="cuota" placeholder="Ej. 1000" />
+      <mat-error *ngIf="form.get('cuota')?.hasError('required')">El monto es requerido</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Observaciones</mat-label>
+      <textarea matInput formControlName="observaciones" rows="3"
+                placeholder="Ej. Incluye $100 de mantenimiento aprobado en asamblea"></textarea>
+    </mat-form-field>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancelar</button>
+  <button mat-raised-button color="primary"
+          (click)="save()"
+          [disabled]="form.invalid || saving">
+    <mat-icon>save</mat-icon>
+    {{ saving ? 'Guardando...' : 'Guardar' }}
+  </button>
+</mat-dialog-actions>

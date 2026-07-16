@@ -36,6 +36,11 @@ export interface WaterUserModel{
     apm: string;
     direccion: string;
     casa: string;
+    calleId: number;
+    casaNo: number;
+    calleNombre: string;
+    calleTexto: string;
+    numeroTexto: string;
   }
 
   export interface WaterUserDetailModel{
@@ -65,14 +70,15 @@ export interface WaterUserModel{
 
   export interface WaterHouseModel {
     casaId: number;
-    zonaId: number;
+    calleId: number;
     casaNo: number;
     nombre: string;
-    zona:string;
+    calle: string;
+    lado: string;
     observaciones: string;
     lat: number; // coordenada en grados decimales
     lng: number; // coordenada en grados decimales
-    listWaterUser: [];
+    listWaterUser: WaterUserModel[];
   }
 
    export interface WaterGroupModel {

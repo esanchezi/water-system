@@ -20,4 +20,9 @@ import java.io.Serializable;
         private String apm;
         private String direccion;
         private String casa;
+        private Integer calleId;
+        private Integer casaNo;
+        private String calleNombre;
+        private String calleTexto;
+        private String numeroTexto;
     }

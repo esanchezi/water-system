@@ -7,6 +7,7 @@ import { DetailsUserComponent } from './components/details-user/details-user.com
 import { MaterialModule } from '../core/material.module';
 import { SharedModule } from '../shared/shared.module';
 import { ConvenioModule } from '../convenio/convenio.module';
+import { GoogleMapsModule } from '@angular/google-maps';
 
 @NgModule({
   declarations: [
@@ -21,6 +22,7 @@ import { ConvenioModule } from '../convenio/convenio.module';
     FormsModule,
     ReactiveFormsModule,
     ConvenioModule,
+    GoogleMapsModule,
   ]
 })
 export class UserModule { }

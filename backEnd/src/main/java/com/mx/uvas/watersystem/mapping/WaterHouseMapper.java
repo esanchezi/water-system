@@ -22,9 +22,9 @@ public class WaterHouseMapper {
             response.setListWaterUser(waterUserDtos);
         }
 
-        if (entity.getCatSeccion() != null){
-            response.setZonaId(entity.getCatSeccion().getCatalogoOpcionesId());
-            response.setZona(entity.getCatSeccion().getNombre());
+        if (entity.getCatCalle() != null){
+            response.setCalleId(entity.getCatCalle().getCatalogoOpcionesId());
+            response.setCalle(entity.getCatCalle().getNombre());
         }
         return response;
     }
@@ -43,11 +43,12 @@ public class WaterHouseMapper {
         return response;
     }
 
-    public WaterHouseEntity dtoToEntity(WaterHouseDto dto, CatalogOptionsEntity zona) {
+    public WaterHouseEntity dtoToEntity(WaterHouseDto dto, CatalogOptionsEntity calle) {
         return WaterHouseEntity.builder()
                 .casaNo(dto.getCasaNo())
                 .nombre(dto.getNombre())
-                .catSeccion(zona)
+                .catCalle(calle)
+                .lado(dto.getLado())
                 .lat(dto.getLat())
                 .lng(dto.getLng())
                 .observaciones(dto.getObservaciones())

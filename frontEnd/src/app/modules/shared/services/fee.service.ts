@@ -1,17 +1,35 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
+import { environment } from 'src/environments/environment';
+import { FeeAmountCreateModel, FeeCreateModel } from '../models/Fee.model';
 
-const base_url= "http://localhost:8080/Los_Lopez/api/v1/fee";
+const BASE = `${environment.apiUrl}/fee`;
 
 @Injectable({
   providedIn: 'root'
 })
 export class FeeService {
 
-  constructor(private http:HttpClient){}
+  private readonly http = inject(HttpClient);
 
-  getFeeAmount(){
-    const endpoint = `${base_url}/`;
-    return this.http.get(endpoint);
+  getFeeAmount(): Observable<any> {
+    return this.http.get(`${BASE}/`);
+  }
+
+  create(body: FeeCreateModel): Observable<any> {
+    return this.http.post(`${BASE}/`, body);
+  }
+
+  update(cuotaId: number, body: FeeCreateModel): Observable<any> {
+    return this.http.put(`${BASE}/${cuotaId}`, body);
+  }
+
+  addAmount(cuotaId: number, body: FeeAmountCreateModel): Observable<any> {
+    return this.http.post(`${BASE}/${cuotaId}/amounts`, body);
+  }
+
+  updateAmount(cuotaId: number, cuotaMontoId: number, body: FeeAmountCreateModel): Observable<any> {
+    return this.http.put(`${BASE}/${cuotaId}/amounts/${cuotaMontoId}`, body);
   }
 }

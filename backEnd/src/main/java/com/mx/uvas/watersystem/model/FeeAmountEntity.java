@@ -27,6 +27,7 @@ public class FeeAmountEntity implements Serializable {
     private Integer cuotaMontoId;
     private Integer cuota;
     private Integer vigencia;
+    private String observaciones;
     private Integer estatus;
     private Integer userIdAdd;
     private LocalDateTime dateAdd;

@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
+import { map } from 'rxjs/operators';
 import { WaterHouseModel } from 'src/app/modules/shared/models/WaterUser.model';
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { HouseService } from 'src/app/modules/shared/services/house.service';
@@ -20,8 +21,15 @@ export class HouseNewComponent implements OnInit {
   waterHouse!: WaterHouseModel;
   form!: FormGroup;
 
-  // Usa clave en lugar de ID hardcodeado
-  zonas$ = this.catalogService.getOptionsByClave('ZONAS_CASA');
+  // Catálogo de calles (id 15), en orden alfabético
+  calles$ = this.catalogService.getOptions(15).pipe(
+    map(opts => [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+  );
+
+  readonly lados = [
+    { value: 'D', label: 'Derecho' },
+    { value: 'I', label: 'Izquierdo' }
+  ];
 
   // Mapa default (León, Los López)
   center           = { lat: 21.0447844, lng: -101.5706873 };
@@ -31,9 +39,10 @@ export class HouseNewComponent implements OnInit {
   ngOnInit(): void {
     this.form = this.fb.group({
       casaId:        [null],
-      zonaId:        [null, Validators.required],
+      calleId:       [null, Validators.required],
       casaNo:        [null, Validators.required],
       nombre:        [''],
+      lado:          [''],
       observaciones: [''],
       lat:           [this.center.lat],
       lng:           [this.center.lng]

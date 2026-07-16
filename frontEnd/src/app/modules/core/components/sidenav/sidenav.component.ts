@@ -20,6 +20,7 @@ export class SidenavComponent implements OnInit {
     { name: 'Pagos',      route: 'receipt',      icon: 'paid' },
     { name: 'Historial',  route: 'receiptHistory', icon: 'receipt' },
     { name: 'Convenios',  route: 'convenioList', icon: 'handshake' },
+    { name: 'Cuotas',     route: 'cuotaList',    icon: 'request_quote' },
     { name: 'Asambleas',  route: 'assemblyList', icon: 'groups' },
     { name: 'Delegación', route: 'peopleList',   icon: 'group' },
     { name: 'Catálogos',  route: 'catalogList',  icon: 'library_books' },

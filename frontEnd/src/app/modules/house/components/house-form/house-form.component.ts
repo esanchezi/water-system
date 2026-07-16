@@ -19,16 +19,22 @@ export class HouseFormComponent implements OnInit {
 
   form!: FormGroup;
 
-  zonas$ = this.catalogService.getCatalogByIdResponse(20).pipe(
-    map(resp => resp.data[0].options)
+  calles$ = this.catalogService.getCatalogByIdResponse(15).pipe(
+    map(resp => [...resp.data[0].options].sort((a, b) => a.nombre.localeCompare(b.nombre)))
   );
+
+  readonly lados = [
+    { value: 'D', label: 'Derecho' },
+    { value: 'I', label: 'Izquierdo' }
+  ];
 
   ngOnInit(): void {
     this.form = this.fb.group({
       casaId: [this.waterHouse?.casaId, Validators.required],
-      zonaId: [this.waterHouse?.zonaId],
+      calleId: [this.waterHouse?.calleId],
       casaNo: [this.waterHouse?.casaNo, Validators.required],
       nombre: [this.waterHouse?.nombre],
+      lado: [this.waterHouse?.lado],
       observaciones: [this.waterHouse?.observaciones]
     });
   }

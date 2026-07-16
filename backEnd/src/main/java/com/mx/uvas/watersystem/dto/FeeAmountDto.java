@@ -10,5 +10,6 @@ public class FeeAmountDto implements Serializable {
     private Integer cuotaId;
     private Integer cuota;
     private Integer vigencia;
+    private String observaciones;
 
 }

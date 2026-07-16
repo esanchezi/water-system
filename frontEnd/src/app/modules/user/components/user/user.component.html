@@ -20,9 +20,20 @@
             </mat-form-field>
         </div>
         <div>
-            <mat-form-field hintLabel="Busque calle" appearance="fill">
-                <mat-label>Buscar calle</mat-label>
-                <input matInput [(ngModel)]="calleFiltro" (keyup)="aplicarFiltro()">
+            <mat-form-field appearance="fill">
+                <mat-label>Calle</mat-label>
+                <mat-select [(ngModel)]="calleIdFiltro" (selectionChange)="applyCalleCatalogoFiltro($event.value)">
+                    <mat-option [value]="null">Todas</mat-option>
+                    <mat-option *ngFor="let cat of calles" [value]="cat.catalogoOpcionesId">
+                        {{ cat.nombre }}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+        </div>
+        <div>
+            <mat-form-field hintLabel="N° de casa" appearance="fill">
+                <mat-label>Casa</mat-label>
+                <input matInput [(ngModel)]="casaNoFiltro" (keyup)="aplicarFiltro()">
             </mat-form-field>
         </div>
     </mat-card-header>

@@ -3,7 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { WaterAgreementModel } from 'src/app/modules/shared/models/WaterAgreement.model';
 import { AgreementService } from 'src/app/modules/shared/services/agreement.service';
@@ -13,7 +13,7 @@ import { CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model'
 import { FeeAmountModel, FeeModel } from 'src/app/modules/shared/models/Fee.model';
 import { PersonModel } from 'src/app/modules/shared/models/Person.model';
 import { WaterReceiptModel } from 'src/app/modules/shared/models/WaterReceipt.model';
-import { WaterUserDetailModel, WaterUserModel } from 'src/app/modules/shared/models/WaterUser.model';
+import { WaterHouseModel, WaterUserDetailModel, WaterUserModel } from 'src/app/modules/shared/models/WaterUser.model';
 import { WaterUserNotifyModel } from 'src/app/modules/shared/models/WaterUserNotify.model';
 import { WaterUserChargeModel } from 'src/app/modules/shared/models/WaterUserCharge.model';
 import { AssemblyService } from 'src/app/modules/shared/services/assembly.service';
@@ -24,6 +24,7 @@ import { ReceiptService } from 'src/app/modules/shared/services/receipt.service'
 import { UserNoticeService } from 'src/app/modules/shared/services/user.notice.service';
 import { UserChargeService } from 'src/app/modules/shared/services/user-charge.service';
 import { UserService } from 'src/app/modules/shared/services/user.service';
+import { HouseService } from 'src/app/modules/shared/services/house.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -35,6 +36,7 @@ export class DetailsUserComponent implements OnInit {
 
   private readonly fb               = inject(FormBuilder);
   private readonly activatedRoute   = inject(ActivatedRoute);
+  private readonly router           = inject(Router);
   private readonly catalogService   = inject(CatalogService);
   private readonly feeService       = inject(FeeService);
   private readonly receiptService   = inject(ReceiptService);
@@ -44,6 +46,7 @@ export class DetailsUserComponent implements OnInit {
   private readonly agreementService = inject(AgreementService);
   private readonly personService    = inject(PersonService);
   private readonly userService      = inject(UserService);
+  private readonly houseService     = inject(HouseService);
   private readonly dialog           = inject(MatDialog);
 
   public detailsForm: FormGroup = this.fb.group({});
@@ -90,6 +93,20 @@ export class DetailsUserComponent implements OnInit {
   conceptosCargo: CatalogOptionModel[] = [];
   tiposAviso:      CatalogOptionModel[] = [];
   responsablesPendiente: CatalogOptionModel[] = [];
+  calles:          CatalogOptionModel[] = [];
+
+  // Domicilio / Casa: cascada Calle -> Casa + mapa + vecinos de la misma casa
+  allHouses:        WaterHouseModel[] = [];
+  casasDeCalle:     WaterHouseModel[] = [];
+  casaSeleccionada: WaterHouseModel | null = null;
+
+  readonly DEFAULT_COORDS: google.maps.LatLngLiteral = { lat: 21.04386, lng: -101.56864 };
+  mapCenter: google.maps.LatLngLiteral = this.DEFAULT_COORDS;
+  mapMarker: google.maps.LatLngLiteral = this.DEFAULT_COORDS;
+  mapZoom = 17;
+  ubicacionModificada = false;
+
+  displayColumnsRoommates: string[] = ['noUsuario', 'nombreCompleto', 'verDetalle'];
 
   ngOnInit(): void {
     this.detailsForm = this.fb.group({
@@ -104,6 +121,7 @@ export class DetailsUserComponent implements OnInit {
       inmuebleRenta:      ['', Validators.required],
       observaciones:      [''],
       casaNo:             [''],
+      domicilioCalleId:   [''],
       grupoId:            [''],
       email:              [''],
       nombre:             ['', Validators.required],
@@ -142,6 +160,7 @@ export class DetailsUserComponent implements OnInit {
 
     this.loadCatalogs();
     this.getAmounts();
+    this.loadHouses();
 
     this.activatedRoute.queryParams.subscribe(params => {
       if (params?.['element']) {
@@ -188,6 +207,120 @@ export class DetailsUserComponent implements OnInit {
     this.catalogService.getOptionsByClave('RESPONSABLE_PENDIENTE').subscribe({
       next: (opts) => this.responsablesPendiente = opts,
       error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptions(15).subscribe({
+      next: (opts) => this.calles = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  private loadHouses(): void {
+    this.houseService.getListWaterHouse().subscribe({
+      next: (resp: any) => {
+        if (resp.metadata?.code === '00') {
+          this.allHouses = resp.data;
+          this.syncDomicilio();
+        }
+      },
+      error: (e: any) => console.error('Error al cargar casas', e)
+    });
+  }
+
+  // Reconstruye la cascada Calle -> Casa a partir de la casa ya asignada al
+  // usuario (u.casaId). Se llama tanto al terminar de cargar las casas como
+  // al terminar de cargar el detalle del usuario, ya que pueden resolver en
+  // cualquier orden.
+  private syncDomicilio(): void {
+    if (!this.allHouses.length || !this.user?.casaId) return;
+    const house = this.allHouses.find(h => h.casaId === this.user.casaId);
+    if (!house) return;
+
+    this.casasDeCalle = this.allHouses.filter(h => h.calleId === house.calleId);
+    this.detailsForm.patchValue({
+      domicilioCalleId: house.calleId,
+      casaNo: house.casaId
+    }, { emitEvent: false });
+    this.selectCasa(house);
+  }
+
+  onCalleChange(calleId: number | null): void {
+    this.casasDeCalle = calleId != null ? this.allHouses.filter(h => h.calleId === calleId) : [];
+    this.detailsForm.patchValue({ casaNo: null });
+    this.selectCasa(null);
+  }
+
+  onCasaChange(casaId: number | null): void {
+    const house = casaId != null ? this.allHouses.find(h => h.casaId === casaId) || null : null;
+    this.detailsForm.patchValue({ casaNo: casaId });
+    this.selectCasa(house);
+  }
+
+  private selectCasa(house: WaterHouseModel | null): void {
+    this.casaSeleccionada = house;
+    const coords = (house?.lat && house?.lng) ? { lat: house.lat, lng: house.lng } : this.DEFAULT_COORDS;
+    this.mapCenter = coords;
+    this.mapMarker = coords;
+    this.ubicacionModificada = false;
+  }
+
+  // Otros usuarios que viven en la misma casa (excluye al usuario actual)
+  get vecinos(): (WaterUserModel & { usuarioId: number; nombreCompleto: string })[] {
+    const lista = this.casaSeleccionada?.listWaterUser ?? [];
+    return lista
+      .filter((u: any) => String(u.noUsuario) !== String(this.usuario?.noUsuario))
+      .map((u: any) => ({
+        ...u,
+        usuarioId: u.aguaUsuarioId,
+        nombreCompleto: `${u.person?.nombre ?? ''} ${u.person?.nombre2 ?? ''} ${u.person?.app ?? ''} ${u.person?.apm ?? ''}`.replace(/\s+/g, ' ').trim()
+      }));
+  }
+
+  verVecino(vecino: any): void {
+    this.router.navigate(['dashboard/detailsUser'], {
+      queryParams: { element: JSON.stringify(vecino) }
+    });
+  }
+
+  // Permite reubicar el marcador de la casa haciendo click o arrastrando el pin
+  onDomicilioMapClick(event: google.maps.MapMouseEvent): void {
+    if (!this.casaSeleccionada || !event.latLng) return;
+    this.mapMarker = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+    this.ubicacionModificada = true;
+  }
+
+  onDomicilioMarkerDragEnd(event: google.maps.MapMouseEvent): void {
+    if (!this.casaSeleccionada || !event.latLng) return;
+    this.mapMarker = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+    this.ubicacionModificada = true;
+  }
+
+  guardarUbicacion(): void {
+    if (!this.casaSeleccionada) return;
+    const data = {
+      casaNo:       this.casaSeleccionada.casaNo,
+      nombre:       this.casaSeleccionada.nombre,
+      observaciones: this.casaSeleccionada.observaciones,
+      lado:         this.casaSeleccionada.lado,
+      calleId:      this.casaSeleccionada.calleId,
+      lat:          this.mapMarker.lat,
+      lng:          this.mapMarker.lng
+    };
+    Swal.fire({ title: 'Guardando ubicación...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    this.houseService.updateWaterHouse(this.casaSeleccionada.casaId, data).subscribe({
+      next: () => {
+        if (this.casaSeleccionada) {
+          this.casaSeleccionada.lat = this.mapMarker.lat;
+          this.casaSeleccionada.lng = this.mapMarker.lng;
+          const house = this.allHouses.find(h => h.casaId === this.casaSeleccionada?.casaId);
+          if (house) {
+            house.lat = this.mapMarker.lat;
+            house.lng = this.mapMarker.lng;
+          }
+        }
+        this.ubicacionModificada = false;
+        Swal.fire({ icon: 'success', title: 'Ubicación actualizada', confirmButtonText: 'Aceptar' });
+      },
+      error: () => Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un problema al guardar la ubicación.', confirmButtonText: 'Cerrar' })
     });
   }
 
@@ -459,6 +592,7 @@ export class DetailsUserComponent implements OnInit {
           entrecalle1:        u.entrecalle1,
           entrecalle2:        u.entrecalle2
         });
+        this.syncDomicilio();
       },
       error: (e: any) => console.error('Error al cargar usuario', e)
     });
