@@ -26,15 +26,17 @@ public interface IWaterUserRepository extends JpaRepository<WaterUserEntity,Inte
     List<WaterUserEntity> findByPersonaId(Integer personaId);
 
     @Query("SELECT new com.mx.uvas.watersystem.dto.WaterUserBasicDto(" +
-            "wu.noUsuario,wu.aguaUsuarioId, p.personaId,a.direccionId,0, " +
+            "wu.noUsuario,wu.aguaUsuarioId, p.personaId,a.direccionId,h.casaId, " +
             "p.nombre, COALESCE(p.nombre2, ''), p.app, COALESCE(p.apm, ''), " +
-            "CONCAT(a.calle, ' #', a.numero),h.nombre) " +
+            "CONCAT(a.calle, ' #', a.numero),h.nombre, " +
+            "cc.catalogoOpcionesId, h.casaNo, cc.nombre) " +
             "FROM  WaterUserEntity wu " +
             "JOIN  wu.person p " +
             "JOIN  wu.address a " +
             "LEFT JOIN wu.waterHouse h " +
+            "LEFT JOIN h.catCalle cc " +
             "WHERE wu.estatus = 1 " +
-            "ORDER BY p.nombre")
+            "ORDER BY cc.nombre ASC NULLS LAST, h.casaNo ASC NULLS LAST")
     List<WaterUserBasicDto> getListUsers();
 
     @Query("SELECT new com.mx.uvas.watersystem.dto.WaterUserDetailsDto(" +

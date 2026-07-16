@@ -36,6 +36,9 @@ export interface WaterUserModel{
     apm: string;
     direccion: string;
     casa: string;
+    calleId: number;
+    casaNo: number;
+    calleNombre: string;
   }
 
   export interface WaterUserDetailModel{

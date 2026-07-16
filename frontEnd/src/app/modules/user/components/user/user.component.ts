@@ -9,6 +9,8 @@ import { MatPaginator } from '@angular/material/paginator';
 import { UtilService } from 'src/app/modules/shared/services/util.service';
 import { ReceiptService } from '../../../shared/services/receipt.service';
 import { Router } from '@angular/router';
+import { CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model';
+import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 
 @Component({
   selector: 'app-user',
@@ -22,6 +24,7 @@ export class UserComponent implements OnInit{
   private readonly snackBar = inject(MatSnackBar);
   private readonly util = inject(UtilService);
   private readonly router = inject(Router);
+  private readonly catalogService = inject(CatalogService);
   public dialog = inject(MatDialog);
   displayColumns: string[]=['noUser','nombre','direccion','casa','observaciones','actions'];
   dataSource = new MatTableDataSource<WaterUserBasicModel>();
@@ -29,6 +32,11 @@ export class UserComponent implements OnInit{
   apellidoFiltro: string = '';
   noUserFiltro: string = '';
   calleFiltro: string = '';
+  calleIdFiltro: number | null = null;
+  casaNoFiltro: string = '';
+
+  // Catálogo de calles (id 15), en orden alfabético, para el filtro por calle
+  calles: CatalogOptionModel[] = [];
   //isAdmin:any;
 
   @ViewChild(MatPaginator)
@@ -42,14 +50,26 @@ export class UserComponent implements OnInit{
       const apellido = data.app?.toLowerCase() || '';
       const noUser = data.noUsuario?.toString() || '';
       const calle = data.direccion?.toLowerCase() || '';
+      const calleId = data.calleId?.toString() || '';
+      const casaNo = data.casaNo?.toString() || '';
 
       return nombre.includes(searchTerms.nombre) &&
             apellido.includes(searchTerms.apellido) &&
             noUser.includes(searchTerms.noUser) &&
-            calle.includes(searchTerms.calle);
+            calle.includes(searchTerms.calle) &&
+            (!searchTerms.calleId || calleId === searchTerms.calleId) &&
+            (!searchTerms.casaNo || casaNo.includes(searchTerms.casaNo));
     };
 
+    this.loadCalles();
     this.getUsers();
+  }
+
+  private loadCalles(): void {
+    this.catalogService.getOptions(15).subscribe({
+      next: (opts) => this.calles = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      error: (e: any) => console.error(e)
+    });
   }
 
   getUsers():void{
@@ -94,8 +114,15 @@ export class UserComponent implements OnInit{
       nombre: this.nombreFiltro.trim().toLowerCase(),
       apellido: this.apellidoFiltro.trim().toLowerCase(),
       noUser: this.noUserFiltro.trim(),
-      calle: this.calleFiltro.trim().toLowerCase()
+      calle: this.calleFiltro.trim().toLowerCase(),
+      calleId: this.calleIdFiltro != null ? String(this.calleIdFiltro) : '',
+      casaNo: this.casaNoFiltro.trim()
     });
+  }
+
+  applyCalleCatalogoFiltro(calleId: number | null): void {
+    this.calleIdFiltro = calleId;
+    this.aplicarFiltro();
   }
 
   buscar(termino:string){

@@ -10,6 +10,6 @@ public interface IWaterHouseRepository extends JpaRepository <WaterHouseEntity,I
 
     @Query("SELECT h FROM WaterHouseEntity h " +
             "LEFT JOIN FETCH h.catCalle " +
-            "ORDER BY h.catCalle.nombre ASC NULLS LAST, h.lado ASC NULLS LAST, h.casaNo ASC")
+            "ORDER BY h.catCalle.nombre ASC NULLS LAST, h.casaNo ASC NULLS LAST, h.lado ASC NULLS LAST")
     List<WaterHouseEntity> findAllByOrderByCatCalle_NombreAscLadoAscCasaNoAsc();
 }
