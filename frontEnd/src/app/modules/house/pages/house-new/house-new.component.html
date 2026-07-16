@@ -24,7 +24,11 @@
 
     <mat-form-field>
       <mat-label>Lado</mat-label>
-      <input matInput formControlName="lado" placeholder="Lado" />
+      <mat-select formControlName="lado">
+        <mat-option *ngFor="let l of lados" [value]="l.value">
+          {{ l.label }}
+        </mat-option>
+      </mat-select>
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="w-100">

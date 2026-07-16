@@ -23,6 +23,11 @@ export class HouseFormComponent implements OnInit {
     map(resp => resp.data[0].options)
   );
 
+  readonly lados = [
+    { value: 'D', label: 'Derecho' },
+    { value: 'I', label: 'Izquierdo' }
+  ];
+
   ngOnInit(): void {
     this.form = this.fb.group({
       casaId: [this.waterHouse?.casaId, Validators.required],

@@ -51,8 +51,9 @@ public class WaterHouseService extends BaseService<WaterHouseEntity, WaterHouseD
     public ResponseEntity<WaterHouseRestResponse> createWaterHouse(WaterHouseDto dto) {
         WaterHouseRestResponse response = new WaterHouseRestResponse();
         try {
-            CatalogOptionsEntity calle = catalogOptionsRepository.findById(dto.getCalleId())
-                    .orElse(null); // o lanzar excepción si es obligatorio
+            CatalogOptionsEntity calle = dto.getCalleId() != null
+                    ? catalogOptionsRepository.findById(dto.getCalleId()).orElse(null)
+                    : null;
 
             WaterHouseEntity entity = waterHouseMapper.dtoToEntity(dto, calle);
             WaterHouseEntity savedEntity = waterHouseRepository.save(entity);
@@ -86,7 +87,9 @@ public class WaterHouseService extends BaseService<WaterHouseEntity, WaterHouseD
             existing.setObservaciones(dto.getObservaciones());
             existing.setLado(dto.getLado());
 
-            CatalogOptionsEntity calle = catalogOptionsRepository.findById(dto.getCalleId()).orElse(null);
+            CatalogOptionsEntity calle = dto.getCalleId() != null
+                    ? catalogOptionsRepository.findById(dto.getCalleId()).orElse(null)
+                    : null;
             existing.setCatCalle(calle);
 
             existing.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));

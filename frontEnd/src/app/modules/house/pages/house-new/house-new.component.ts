@@ -23,6 +23,11 @@ export class HouseNewComponent implements OnInit {
   // Catálogo de calles (id 15)
   calles$ = this.catalogService.getOptions(15);
 
+  readonly lados = [
+    { value: 'D', label: 'Derecho' },
+    { value: 'I', label: 'Izquierdo' }
+  ];
+
   // Mapa default (León, Los López)
   center           = { lat: 21.0447844, lng: -101.5706873 };
   zoom             = 15;
