@@ -73,7 +73,7 @@ export interface WaterUserModel{
     observaciones: string;
     lat: number; // coordenada en grados decimales
     lng: number; // coordenada en grados decimales
-    listWaterUser: [];
+    listWaterUser: WaterUserModel[];
   }
 
    export interface WaterGroupModel {
