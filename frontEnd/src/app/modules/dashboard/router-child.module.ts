@@ -20,6 +20,8 @@ import { GroupDetailsComponent } from '../group/pages/group-details/group-detail
 import { CatalogListComponent } from '../catalog/pages/catalog-list/catalog-list.component';
 import { CatalogDetailComponent } from '../catalog/pages/catalog-detail/catalog-detail.component';
 import { ConvenioListComponent } from '../convenio/pages/convenio-list/convenio-list.component';
+import { CuotaListComponent } from '../cuota/pages/cuota-list/cuota-list.component';
+import { CuotaDetailComponent } from '../cuota/pages/cuota-detail/cuota-detail.component';
 
 export const childRoutes: Routes = [
     { path: '', component: HomeComponent },
@@ -42,6 +44,8 @@ export const childRoutes: Routes = [
     { path: 'catalogList', component: CatalogListComponent },
     { path: 'catalogDetail', component: CatalogDetailComponent },
     { path: 'convenioList', component: ConvenioListComponent },
+    { path: 'cuotaList', component: CuotaListComponent },
+    { path: 'cuotaDetail', component: CuotaDetailComponent },
 ];
 
 @NgModule({
