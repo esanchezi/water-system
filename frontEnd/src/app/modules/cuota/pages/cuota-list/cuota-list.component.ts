@@ -30,7 +30,7 @@ export class CuotaListComponent implements OnInit {
   load(): void {
     this.feeService.getFeeAmount().subscribe({
       next: (resp: any) => {
-        if (resp.metadata?.code === '00') {
+        if (resp.metadata?.[0]?.code === '00') {
           this.dataSource = new MatTableDataSource<FeeModel>(resp.data);
           this.dataSource.paginator = this.paginator;
         }

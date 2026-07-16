@@ -38,7 +38,7 @@ export class CuotaDetailComponent implements OnInit {
   loadAmounts(): void {
     this.feeService.getFeeAmount().subscribe({
       next: (resp: any) => {
-        if (resp.metadata?.code === '00') {
+        if (resp.metadata?.[0]?.code === '00') {
           const actualizado = (resp.data as FeeModel[]).find(f => f.cuotaId === this.fee.cuotaId);
           if (actualizado) {
             this.fee = actualizado;
