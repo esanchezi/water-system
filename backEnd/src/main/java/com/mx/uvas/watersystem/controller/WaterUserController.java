@@ -80,4 +80,10 @@ public class WaterUserController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Asignar una casa existente a un usuario")
+    @PutMapping("/{aguaUsuarioId}/house/{casaId}")
+    public ResponseEntity<WaterUserRestResponse> assignHouse(@PathVariable Integer aguaUsuarioId, @PathVariable Integer casaId) {
+        return waterUserService.assignHouse(aguaUsuarioId, casaId);
+    }
+
 }
