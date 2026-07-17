@@ -1,6 +1,6 @@
 import { AdressModel } from "./Adress.model";
 import { CatalogOptionModel } from "./Catalog.model";
-import { FeeAmountModel } from "./Fee.model";
+import { FeeModel } from "./Fee.model";
 import { PersonModel } from "./Person.model";
 
 export interface WaterUserModel{
@@ -9,7 +9,7 @@ export interface WaterUserModel{
     fkIdCuota: number;
     fkFrecuenciaPagoId: number;
     fkEstatusTomaId: number;
-    feeAmount:FeeAmountModel;
+    fee:FeeModel;
     estatusPago:CatalogOptionModel;
     estatusComite:CatalogOptionModel;
     estatusToma:CatalogOptionModel;

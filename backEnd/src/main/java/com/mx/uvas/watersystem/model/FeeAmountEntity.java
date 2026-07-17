@@ -11,6 +11,11 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
+// Nota: idealmente esta tabla debería tener un unique constraint (cuota_id, vigencia),
+// pero hay datos históricos duplicados sin depurar todavía. Mientras tanto la validación
+// de "un monto por año" vive solo en FeeService.addAmount/updateAmount (a nivel app).
+// Cuando se limpien los duplicados, agregar aquí:
+// @Table(name = "cuota_monto", uniqueConstraints = @UniqueConstraint(columnNames = {"cuota_id", "vigencia"}))
 @Entity
 @Table(name = "cuota_monto")
 @NoArgsConstructor

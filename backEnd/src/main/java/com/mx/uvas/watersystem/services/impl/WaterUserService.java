@@ -5,7 +5,7 @@ import com.mx.uvas.watersystem.helpers.PersonHelper;
 import com.mx.uvas.watersystem.helpers.WaterUserHelper;
 import com.mx.uvas.watersystem.mapping.WaterUserMapper;
 import com.mx.uvas.watersystem.model.CatalogOptionsEntity;
-import com.mx.uvas.watersystem.model.FeeAmountEntity;
+import com.mx.uvas.watersystem.model.FeeEntity;
 import com.mx.uvas.watersystem.repositories.*;
 import com.mx.uvas.watersystem.model.WaterUserEntity;
 import com.mx.uvas.watersystem.response.WaterUserBasicRestResponse;
@@ -31,7 +31,7 @@ import java.util.*;
 @AllArgsConstructor
 public class WaterUserService implements IWaterUserService {
 
-    private final IFeeAmountRepository feeAmountRepository;
+    private final IFeeRepository feeRepository;
     private final ICatalogOptionsRepository catalogOptionsRepository;
     private final IWaterUserRepository waterUserRepository;
     private final IWaterHouseRepository waterHouseRepository;
@@ -106,11 +106,11 @@ public class WaterUserService implements IWaterUserService {
     @Override
     @Transactional
     public WaterUserDto create(WaterUserDto request) {
-        FeeAmountEntity feeAmount = getFeeAmountOrThrow(request.getCuotaId());
+        FeeEntity fee = getFeeOrThrow(request.getCuotaId());
         CatalogOptionsEntity frecuencia = getCatalogOptionOrThrow(request.getFrecuenciaPagoId());
         CatalogOptionsEntity estatusPago = getCatalogOptionOrThrow(request.getEstatusPagoId());
 
-        WaterUserEntity waterUserToPersist = buildWaterUserEntity(request, feeAmount, frecuencia,estatusPago);
+        WaterUserEntity waterUserToPersist = buildWaterUserEntity(request, fee, frecuencia,estatusPago);
         WaterUserEntity waterUserPersist = waterUserRepository.save(waterUserToPersist);
 
         return waterUserMapper.entityToDto(waterUserPersist);
@@ -135,7 +135,7 @@ public class WaterUserService implements IWaterUserService {
 
         // Actualizar catálogos si están presentes
         if (dto.getCuotaId() != null) {
-            user.setFeeAmount(feeAmountRepository.findById(dto.getCuotaId()).orElse(null));
+            user.setFee(feeRepository.findById(dto.getCuotaId()).orElse(null));
         }
 
         if (dto.getFrecuenciaPagoId() != null) {
@@ -218,19 +218,19 @@ public class WaterUserService implements IWaterUserService {
         }
     }
 
-    private FeeAmountEntity getFeeAmountOrThrow(Integer cuotaId) {
-        return feeAmountRepository.findById(cuotaId)
+    private FeeEntity getFeeOrThrow(Integer cuotaId) {
+        return feeRepository.findById(cuotaId)
                 .orElseThrow(() -> new NoSuchElementException("No se encontró la cuota con el ID: " + cuotaId));
     }
     private CatalogOptionsEntity getCatalogOptionOrThrow(Integer optionId) {
         return catalogOptionsRepository.findById(optionId)
                 .orElseThrow(() -> new NoSuchElementException("No se encontró la opcion de pago con el ID: " + optionId));
     }
-    private WaterUserEntity buildWaterUserEntity(WaterUserDto request, FeeAmountEntity feeAmount, CatalogOptionsEntity frecuencia, CatalogOptionsEntity estatusPago) {
+    private WaterUserEntity buildWaterUserEntity(WaterUserDto request, FeeEntity fee, CatalogOptionsEntity frecuencia, CatalogOptionsEntity estatusPago) {
         return WaterUserEntity.builder()
                 .person(personHelper.createPerson(request.getPerson()))
                 .address(waterUserHelper.createAdress(request.getAdress()))
-                .feeAmount(feeAmount)
+                .fee(fee)
                 .frecuenciaPago(frecuencia)
                 .estatusPago(estatusPago)
                 .noUsuario(request.getNoUsuario())

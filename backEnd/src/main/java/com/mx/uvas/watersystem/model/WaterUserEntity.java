@@ -64,7 +64,7 @@ public class WaterUserEntity implements Serializable {
 
     @OneToOne
     @JoinColumn(name="cuota_id", nullable=true)
-    private FeeAmountEntity feeAmount;
+    private FeeEntity fee;
 
     @OneToOne
     @JoinColumn(name="frecuencia_pago_id", nullable=true)
