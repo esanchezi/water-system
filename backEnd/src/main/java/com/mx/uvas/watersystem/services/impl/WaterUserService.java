@@ -6,6 +6,7 @@ import com.mx.uvas.watersystem.helpers.WaterUserHelper;
 import com.mx.uvas.watersystem.mapping.WaterUserMapper;
 import com.mx.uvas.watersystem.model.CatalogOptionsEntity;
 import com.mx.uvas.watersystem.model.FeeEntity;
+import com.mx.uvas.watersystem.model.WaterHouseEntity;
 import com.mx.uvas.watersystem.repositories.*;
 import com.mx.uvas.watersystem.model.WaterUserEntity;
 import com.mx.uvas.watersystem.response.WaterUserBasicRestResponse;
@@ -165,6 +166,30 @@ public class WaterUserService implements IWaterUserService {
         waterUserRepository.save(user);
 
         return dto;
+    }
+
+    @Override
+    @Transactional
+    public ResponseEntity<WaterUserRestResponse> assignHouse(Integer aguaUsuarioId, Integer casaId) {
+        WaterUserRestResponse response = new WaterUserRestResponse();
+
+        Optional<WaterUserEntity> userOpt = waterUserRepository.findById(aguaUsuarioId);
+        if (userOpt.isEmpty()) {
+            return ResponseHandler.handleNotFoundException(response, USUARIOS_NOT_FOUND_MESSAGE);
+        }
+
+        Optional<WaterHouseEntity> houseOpt = waterHouseRepository.findById(casaId);
+        if (houseOpt.isEmpty()) {
+            return ResponseHandler.handleNotFoundException(response, "Casa no encontrada con el ID: " + casaId);
+        }
+
+        WaterUserEntity user = userOpt.get();
+        user.setWaterHouse(houseOpt.get());
+        user.setUserIdUpdate(1);
+        user.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+        waterUserRepository.save(user);
+
+        return handleFindSingle(user);
     }
 
     private ResponseEntity<WaterUserRestResponse> handleFindAll(List<WaterUserEntity> waterUsers) {

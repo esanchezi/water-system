@@ -91,4 +91,10 @@ export class UserService {
   getUsersByPersonId(idPersona: number): Observable<WaterUserModel[]> {
     return this.http.get<WaterUserModel[]>(`${base_url}/findByPersonaId/${idPersona}`);
   }
+
+  // Asigna una casa existente a un usuario existente (usado desde el detalle de la casa)
+  assignHouse(aguaUsuarioId: number, casaId: number): Observable<any> {
+    const endpoint = `${base_url}/${aguaUsuarioId}/house/${casaId}`;
+    return this.http.put(endpoint, {});
+  }
 }

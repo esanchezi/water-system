@@ -30,4 +30,6 @@ public interface IWaterUserService {
     WaterUserDto updateUserDataOnly(WaterUserDto dto);
 
     List<AguaUsuarioSearchDTO> searchUsers(String term);
+
+    ResponseEntity<WaterUserRestResponse> assignHouse(Integer aguaUsuarioId, Integer casaId);
 }
