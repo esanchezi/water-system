@@ -10,7 +10,7 @@ import { AgreementService } from 'src/app/modules/shared/services/agreement.serv
 import { NewConvenioComponent } from 'src/app/modules/convenio/components/new-convenio/new-convenio.component';
 import { AssemblyModel } from 'src/app/modules/shared/models/Assembly.model';
 import { CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model';
-import { FeeAmountModel, FeeModel } from 'src/app/modules/shared/models/Fee.model';
+import { FeeModel } from 'src/app/modules/shared/models/Fee.model';
 import { PersonModel } from 'src/app/modules/shared/models/Person.model';
 import { WaterReceiptModel } from 'src/app/modules/shared/models/WaterReceipt.model';
 import { WaterHouseModel, WaterUserDetailModel, WaterUserModel } from 'src/app/modules/shared/models/WaterUser.model';
@@ -81,7 +81,7 @@ export class DetailsUserComponent implements OnInit {
   @ViewChild(MatPaginator) paginatorCharge!: MatPaginator;
 
   listFee: FeeModel[]       = [];
-  amounts: FeeAmountModel[] = [];
+  private readonly anioActual = new Date().getFullYear();
 
   // Catálogos por clave — sin IDs hardcodeados
   secciones:     CatalogOptionModel[] = [];
@@ -324,20 +324,22 @@ export class DetailsUserComponent implements OnInit {
     });
   }
 
+  // Se selecciona la categoría de cuota (uso + tipo de usuario), no un monto de
+  // un año en particular — el monto vigente se resuelve por año en cuota_monto.
   private getAmounts(): void {
     this.feeService.getFeeAmount().subscribe({
-      next: (v: any) => {
-        this.listFee = v.data;
-        this.listFee.forEach((fee) => {
-          fee.amount.forEach((amount) => {
-            amount.uso  = fee.uso.nombre;
-            amount.type = fee.userType.nombre;
-            this.amounts.push(amount);
-          });
-        });
-      },
+      next: (v: any) => { this.listFee = v.data; },
       error: (e: any) => console.error(e)
     });
+  }
+
+  // Monto de referencia para el año actual (o el más reciente disponible si no
+  // hay uno registrado todavía para este año).
+  montoVigente(fee: FeeModel): number | null {
+    if (!fee.amount?.length) return null;
+    const exacto = fee.amount.find(a => a.vigencia === this.anioActual);
+    if (exacto) return exacto.cuota;
+    return [...fee.amount].sort((a, b) => b.vigencia - a.vigencia)[0]?.cuota ?? null;
   }
 
   getReceipt(): void {

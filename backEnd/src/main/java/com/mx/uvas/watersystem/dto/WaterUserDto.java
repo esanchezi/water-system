@@ -20,7 +20,7 @@ public class WaterUserDto implements Serializable {
     private Boolean inmuebleRenta;
     private String email;
     private String observaciones;
-    private FeeAmountDto feeAmount;
+    private FeeDto fee;
     private CatalogOptionsDto estatusPago;
     private CatalogOptionsDto estatusComite;
     private CatalogOptionsDto frecuenciaPago;

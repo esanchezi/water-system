@@ -15,10 +15,13 @@ import com.mx.uvas.watersystem.utils.Constants;
 import com.mx.uvas.watersystem.utils.ResponseHandler;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -43,7 +46,7 @@ public class FeeService implements IFeeService {
     public ResponseEntity<FeeRestResponse> searchAll() {
         FeeRestResponse response = new FeeRestResponse();
         try {
-            List<FeeEntity> feeEntityList = feeRepository.findAll();
+            List<FeeEntity> feeEntityList = feeRepository.findByEstatus(1);
             if (feeEntityList.isEmpty()) {
                 return ResponseHandler.handleNotFoundException(response, FEE_NOT_FOUND_MESSAGE);
             }
@@ -92,6 +95,8 @@ public class FeeService implements IFeeService {
             if (dto.getUserTypeId() != null) {
                 existing.setUserType(findCatalogOption(dto.getUserTypeId()));
             }
+            existing.setUserIdUpdate(1);
+            existing.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
 
             FeeEntity updated = feeRepository.save(existing);
             response.setData(List.of(feeMapper.entityToDto(updated)));
@@ -109,6 +114,11 @@ public class FeeService implements IFeeService {
             Optional<FeeEntity> optional = feeRepository.findById(cuotaId);
             if (optional.isEmpty()) {
                 return ResponseHandler.handleNotFoundException(response, "Cuota no encontrada con id: " + cuotaId);
+            }
+            if (feeAmountRepository.findByFee_CuotaIdAndVigencia(cuotaId, dto.getVigencia()).isPresent()) {
+                response.addMetadata(Constants.ERROR_RESPONSE_MESSAGE, Constants.ERROR_RESPONSE_CODE,
+                        "Ya existe un monto registrado para el año " + dto.getVigencia() + " en esta cuota");
+                return new ResponseEntity<>(response, HttpStatus.CONFLICT);
             }
             FeeEntity fee = optional.get();
             FeeAmountEntity amount = feeMapper.dtoToAmountEntity(dto, fee);
@@ -132,10 +142,18 @@ public class FeeService implements IFeeService {
                     || !optional.get().getFee().getCuotaId().equals(cuotaId)) {
                 return ResponseHandler.handleNotFoundException(response, "Monto de cuota no encontrado con id: " + cuotaMontoId);
             }
+            Optional<FeeAmountEntity> duplicate = feeAmountRepository.findByFee_CuotaIdAndVigencia(cuotaId, dto.getVigencia());
+            if (duplicate.isPresent() && !duplicate.get().getCuotaMontoId().equals(cuotaMontoId)) {
+                response.addMetadata(Constants.ERROR_RESPONSE_MESSAGE, Constants.ERROR_RESPONSE_CODE,
+                        "Ya existe un monto registrado para el año " + dto.getVigencia() + " en esta cuota");
+                return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+            }
             FeeAmountEntity existing = optional.get();
             existing.setCuota(dto.getCuota());
             existing.setVigencia(dto.getVigencia());
             existing.setObservaciones(dto.getObservaciones());
+            existing.setUserIdUpdate(1);
+            existing.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
             feeAmountRepository.save(existing);
 
             FeeEntity fee = feeRepository.findById(cuotaId).orElseThrow();
@@ -144,6 +162,51 @@ public class FeeService implements IFeeService {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseHandler.handleInternalServerError(response, "Error al actualizar el monto de la cuota", e);
+        }
+    }
+
+    @Override
+    public ResponseEntity<FeeRestResponse> deactivate(Integer cuotaId) {
+        FeeRestResponse response = new FeeRestResponse();
+        try {
+            Optional<FeeEntity> optional = feeRepository.findById(cuotaId);
+            if (optional.isEmpty()) {
+                return ResponseHandler.handleNotFoundException(response, "Cuota no encontrada con id: " + cuotaId);
+            }
+            FeeEntity existing = optional.get();
+            existing.setEstatus(0);
+            existing.setUserIdUpdate(1);
+            existing.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+            feeRepository.save(existing);
+
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, "Cuota dada de baja correctamente");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, "Error al dar de baja la cuota", e);
+        }
+    }
+
+    @Override
+    public ResponseEntity<FeeRestResponse> deactivateAmount(Integer cuotaId, Integer cuotaMontoId) {
+        FeeRestResponse response = new FeeRestResponse();
+        try {
+            Optional<FeeAmountEntity> optional = feeAmountRepository.findById(cuotaMontoId);
+            if (optional.isEmpty() || optional.get().getFee() == null
+                    || !optional.get().getFee().getCuotaId().equals(cuotaId)) {
+                return ResponseHandler.handleNotFoundException(response, "Monto de cuota no encontrado con id: " + cuotaMontoId);
+            }
+            FeeAmountEntity existing = optional.get();
+            existing.setEstatus(0);
+            existing.setUserIdUpdate(1);
+            existing.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+            feeAmountRepository.save(existing);
+
+            FeeEntity fee = feeRepository.findById(cuotaId).orElseThrow();
+            response.setData(List.of(feeMapper.entityToDto(fee)));
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, "Monto dado de baja correctamente");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, "Error al dar de baja el monto", e);
         }
     }
 

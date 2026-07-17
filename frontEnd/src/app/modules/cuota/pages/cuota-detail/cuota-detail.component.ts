@@ -6,6 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { FeeService } from 'src/app/modules/shared/services/fee.service';
 import { FeeAmountModel, FeeModel } from 'src/app/modules/shared/models/Fee.model';
 import { CuotaAmountFormComponent } from '../../components/cuota-amount-form/cuota-amount-form.component';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-cuota-detail',
@@ -64,5 +65,26 @@ export class CuotaDetailComponent implements OnInit {
       width: '450px',
       data: { cuotaId: this.fee.cuotaId, amount }
     }).afterClosed().subscribe(result => { if (result) this.loadAmounts(); });
+  }
+
+  // Baja lógica: pone estatus = 0, no borra el registro.
+  deactivateAmount(amount: FeeAmountModel): void {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Dar de baja monto',
+      text: `¿Confirmas dar de baja el monto del año ${amount.vigencia}?`,
+      showCancelButton: true,
+      confirmButtonText: 'Dar de baja',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.feeService.deactivateAmount(this.fee.cuotaId, amount.cuotaMontoId).subscribe({
+        next: () => this.loadAmounts(),
+        error: (e: any) => {
+          console.error(e);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo dar de baja el monto.', confirmButtonText: 'Cerrar' });
+        }
+      });
+    });
   }
 }

@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model';
-import { FeeAmountModel, FeeModel } from 'src/app/modules/shared/models/Fee.model';
+import { FeeModel } from 'src/app/modules/shared/models/Fee.model';
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { FeeService } from 'src/app/modules/shared/services/fee.service';
 import { UserService } from 'src/app/modules/shared/services/user.service';
@@ -22,14 +22,13 @@ export class NewUserComponent implements OnInit {
   private readonly userService    = inject(UserService);
 
   listFee: FeeModel[]           = [];
-  amounts: FeeAmountModel[]     = [];
 
   // Catálogos por clave — sin IDs hardcodeados
   secciones:     CatalogOptionModel[] = [];
   frecuencias:   CatalogOptionModel[] = [];
   estatusPago:   CatalogOptionModel[] = [];
 
-  private readonly ID_CUOTA_DEFAULT     = '3';
+  private readonly anioActual = new Date().getFullYear();
   private readonly ID_FRECUENCIA_DEFAULT = '54';
   private readonly ID_SECCION_DEFAULT   = '1';
 
@@ -41,7 +40,7 @@ export class NewUserComponent implements OnInit {
 
   private initForm(): void {
     this.userForm = this.fb.group({
-      fkIdCuota:          [this.ID_CUOTA_DEFAULT,      Validators.required],
+      fkIdCuota:          [null, Validators.required],
       fkFrecuenciaPagoId: [this.ID_FRECUENCIA_DEFAULT, Validators.required],
       estatusPagoId:      [''],
       noUsuario:          ['', Validators.required],
@@ -76,20 +75,22 @@ export class NewUserComponent implements OnInit {
     });
   }
 
+  // Se selecciona la categoría de cuota (uso + tipo de usuario), no un monto de
+  // un año en particular — el monto vigente se resuelve por año en cuota_monto.
   private getAmounts(): void {
     this.feeService.getFeeAmount().subscribe({
-      next: (v: any) => {
-        this.listFee = v.data;
-        this.listFee.forEach((fee) => {
-          fee.amount.forEach((amount) => {
-            amount.uso  = fee.uso.nombre;
-            amount.type = fee.userType.nombre;
-            this.amounts.push(amount);
-          });
-        });
-      },
+      next: (v: any) => { this.listFee = v.data; },
       error: (e: any) => console.error(e)
     });
+  }
+
+  // Monto de referencia para el año actual (o el más reciente disponible si no
+  // hay uno registrado todavía para este año).
+  montoVigente(fee: FeeModel): number | null {
+    if (!fee.amount?.length) return null;
+    const exacto = fee.amount.find(a => a.vigencia === this.anioActual);
+    if (exacto) return exacto.cuota;
+    return [...fee.amount].sort((a, b) => b.vigencia - a.vigencia)[0]?.cuota ?? null;
   }
 
   onSave(): void {

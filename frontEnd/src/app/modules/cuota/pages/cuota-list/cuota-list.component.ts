@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import { FeeService } from 'src/app/modules/shared/services/fee.service';
 import { FeeAmountModel, FeeModel } from 'src/app/modules/shared/models/Fee.model';
 import { CuotaFormComponent } from '../../components/cuota-form/cuota-form.component';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-cuota-list',
@@ -58,6 +59,27 @@ export class CuotaListComponent implements OnInit {
   goToDetail(fee: FeeModel): void {
     this.router.navigate(['dashboard/cuotaDetail'], {
       queryParams: { element: JSON.stringify(fee) }
+    });
+  }
+
+  // Baja lógica: pone estatus = 0, no borra el registro.
+  deactivate(fee: FeeModel): void {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Dar de baja cuota',
+      text: `¿Confirmas dar de baja "${fee.userType?.nombre ?? ''} - ${fee.uso?.nombre ?? ''}"? Dejará de estar disponible para asignar a usuarios.`,
+      showCancelButton: true,
+      confirmButtonText: 'Dar de baja',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.feeService.deactivate(fee.cuotaId).subscribe({
+        next: () => this.load(),
+        error: (e: any) => {
+          console.error(e);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo dar de baja la cuota.', confirmButtonText: 'Cerrar' });
+        }
+      });
     });
   }
 }

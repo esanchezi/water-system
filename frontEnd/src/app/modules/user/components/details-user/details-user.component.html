@@ -147,8 +147,9 @@
                         <mat-form-field appearance="outline" fxFlex="45%">
                           <mat-label>Cuota</mat-label>
                           <mat-select formControlName="fkIdCuota">
-                            <mat-option *ngFor="let amount of amounts" [value]="amount.cuotaMontoId">
-                              {{ amount.type }} - {{ amount.cuota }}
+                            <mat-option *ngFor="let fee of listFee" [value]="fee.cuotaId">
+                              {{ fee.userType?.nombre }} - {{ fee.uso?.nombre }}
+                              <ng-container *ngIf="montoVigente(fee) as m"> (${{ m }})</ng-container>
                             </mat-option>
                           </mat-select>
                         </mat-form-field>

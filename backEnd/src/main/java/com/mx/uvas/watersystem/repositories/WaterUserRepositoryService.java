@@ -2,7 +2,7 @@ package com.mx.uvas.watersystem.repositories;
 
 import com.mx.uvas.watersystem.exception.NotFoundException;
 import com.mx.uvas.watersystem.model.CatalogOptionsEntity;
-import com.mx.uvas.watersystem.model.FeeAmountEntity;
+import com.mx.uvas.watersystem.model.FeeEntity;
 import com.mx.uvas.watersystem.model.WaterUserEntity;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,7 +14,7 @@ import java.util.List;
 public class WaterUserRepositoryService {
 
     private final IWaterUserRepository waterUserRepository;
-    private final IFeeAmountRepository feeAmountRepository;
+    private final IFeeRepository feeRepository;
     private final ICatalogOptionsRepository catalogOptionsRepository;
 
     public List<WaterUserEntity> findAll() {
@@ -33,8 +33,8 @@ public class WaterUserRepositoryService {
         return waterUserRepository.save(waterUser);
     }
 
-    public FeeAmountEntity getFeeAmountOrThrow(Integer cuotaId) {
-        return feeAmountRepository.findById(cuotaId)
+    public FeeEntity getFeeOrThrow(Integer cuotaId) {
+        return feeRepository.findById(cuotaId)
                 .orElseThrow(() -> new NotFoundException("No se encontró la cuota con el ID: " + cuotaId));
     }
 

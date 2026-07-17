@@ -8,7 +8,6 @@ import com.mx.uvas.watersystem.helpers.PersonHelper;
 import com.mx.uvas.watersystem.mapping.AdressMapper;
 import com.mx.uvas.watersystem.mapping.PersonMapper;
 import com.mx.uvas.watersystem.model.CatalogOptionsEntity;
-import com.mx.uvas.watersystem.model.FeeAmountEntity;
 import com.mx.uvas.watersystem.model.PersonEntity;
 import com.mx.uvas.watersystem.model.WaterUserEntity;
 import com.mx.uvas.watersystem.repositories.IPersonRepository;

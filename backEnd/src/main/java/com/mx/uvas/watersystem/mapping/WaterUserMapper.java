@@ -40,11 +40,11 @@ public class WaterUserMapper {
             response.setFrecuenciaPago(frecuenciaPago);
         }
 
-        // Catálogo: Cuota
-        if (entity.getFeeAmount() != null) {
-            FeeAmountDto feeAmount = new FeeAmountDto();
-            BeanUtils.copyProperties(entity.getFeeAmount(), feeAmount);
-            response.setFeeAmount(feeAmount);
+        // Catálogo: Cuota (categoría) — el monto vigente se resuelve por año, no aquí
+        if (entity.getFee() != null) {
+            FeeDto fee = new FeeDto();
+            BeanUtils.copyProperties(entity.getFee(), fee);
+            response.setFee(fee);
         }
 
         // Persona
