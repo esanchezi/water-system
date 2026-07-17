@@ -68,11 +68,26 @@ export class UserReceiptComponent {
 
         return matchConcepto && matchAnio;
       };
+
+      // Recalcular totales al cargar (sin filtro aplicado todavía)
+      this.calcularTotales(flatData);
     }
   }
 
   applyFilters(): void {
     this.dataSource.filter = JSON.stringify(this.filters);
+    // Los totales deben reflejar solo lo que está visible según los filtros activos
+    this.calcularTotales(this.dataSource.filteredData);
+  }
+
+  // Total al pie de la tabla — se recalcula con cada filtro para ver
+  // fácilmente lo aportado por el usuario según lo que esté visible.
+  // Solo "Monto Aplicado": el total de "Monto Recibido" se quitó porque
+  // puede confundir (un mismo recibo puede aplicarse a varios conceptos).
+  totalMontoAplicado = 0;
+
+  private calcularTotales(rows: any[]): void {
+    this.totalMontoAplicado = rows.reduce((acc, r) => acc + (Number(r.montoAplicado) || 0), 0);
   }
 
   applyAnioFilter(event: Event): void {

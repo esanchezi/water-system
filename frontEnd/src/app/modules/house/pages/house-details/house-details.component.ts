@@ -1,12 +1,8 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { formatDate, CurrencyPipe } from '@angular/common';
 import { FormControl } from '@angular/forms';
 import { WaterHouseModel, WaterUserModel } from 'src/app/modules/shared/models/WaterUser.model';
-import { MatTableDataSource } from '@angular/material/table';
 import { MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
-import { ReceiptService } from 'src/app/modules/shared/services/receipt.service';
-import { WaterReceiptModel } from 'src/app/modules/shared/models/WaterReceipt.model';
 import { HouseService } from 'src/app/modules/shared/services/house.service';
 import { UserService } from 'src/app/modules/shared/services/user.service';
 import { debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
@@ -26,28 +22,11 @@ interface UserSearchResult {
 export class HouseDetailsComponent implements OnInit {
 
   private readonly activatedRoute = inject(ActivatedRoute);
-  private readonly receiptService = inject(ReceiptService);
   private readonly houseService   = inject(HouseService);
   private readonly userService    = inject(UserService);
 
-  constructor(private currencyPipe: CurrencyPipe) {}
-
   waterHouse!: WaterHouseModel;
-  listWaterUser: (WaterUserModel & { dataSource: MatTableDataSource<any>, paginatorRef?: any })[] = [];
-
-  colHeaders: Record<string, string> = {
-    noFolio:         'N° Folio',
-    fechaPago:       'Fecha',
-    conceptoReceipt: 'Concepto',
-    total:           'Total',
-    observaciones:   'Observaciones',
-    concepto:        'Concepto',
-    montoRecibido:   'Monto Recibido',
-    montoAplicado:   'Monto Aplicado',
-    anio:            'Año'
-  };
-
-  displayColumns = Object.keys(this.colHeaders);
+  listWaterUser: WaterUserModel[] = [];
 
   readonly DEFAULT_COORDS: google.maps.LatLngLiteral = {
     lat: 21.04386,
@@ -100,10 +79,7 @@ export class HouseDetailsComponent implements OnInit {
       next: (resp: any) => {
         const added = resp?.data?.[0];
         if (added) {
-          this.listWaterUser = [
-            ...this.listWaterUser,
-            { ...added, dataSource: new MatTableDataSource<any>([]) }
-          ];
+          this.listWaterUser = [...this.listWaterUser, added];
         }
         this.limpiarBusquedaUsuario();
         Swal.fire({ icon: 'success', title: 'Usuario agregado', text: `Se asignó a ${user.nombreCompleto} a esta casa.`, confirmButtonText: 'Aceptar' });
@@ -167,60 +143,7 @@ export class HouseDetailsComponent implements OnInit {
   }
 
   private inicializarUsuarios(): void {
-    this.listWaterUser = (this.waterHouse?.listWaterUser || []).map(
-      (user: WaterUserModel) => ({
-        ...user,
-        dataSource: new MatTableDataSource<WaterUserModel>([])
-      })
-    );
-  }
-
-  getReceipt(user: any): void {
-    this.receiptService.getReceiptByNoUser(user.noUsuario).subscribe({
-      next: (resp: any) => this.processReceiptResponse(resp, user),
-      error: (e: any) => console.error('Error al obtener recibos', e)
-    });
-  }
-
-  private processReceiptResponse(resp: any, user: any): void {
-    if (resp.metadata[0].code !== '00') return;
-
-    const flatData: any[] = [];
-    const listUser = resp.data as WaterReceiptModel[];
-
-    listUser.forEach(recibo => {
-      if (recibo.waterReceiptPayment?.length) {
-        recibo.waterReceiptPayment.forEach(pago => {
-          flatData.push({
-            ...pago,
-            fechaPago:       pago.fechaPago ? formatDate(pago.fechaPago, 'dd/MM/yyyy', 'es-MX') : '',
-            montoRecibido:   this.currencyPipe.transform(pago.montoRecibido, 'MXN', 'symbol', '1.2-2'),
-            montoAplicado:   this.currencyPipe.transform(pago.montoAplicado, 'MXN', 'symbol', '1.2-2'),
-            total:           this.currencyPipe.transform(recibo.total, 'MXN', 'symbol', '1.2-2'),
-            noFolio:         recibo.noFolio,
-            conceptoReceipt: recibo.concepto,
-            observaciones:   recibo.observaciones,
-            waterUser:       recibo.waterUser
-          });
-        });
-      } else {
-        flatData.push({
-          noFolio:         recibo.noFolio,
-          conceptoReceipt: recibo.concepto,
-          observaciones:   recibo.observaciones,
-          total:           recibo.total,
-          waterUser:       recibo.waterUser,
-          concepto:        null,
-          montoAplicado:   null,
-          anio:            null
-        });
-      }
-    });
-
-    user.dataSource = new MatTableDataSource<any>(flatData);
-    if (user.paginatorRef) {
-      user.dataSource.paginator = user.paginatorRef;
-    }
+    this.listWaterUser = this.waterHouse?.listWaterUser || [];
   }
 
   trackByUser(index: number, user: WaterUserModel): number {
