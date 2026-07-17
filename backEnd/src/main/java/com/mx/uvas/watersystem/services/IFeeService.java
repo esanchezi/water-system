@@ -15,4 +15,8 @@ public interface IFeeService {
     ResponseEntity<FeeRestResponse> addAmount(Integer cuotaId, FeeAmountDto dto);
 
     ResponseEntity<FeeRestResponse> updateAmount(Integer cuotaId, Integer cuotaMontoId, FeeAmountDto dto);
+
+    ResponseEntity<FeeRestResponse> deactivate(Integer cuotaId);
+
+    ResponseEntity<FeeRestResponse> deactivateAmount(Integer cuotaId, Integer cuotaMontoId);
 }

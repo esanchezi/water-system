@@ -32,4 +32,12 @@ export class FeeService {
   updateAmount(cuotaId: number, cuotaMontoId: number, body: FeeAmountCreateModel): Observable<any> {
     return this.http.put(`${BASE}/${cuotaId}/amounts/${cuotaMontoId}`, body);
   }
+
+  deactivate(cuotaId: number): Observable<any> {
+    return this.http.put(`${BASE}/${cuotaId}/deactivate`, {});
+  }
+
+  deactivateAmount(cuotaId: number, cuotaMontoId: number): Observable<any> {
+    return this.http.put(`${BASE}/${cuotaId}/amounts/${cuotaMontoId}/deactivate`, {});
+  }
 }

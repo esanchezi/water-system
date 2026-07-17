@@ -16,10 +16,13 @@ public class FeeMapper {
     public FeeDto entityToDto(FeeEntity entity) {
         var response = new FeeDto();
         BeanUtils.copyProperties(entity,response);
+        // Solo montos activos (baja lógica: estatus = 0 se oculta)
         for (FeeAmountEntity amountEntity : entity.getFeeAmount()) {
-            var amount = new FeeAmountDto();
-            BeanUtils.copyProperties(amountEntity,amount);
-            response.getAmount().add(amount);
+            if (amountEntity.getEstatus() != null && amountEntity.getEstatus() == 1) {
+                var amount = new FeeAmountDto();
+                BeanUtils.copyProperties(amountEntity,amount);
+                response.getAmount().add(amount);
+            }
         }
         if (entity.getUso() != null) {
             var uso = new CatalogOptionsDto();

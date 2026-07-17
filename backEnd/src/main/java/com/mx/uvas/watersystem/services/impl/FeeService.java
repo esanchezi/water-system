@@ -165,6 +165,51 @@ public class FeeService implements IFeeService {
         }
     }
 
+    @Override
+    public ResponseEntity<FeeRestResponse> deactivate(Integer cuotaId) {
+        FeeRestResponse response = new FeeRestResponse();
+        try {
+            Optional<FeeEntity> optional = feeRepository.findById(cuotaId);
+            if (optional.isEmpty()) {
+                return ResponseHandler.handleNotFoundException(response, "Cuota no encontrada con id: " + cuotaId);
+            }
+            FeeEntity existing = optional.get();
+            existing.setEstatus(0);
+            existing.setUserIdUpdate(1);
+            existing.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+            feeRepository.save(existing);
+
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, "Cuota dada de baja correctamente");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, "Error al dar de baja la cuota", e);
+        }
+    }
+
+    @Override
+    public ResponseEntity<FeeRestResponse> deactivateAmount(Integer cuotaId, Integer cuotaMontoId) {
+        FeeRestResponse response = new FeeRestResponse();
+        try {
+            Optional<FeeAmountEntity> optional = feeAmountRepository.findById(cuotaMontoId);
+            if (optional.isEmpty() || optional.get().getFee() == null
+                    || !optional.get().getFee().getCuotaId().equals(cuotaId)) {
+                return ResponseHandler.handleNotFoundException(response, "Monto de cuota no encontrado con id: " + cuotaMontoId);
+            }
+            FeeAmountEntity existing = optional.get();
+            existing.setEstatus(0);
+            existing.setUserIdUpdate(1);
+            existing.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+            feeAmountRepository.save(existing);
+
+            FeeEntity fee = feeRepository.findById(cuotaId).orElseThrow();
+            response.setData(List.of(feeMapper.entityToDto(fee)));
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, "Monto dado de baja correctamente");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, "Error al dar de baja el monto", e);
+        }
+    }
+
     private CatalogOptionsEntity findCatalogOption(Integer id) {
         return id != null ? catalogOptionsRepository.findById(id).orElse(null) : null;
     }

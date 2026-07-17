@@ -46,4 +46,17 @@ public class FeeController {
         return feeService.updateAmount(cuotaId, cuotaMontoId, dto);
     }
 
+    @PutMapping("/{cuotaId}/deactivate")
+    public ResponseEntity<FeeRestResponse> deactivate(@PathVariable Integer cuotaId) {
+        return feeService.deactivate(cuotaId);
+    }
+
+    @PutMapping("/{cuotaId}/amounts/{cuotaMontoId}/deactivate")
+    public ResponseEntity<FeeRestResponse> deactivateAmount(
+            @PathVariable Integer cuotaId,
+            @PathVariable Integer cuotaMontoId
+    ) {
+        return feeService.deactivateAmount(cuotaId, cuotaMontoId);
+    }
+
 }
