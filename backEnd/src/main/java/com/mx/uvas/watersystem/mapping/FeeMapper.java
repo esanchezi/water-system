@@ -7,6 +7,9 @@ import com.mx.uvas.watersystem.model.FeeEntity;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+
 @Component
 public class FeeMapper {
 
@@ -38,6 +41,9 @@ public class FeeMapper {
                 .observaciones(dto.getObservaciones())
                 .uso(uso)
                 .userType(userType)
+                .estatus(1)
+                .userIdAdd(1)
+                .dateAdd(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))
                 .build();
     }
 
@@ -47,6 +53,9 @@ public class FeeMapper {
                 .vigencia(dto.getVigencia())
                 .observaciones(dto.getObservaciones())
                 .fee(fee)
+                .estatus(1)
+                .userIdAdd(1)
+                .dateAdd(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))
                 .build();
     }
 }
