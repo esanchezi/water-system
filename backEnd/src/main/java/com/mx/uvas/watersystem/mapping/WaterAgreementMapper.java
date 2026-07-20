@@ -45,6 +45,10 @@ public class WaterAgreementMapper {
             response.setFechaStr(entity.getFecha().format(dateFormatter));
         }
 
+        if (entity.getFechaCompromisoPago() != null) {
+            response.setFechaCompromisoPagoStr(entity.getFechaCompromisoPago().format(dateFormatter));
+        }
+
         List<WaterAgreementChargeDto> cargos = Objects.isNull(entity.getCargos())
                 ? List.of()
                 : entity.getCargos().stream()

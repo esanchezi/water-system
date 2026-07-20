@@ -10,5 +10,4 @@ public class WaterSystemApplication {
 		SpringApplication.run(WaterSystemApplication.class, args);
 		System.out.println("HOLA MUNDO");
 	}
-
 }

@@ -76,8 +76,16 @@ public interface IWaterUserRepository extends JpaRepository<WaterUserEntity,Inte
     List<WaterUserEntity> findByNombreApp(String name, String app);
 
 
+    // Usuarios activos con su casa (y calle de la casa) precargadas, para
+    // reportes que recorren todos los usuarios sin caer en N+1 queries.
+    @Query("SELECT wu FROM WaterUserEntity wu " +
+            "LEFT JOIN FETCH wu.waterHouse h " +
+            "LEFT JOIN FETCH h.catCalle " +
+            "WHERE wu.estatus = 1")
+    List<WaterUserEntity> findAllActiveWithHouse();
+
     @Query(value = """
-        SELECT 
+        SELECT
             au.agua_usuario_id AS aguaUsuarioId,
             au.no_usuario AS noUsuario,
             CONCAT(

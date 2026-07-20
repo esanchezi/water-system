@@ -1,0 +1,75 @@
+<div>
+  <mat-card>
+    <mat-card-title>Totales por año</mat-card-title>
+
+    <mat-card-content>
+      <table mat-table [dataSource]="dataSource" class="mat-cell">
+
+        <ng-container matColumnDef="anio">
+          <th mat-header-cell *matHeaderCellDef> Año</th>
+          <td mat-cell *matCellDef="let row"><strong>{{ row.anio }}</strong></td>
+          <td mat-footer-cell *matFooterCellDef><strong>Totales</strong></td>
+        </ng-container>
+
+        <ng-container *ngFor="let c of conceptos" [matColumnDef]="colId(c)">
+          <th mat-header-cell *matHeaderCellDef> {{ c.nombre }}</th>
+          <td mat-cell *matCellDef="let row">${{ row[colId(c)] | number:'1.2-2' }}</td>
+          <td mat-footer-cell *matFooterCellDef><strong>${{ totalesPorConcepto[c.catalogoOpcionesId] | number:'1.2-2' }}</strong></td>
+        </ng-container>
+
+        <ng-container matColumnDef="totalAnio">
+          <th mat-header-cell *matHeaderCellDef> Total efectivo</th>
+          <td mat-cell *matCellDef="let row"><strong>${{ row.totalAnio | number:'1.2-2' }}</strong></td>
+          <td mat-footer-cell *matFooterCellDef><strong>${{ granTotal | number:'1.2-2' }}</strong></td>
+        </ng-container>
+
+        <ng-container matColumnDef="egresosAnio">
+          <th mat-header-cell *matHeaderCellDef> Egresos</th>
+          <td mat-cell *matCellDef="let row">${{ row.egresosAnio | number:'1.2-2' }}</td>
+          <td mat-footer-cell *matFooterCellDef><strong>${{ granEgresos | number:'1.2-2' }}</strong></td>
+        </ng-container>
+
+        <ng-container matColumnDef="efectivoEsperado">
+          <th mat-header-cell *matHeaderCellDef> Efectivo esperado</th>
+          <td mat-cell *matCellDef="let row"><strong>${{ row.efectivoEsperado | number:'1.2-2' }}</strong></td>
+          <td mat-footer-cell *matFooterCellDef></td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayColumns"></tr>
+        <tr mat-footer-row *matFooterRowDef="displayColumns"></tr>
+      </table>
+
+      <p *ngIf="!cargando && dataSource.data.length === 0" style="margin-top: 16px;">
+        No hay datos para mostrar.
+      </p>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Verificación: mismo cálculo (efectivo, recibo válido, folio > 4099),
+       pero sumando todos los conceptos juntos por año, para comparar contra
+       la suma de columnas de la tabla de arriba. -->
+  <mat-card style="margin-top: 16px;">
+    <mat-card-title>Verificación: total por año (todos los conceptos)</mat-card-title>
+    <mat-card-content>
+      <table class="tabla-verificacion">
+        <thead>
+          <tr><th>Año</th><th>Total efectivo</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of dataSource.data">
+            <td>{{ row.anio }}</td>
+            <td>${{ row.totalAnio | number:'1.2-2' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card style="margin-top: 16px;">
+    <mat-card-title>Total efectivo recibido a la fecha</mat-card-title>
+    <mat-card-content>
+      <p class="total-a-la-fecha">${{ granTotal | number:'1.2-2' }}</p>
+    </mat-card-content>
+  </mat-card>
+</div>

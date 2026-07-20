@@ -1,0 +1,7 @@
+.mat-column-montoCuotaAnio,
+.mat-column-montoCuotaPagado,
+.mat-column-montoCuotaPendiente,
+.mat-column-montoCargosPendiente,
+.mat-column-montoTotalPendiente {
+  text-align: right;
+}

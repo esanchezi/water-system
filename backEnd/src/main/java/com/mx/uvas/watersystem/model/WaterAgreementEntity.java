@@ -34,6 +34,11 @@ public class WaterAgreementEntity implements Serializable {
     private LocalDate fecha;
     private String motivo;
     private String comentario;
+    // Monto adeudado al momento de firmar el convenio (referencia, no
+    // necesariamente igual a la suma de los cargos condonados).
+    private Double adeudo;
+    // Fecha en que el usuario se compromete a liquidar/pagar.
+    private LocalDate fechaCompromisoPago;
     private Integer estatus;
     private Integer userIdAdd;
     private LocalDateTime dateAdd;

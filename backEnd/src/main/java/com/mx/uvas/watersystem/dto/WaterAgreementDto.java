@@ -16,6 +16,9 @@ public class WaterAgreementDto implements Serializable {
     private String fechaStr;
     private String motivo;
     private String comentario;
+    private Double adeudo;
+    private LocalDate fechaCompromisoPago;
+    private String fechaCompromisoPagoStr;
     private Integer estatusConvenioId;
     private CatalogOptionsDto estatusConvenio;
     private List<WaterAgreementChargeDto> cargos;

@@ -22,6 +22,8 @@ import { CatalogDetailComponent } from '../catalog/pages/catalog-detail/catalog-
 import { ConvenioListComponent } from '../convenio/pages/convenio-list/convenio-list.component';
 import { CuotaListComponent } from '../cuota/pages/cuota-list/cuota-list.component';
 import { CuotaDetailComponent } from '../cuota/pages/cuota-detail/cuota-detail.component';
+import { DeudorListComponent } from '../deudor/pages/deudor-list/deudor-list.component';
+import { TotalPorAnioListComponent } from '../total-por-anio/pages/total-por-anio-list/total-por-anio-list.component';
 
 export const childRoutes: Routes = [
     { path: '', component: HomeComponent },
@@ -46,6 +48,8 @@ export const childRoutes: Routes = [
     { path: 'convenioList', component: ConvenioListComponent },
     { path: 'cuotaList', component: CuotaListComponent },
     { path: 'cuotaDetail', component: CuotaDetailComponent },
+    { path: 'deudorList', component: DeudorListComponent },
+    { path: 'totalPorAnio', component: TotalPorAnioListComponent },
 ];
 
 @NgModule({

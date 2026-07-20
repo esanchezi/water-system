@@ -43,6 +43,16 @@
             </mat-select>
           </mat-form-field>
 
+          <mat-form-field appearance="outline" fxFlex="20%">
+            <mat-label>Adeudo</mat-label>
+            <input matInput type="number" placeholder="adeudo" formControlName="adeudo" required />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="30%">
+            <mat-label>Fecha compromiso de pago</mat-label>
+            <input matInput type="date" formControlName="fechaCompromisoPago" />
+          </mat-form-field>
+
           <mat-form-field appearance="outline" fxFlex="45%">
             <mat-label>Motivo</mat-label>
             <input matInput placeholder="motivo" formControlName="motivo" required />

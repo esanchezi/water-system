@@ -15,4 +15,8 @@ public interface IWaterUserChargeRepository extends JpaRepository<WaterUserCharg
             "ORDER BY wuc.fecha DESC")
     List<WaterUserChargeEntity> findByNoUser(Integer noUser);
 
+    // Todos los cargos activos de todos los usuarios, para reportes que
+    // calculan el saldo pendiente (getSaldo()) sin hacer una query por usuario.
+    List<WaterUserChargeEntity> findByEstatus(Integer estatus);
+
 }

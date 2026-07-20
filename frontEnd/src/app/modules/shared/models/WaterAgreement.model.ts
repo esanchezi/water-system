@@ -18,6 +18,9 @@ export interface WaterAgreementModel {
   fechaStr: string;
   motivo: string;
   comentario: string;
+  adeudo: number;
+  fechaCompromisoPago: string;
+  fechaCompromisoPagoStr: string;
   estatusConvenioId: number;
   estatusConvenio: CatalogOptionModel;
   cargos: WaterAgreementChargeModel[];
