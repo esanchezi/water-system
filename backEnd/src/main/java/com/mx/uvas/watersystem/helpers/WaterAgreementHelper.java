@@ -31,6 +31,8 @@ public class WaterAgreementHelper {
                 .motivo(request.getMotivo())
                 .comentario(request.getComentario())
                 .estatusConvenio(estatusConvenio)
+                .adeudo(request.getAdeudo())
+                .fechaCompromisoPago(request.getFechaCompromisoPago())
                 .estatus(1)
                 .userIdAdd(1) // TODO: Keycloak
                 .dateAdd(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))

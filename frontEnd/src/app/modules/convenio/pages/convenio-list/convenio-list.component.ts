@@ -18,7 +18,7 @@ export class ConvenioListComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   public dialog = inject(MatDialog);
 
-  displayColumns: string[] = ['noFolio', 'fechaStr', 'noUsuario', 'nombreUsuario', 'motivo', 'montoCondonadoTotal', 'estatusConvenio'];
+  displayColumns: string[] = ['noFolio', 'fechaStr', 'noUsuario', 'nombreUsuario', 'motivo', 'adeudo', 'fechaCompromisoPagoStr', 'montoCondonadoTotal', 'estatusConvenio'];
   dataSource = new MatTableDataSource<WaterAgreementModel>();
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;

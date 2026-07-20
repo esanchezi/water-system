@@ -32,6 +32,10 @@ public class WaterReceiptEntity implements Serializable {
     private String concepto;
     private Double total;
     private Integer estatus;
+    // Marca de invalidación del recibo completo (no confundir con "estatus").
+    // NULL = recibo válido; con valor = recibo invalidado y no debe contarse
+    // en reportes de totales.
+    private Integer invalido;
     private Integer userIdAdd;
     private LocalDateTime dateAdd;
     private Integer userIdUpdate;

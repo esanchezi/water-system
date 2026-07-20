@@ -16,6 +16,8 @@ import { GroupModule } from '../group/group-module.module';
 import { CatalogModule } from '../catalog/catalog.module';
 import { ConvenioModule } from '../convenio/convenio.module';
 import { CuotaModule } from '../cuota/cuota.module';
+import { DeudorModule } from '../deudor/deudor.module';
+import { TotalPorAnioModule } from '../total-por-anio/total-por-anio.module';
 
 @NgModule({
   declarations: [
@@ -37,7 +39,9 @@ import { CuotaModule } from '../cuota/cuota.module';
     GroupModule,
     CatalogModule,
     ConvenioModule,
-    CuotaModule
+    CuotaModule,
+    DeudorModule,
+    TotalPorAnioModule
   ]
 })
 export class DashboardModule { }

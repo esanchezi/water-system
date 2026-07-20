@@ -42,13 +42,15 @@ export class NewConvenioComponent implements OnInit {
 
   ngOnInit(): void {
     this.convenioForm = this.fb.group({
-      noUsuario:         ['', Validators.required],
-      noFolio:           [''], // opcional: no todos los convenios llevan folio del talonario
-      fecha:             ['', Validators.required],
-      motivo:            ['', Validators.required],
-      comentario:        [''],
-      estatusConvenioId: [''],
-      lineasArray:       this.fb.array([])
+      noUsuario:            ['', Validators.required],
+      noFolio:              [''], // opcional: no todos los convenios llevan folio del talonario
+      fecha:                ['', Validators.required],
+      motivo:               ['', Validators.required],
+      comentario:           [''],
+      adeudo:               ['', Validators.required],
+      fechaCompromisoPago:  [''],
+      estatusConvenioId:    [''],
+      lineasArray:          this.fb.array([])
     });
 
     this.catalogService.getOptionsByClave('ESTATUS_CONVENIO').subscribe({
@@ -117,12 +119,14 @@ export class NewConvenioComponent implements OnInit {
       .map(l => ({ aguaUsuarioCargoId: l.aguaUsuarioCargoId, montoCondonado: l.montoCondonado }));
 
     const data = {
-      noUsuario:         this.usuarioSeleccionado?.noUsuario,
-      noFolio:            form.noFolio || null,
-      fecha:              form.fecha,
-      motivo:             form.motivo,
-      comentario:         form.comentario,
-      estatusConvenioId:  form.estatusConvenioId || null,
+      noUsuario:            this.usuarioSeleccionado?.noUsuario,
+      noFolio:              form.noFolio || null,
+      fecha:                form.fecha,
+      motivo:               form.motivo,
+      comentario:           form.comentario,
+      adeudo:               form.adeudo,
+      fechaCompromisoPago:  form.fechaCompromisoPago || null,
+      estatusConvenioId:    form.estatusConvenioId || null,
       cargos
     };
 

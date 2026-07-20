@@ -16,6 +16,7 @@ import { WaterReceiptModel } from 'src/app/modules/shared/models/WaterReceipt.mo
 import { WaterHouseModel, WaterUserDetailModel, WaterUserModel } from 'src/app/modules/shared/models/WaterUser.model';
 import { WaterUserNotifyModel } from 'src/app/modules/shared/models/WaterUserNotify.model';
 import { WaterUserChargeModel } from 'src/app/modules/shared/models/WaterUserCharge.model';
+import { WaterUserAnnualPaymentModel } from 'src/app/modules/shared/models/WaterUserAnnualPayment.model';
 import { AssemblyService } from 'src/app/modules/shared/services/assembly.service';
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { FeeService } from 'src/app/modules/shared/services/fee.service';
@@ -25,6 +26,7 @@ import { UserNoticeService } from 'src/app/modules/shared/services/user.notice.s
 import { UserChargeService } from 'src/app/modules/shared/services/user-charge.service';
 import { UserService } from 'src/app/modules/shared/services/user.service';
 import { HouseService } from 'src/app/modules/shared/services/house.service';
+import { WaterUserAnnualPaymentService } from 'src/app/modules/shared/services/water-user-annual-payment.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -47,18 +49,21 @@ export class DetailsUserComponent implements OnInit {
   private readonly personService    = inject(PersonService);
   private readonly userService      = inject(UserService);
   private readonly houseService     = inject(HouseService);
+  private readonly annualPaymentService = inject(WaterUserAnnualPaymentService);
   private readonly dialog           = inject(MatDialog);
 
   public detailsForm: FormGroup = this.fb.group({});
   public noticeForm:  FormGroup = this.fb.group({});
   public chargeForm:  FormGroup = this.fb.group({});
   public paymentForm: FormGroup = this.fb.group({});
+  public annualPaymentForm: FormGroup = this.fb.group({});
 
   displayColumns:         string[] = ['noFolio','fecha','concepto','total','conceptoPayment','montoRecibido','montoAplicado','anio'];
   displayColumnsNotify:   string[] = ['tipo','aviso','comentario','estatus','responsable'];
   displayColumnsAssembly: string[] = ['dateS','asistencia','observaciones'];
   displayColumnsCharge:   string[] = ['concepto','descripcion','monto','fechaStr','montoPagado','montoCondonado','saldo','estatusPago'];
-  displayColumnsAgreement: string[] = ['noFolio','fechaStr','motivo','montoCondonadoTotal','estatusConvenio'];
+  displayColumnsAgreement: string[] = ['noFolio','fechaStr','motivo','adeudo','fechaCompromisoPagoStr','montoCondonadoTotal','estatusConvenio'];
+  displayColumnsAnnualPayment: string[] = ['anio','fechaValidacion','observaciones','estatus','acciones'];
 
   // Totales de la tabla de Cargos / Multas (fila de pie de tabla)
   totalMonto      = 0;
@@ -71,6 +76,7 @@ export class DetailsUserComponent implements OnInit {
   dataSourceAssembly = new MatTableDataSource<AssemblyModel>();
   dataSourceCharge   = new MatTableDataSource<WaterUserChargeModel>();
   dataSourceAgreement = new MatTableDataSource<WaterAgreementModel>();
+  dataSourceAnnualPayment = new MatTableDataSource<WaterUserAnnualPaymentModel>();
 
   usuario!: WaterUserModel;
   user!:    WaterUserDetailModel;
@@ -156,6 +162,12 @@ export class DetailsUserComponent implements OnInit {
       aguaUsuarioCargoId: ['', Validators.required],
       noFolio:            ['', Validators.required],
       montoAplicado:      ['', Validators.required]
+    });
+
+    this.annualPaymentForm = this.fb.group({
+      anio:           ['', Validators.required],
+      fechaValidacion: [''],
+      observaciones:  ['']
     });
 
     this.loadCatalogs();
@@ -493,6 +505,60 @@ export class DetailsUserComponent implements OnInit {
     if (resp.metadata[0].code !== '00') return;
     const dataAgreement: WaterAgreementModel[] = resp.data;
     this.dataSourceAgreement = new MatTableDataSource<WaterAgreementModel>(dataAgreement);
+  }
+
+  getAnnualPayments(): void {
+    this.annualPaymentService.getByNoUser(this.usuario.noUsuario).subscribe({
+      next: (resp: any) => this.processAnnualPaymentResponse(resp),
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  private processAnnualPaymentResponse(resp: any): void {
+    if (resp.metadata[0].code !== '00') return;
+    const dataAnnualPayment: WaterUserAnnualPaymentModel[] = resp.data;
+    this.dataSourceAnnualPayment = new MatTableDataSource<WaterUserAnnualPaymentModel>(dataAnnualPayment);
+  }
+
+  onSaveAnnualPayment(): void {
+    const form = this.annualPaymentForm.value;
+    const data = {
+      anio:            form.anio,
+      fechaValidacion: form.fechaValidacion || null,
+      observaciones:   form.observaciones
+    };
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    this.annualPaymentService.create(this.user.aguaUsuarioId, data).subscribe({
+      next: () => {
+        Swal.fire({ icon: 'success', title: 'Año marcado como pagado', confirmButtonText: 'Aceptar' });
+        this.annualPaymentForm.reset();
+        this.getAnnualPayments();
+      },
+      error: (e: any) => {
+        const msg = e?.error?.metadata?.[0]?.description || 'Ocurrió un problema al guardar.';
+        Swal.fire({ icon: 'error', title: 'Error', text: msg, confirmButtonText: 'Cerrar' });
+      }
+    });
+  }
+
+  onDeactivateAnnualPayment(item: WaterUserAnnualPaymentModel): void {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Dar de baja',
+      text: `¿Confirmas quitar la marca de pagado del año ${item.anio}?`,
+      showCancelButton: true,
+      confirmButtonText: 'Dar de baja',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.annualPaymentService.deactivate(item.pagoAnualId).subscribe({
+        next: () => this.getAnnualPayments(),
+        error: (e: any) => {
+          console.error(e);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo dar de baja el registro.', confirmButtonText: 'Cerrar' });
+        }
+      });
+    });
   }
 
   openNewConvenioDialog(): void {

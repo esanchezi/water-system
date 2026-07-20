@@ -27,6 +27,14 @@
                     <th mat-header-cell *matHeaderCellDef>Motivo</th>
                     <td mat-cell *matCellDef="let element">{{element.motivo}}</td>
                 </ng-container>
+                <ng-container matColumnDef="adeudo">
+                    <th mat-header-cell *matHeaderCellDef>Adeudo</th>
+                    <td mat-cell *matCellDef="let element">${{element.adeudo | number:'1.2-2'}}</td>
+                </ng-container>
+                <ng-container matColumnDef="fechaCompromisoPagoStr">
+                    <th mat-header-cell *matHeaderCellDef>Compromiso de pago</th>
+                    <td mat-cell *matCellDef="let element">{{element.fechaCompromisoPagoStr || '-'}}</td>
+                </ng-container>
                 <ng-container matColumnDef="montoCondonadoTotal">
                     <th mat-header-cell *matHeaderCellDef>Monto condonado</th>
                     <td mat-cell *matCellDef="let element">{{element.montoCondonadoTotal | currency}}</td>

@@ -497,6 +497,14 @@
                             <th mat-header-cell *matHeaderCellDef>Motivo</th>
                             <td mat-cell *matCellDef="let element">{{element.motivo}}</td>
                         </ng-container>
+                        <ng-container matColumnDef="adeudo">
+                            <th mat-header-cell *matHeaderCellDef>Adeudo</th>
+                            <td mat-cell *matCellDef="let element">${{element.adeudo | number:'1.2-2'}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="fechaCompromisoPagoStr">
+                            <th mat-header-cell *matHeaderCellDef>Compromiso de pago</th>
+                            <td mat-cell *matCellDef="let element">{{element.fechaCompromisoPagoStr || '-'}}</td>
+                        </ng-container>
                         <ng-container matColumnDef="montoCondonadoTotal">
                             <th mat-header-cell *matHeaderCellDef>Monto condonado</th>
                             <td mat-cell *matCellDef="let element">{{element.montoCondonadoTotal | currency}}</td>
@@ -514,6 +522,67 @@
                             <mat-icon>handshake</mat-icon> Nuevo convenio
                         </button>
                     </mat-card-actions>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel (opened)="getAnnualPayments()" hideToggle>
+                    <mat-expansion-panel-header>
+                        <mat-panel-title>Años pagados</mat-panel-title>
+                        <mat-panel-description>Marca los años ya cubiertos en su totalidad</mat-panel-description>
+                    </mat-expansion-panel-header>
+                    <table mat-table [dataSource]="dataSourceAnnualPayment" class="mat-cell">
+                        <ng-container matColumnDef="anio">
+                            <th mat-header-cell *matHeaderCellDef>Año</th>
+                            <td mat-cell *matCellDef="let element">{{element.anio}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="fechaValidacion">
+                            <th mat-header-cell *matHeaderCellDef>Fecha validación</th>
+                            <td mat-cell *matCellDef="let element">{{element.fechaValidacion}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="observaciones">
+                            <th mat-header-cell *matHeaderCellDef>Observaciones</th>
+                            <td mat-cell *matCellDef="let element">{{element.observaciones}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="estatus">
+                            <th mat-header-cell *matHeaderCellDef>Estatus</th>
+                            <td mat-cell *matCellDef="let element">{{element.estatus === 1 ? 'Activo' : 'Baja'}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="acciones">
+                            <th mat-header-cell *matHeaderCellDef></th>
+                            <td mat-cell *matCellDef="let element">
+                                <button mat-icon-button color="warn" *ngIf="element.estatus === 1"
+                                        (click)="onDeactivateAnnualPayment(element)" title="Dar de baja">
+                                    <mat-icon>delete</mat-icon>
+                                </button>
+                            </td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="displayColumnsAnnualPayment"></tr>
+                        <tr mat-row *matRowDef="let row; columns:displayColumnsAnnualPayment"></tr>
+                    </table>
+
+                    <h4>Marcar año como pagado</h4>
+                    <form [formGroup]="annualPaymentForm">
+                        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
+                            <mat-form-field appearance="outline" fxFlex="20%">
+                                <mat-label>Año</mat-label>
+                                <input matInput type="number" placeholder="año" formControlName="anio" required />
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" fxFlex="30%">
+                                <mat-label>Fecha validación</mat-label>
+                                <input matInput type="date" formControlName="fechaValidacion" />
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" fxFlex="45%">
+                                <mat-label>Observaciones</mat-label>
+                                <input matInput placeholder="observaciones" formControlName="observaciones" />
+                            </mat-form-field>
+                        </div>
+                        <mat-card-actions align="end">
+                            <button mat-raised-button color="primary" [disabled]="annualPaymentForm.invalid" (click)="onSaveAnnualPayment()">
+                                <mat-icon>save</mat-icon> Marcar como pagado
+                            </button>
+                        </mat-card-actions>
+                    </form>
                 </mat-expansion-panel>
 
                 <mat-expansion-panel hideToggle>
