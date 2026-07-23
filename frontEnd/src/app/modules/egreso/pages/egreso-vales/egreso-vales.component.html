@@ -3,9 +3,15 @@
         <mat-card-title>Vales</mat-card-title>
         <mat-card-content>
             <div fxLayout="row" fxLayoutAlign="space-between center" fxLayoutGap="8px">
-                <button mat-raised-button color="primary" (click)="openNewEgresoDialog()">
-                    <mat-icon>add</mat-icon> Nuevo vale
-                </button>
+                <div fxLayout="row" fxLayoutGap="8px">
+                    <button mat-raised-button color="primary" (click)="openNewEgresoDialog()">
+                        <mat-icon>add</mat-icon> Nuevo vale
+                    </button>
+                    <button mat-stroked-button color="primary" (click)="openNewGastoDialog()"
+                            matTooltip="Captura un gasto suelto para juntarlo después en un vale, desde Gastos del mes">
+                        <mat-icon>receipt</mat-icon> Capturar solo gasto
+                    </button>
+                </div>
                 <button mat-button color="primary" (click)="mostrarControlFolios = !mostrarControlFolios">
                     <mat-icon>{{ mostrarControlFolios ? 'expand_less' : 'expand_more' }}</mat-icon>
                     Control de folios

@@ -8,6 +8,7 @@ import Swal from 'sweetalert2';
 import { WaterEgresoLineaModel, WaterEgresoModel } from 'src/app/modules/shared/models/WaterEgreso.model';
 import { WaterEgresoService } from 'src/app/modules/shared/services/water-egreso.service';
 import { NewEgresoComponent } from '../../components/new-egreso/new-egreso.component';
+import { NewGastoComponent } from '../../components/new-gasto/new-gasto.component';
 
 const NOMBRES_MES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -239,6 +240,21 @@ export class EgresoValesComponent implements OnInit {
         this.getVales();
       } else if (result === 2) {
         this.openSnackBar('Error al guardar el vale', 'Error');
+      }
+    });
+  }
+
+  // Captura un gasto suelto (sin vale todavía) directo desde Vales, para no
+  // tener que ir a "Gastos del mes" solo para esto. Ese gasto se queda
+  // pendiente hasta que se junte con otros en un vale (desde Gastos del mes,
+  // seleccionando por proveedor/categoría y emitiendo).
+  openNewGastoDialog(): void {
+    const dialogRef = this.dialog.open(NewGastoComponent, { width: '700px' });
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result === 1) {
+        this.openSnackBar('Gasto registrado (pendiente de incluir en un vale)', 'Éxito');
+      } else if (result === 2) {
+        this.openSnackBar('Error al guardar el gasto', 'Error');
       }
     });
   }

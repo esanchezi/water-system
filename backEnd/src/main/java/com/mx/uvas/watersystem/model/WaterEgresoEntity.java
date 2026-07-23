@@ -51,8 +51,14 @@ public class WaterEgresoEntity implements Serializable {
     // Control de limpieza histórica -- solo aplican al vale (nivel = 1), no
     // a sus líneas. "revisado": ya se checó que el vale esté bien capturado
     // y agrupado. "validadoFisico": ya se confirmó contra el papel/recibo.
-    private Boolean revisado;
-    private Boolean validadoFisico;
+    // @Builder.Default asegura que cualquier registro nuevo (vale, línea,
+    // gasto) mande "false" en vez de null -- la columna es NOT NULL y, a
+    // diferencia de un INSERT escrito a mano, Hibernate sí manda explícito
+    // cada columna mapeada aunque el builder no la haya tocado.
+    @Builder.Default
+    private Boolean revisado = false;
+    @Builder.Default
+    private Boolean validadoFisico = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "concepto_id")
@@ -76,7 +82,9 @@ public class WaterEgresoEntity implements Serializable {
     private WaterEgresoEntity egresoPadre;
 
     // Líneas de categoría de este vale (solo aplica cuando esta fila es la
-    // cabecera).
+    // cabecera) -- también aplica igual para las sub-líneas de una línea.
+    // Ordenadas por fecha de pago para que se vean siempre en orden
+    // cronológico (acordeón de Egresos, detalle de Vales, etc.).
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @JsonManagedReference
@@ -86,5 +94,6 @@ public class WaterEgresoEntity implements Serializable {
             orphanRemoval = true,
             mappedBy = "egresoPadre"
     )
+    @OrderBy("fechaPago ASC")
     private List<WaterEgresoEntity> lineas;
 }

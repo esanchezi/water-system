@@ -190,7 +190,11 @@ export class EgresoListComponent implements OnInit {
             });
 
             const nodosProveedor: EgresoNodoModel[] = Array.from(porProveedor.entries())
-              .map(([proveedor, filasProv]) => ({ label: proveedor, total: this.sum(filasProv), filas: filasProv }))
+              .map(([proveedor, filasProv]) => ({
+                label: proveedor,
+                total: this.sum(filasProv),
+                filas: [...filasProv].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''))
+              }))
               .sort((a, b) => a.label.localeCompare(b.label));
 
             return { label: NOMBRES_MES[mes], total: this.sum(filasMes), children: nodosProveedor };

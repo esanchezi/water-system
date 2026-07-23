@@ -83,7 +83,18 @@ export class EgresoGastosComponent implements OnInit {
       persona.gastos.push(g);
     });
 
-    return Array.from(conceptosMap.values()).sort((a, b) => a.conceptoNombre.localeCompare(b.conceptoNombre));
+    const grupos = Array.from(conceptosMap.values());
+    grupos.forEach(concepto => {
+      concepto.personas.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      // Los gastos ya vienen ordenados por fecha desde el backend, pero se
+      // ordenan también aquí por si acaso (defensivo, no depender solo del
+      // orden con el que lleguen).
+      concepto.personas.forEach(persona => {
+        persona.gastos.sort((a, b) => (a.fechaPago || '').localeCompare(b.fechaPago || ''));
+      });
+    });
+
+    return grupos.sort((a, b) => a.conceptoNombre.localeCompare(b.conceptoNombre));
   }
 
   get totalPendientes(): number {
