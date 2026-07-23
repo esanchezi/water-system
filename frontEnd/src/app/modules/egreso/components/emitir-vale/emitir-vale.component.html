@@ -1,0 +1,53 @@
+<mat-dialog-content>
+  <form [formGroup]="valeForm">
+    <mat-card>
+      <mat-card-title>Emitir vale</mat-card-title>
+      <mat-card-subtitle>
+        {{ data.gastoIds.length }} gasto(s) seleccionado(s) · Total: ${{ data.totalSeleccionado | number:'1.2-2' }}
+      </mat-card-subtitle>
+      <mat-card-content>
+
+        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
+          <mat-form-field appearance="outline" fxFlex="45%">
+            <mat-label>Fecha de pago del vale</mat-label>
+            <input matInput type="date" formControlName="fechaPago" required />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="45%">
+            <mat-label>Tipo de comprobante</mat-label>
+            <mat-select formControlName="tipoComprobanteId">
+              <mat-option *ngFor="let t of tiposComprobante" [value]="t.catalogoOpcionesId">
+                {{ t.nombre }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="45%">
+            <mat-label>N° Folio</mat-label>
+            <input matInput formControlName="noFolio" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Descripción</mat-label>
+            <input matInput formControlName="descripcion" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Justificación</mat-label>
+            <textarea matInput rows="2" formControlName="justificacion"></textarea>
+          </mat-form-field>
+        </div>
+
+      </mat-card-content>
+    </mat-card>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-button color="primary" (click)="onSave()" [disabled]="valeForm.invalid">
+    <mat-icon>save</mat-icon> Emitir
+  </button>
+  <button mat-button color="primary" (click)="onCancel()">
+    <mat-icon>cancel</mat-icon> Cancelar
+  </button>
+</mat-dialog-actions>

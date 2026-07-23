@@ -1,0 +1,14 @@
+<div>
+    <mat-card>
+        <mat-card-title>Egresos</mat-card-title>
+        <mat-card-content>
+            <div class="toolbar" fxLayout="row" fxLayoutAlign="end center">
+                <h3>Total: ${{ totalGeneral | number:'1.2-2' }}</h3>
+            </div>
+
+            <p class="hint" *ngIf="arbol.length === 0">No hay egresos registrados.</p>
+
+            <app-egreso-nodo-lista [nodos]="arbol" (desactivar)="onDesactivar($event)"></app-egreso-nodo-lista>
+        </mat-card-content>
+    </mat-card>
+</div>

@@ -1,0 +1,10 @@
+.toolbar {
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.hint {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.9rem;
+}
