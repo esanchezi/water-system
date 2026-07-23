@@ -119,6 +119,10 @@ public class WaterEgresoMapper {
                     nullSafe(gasto.getPersona().getApm())
             ).trim().replaceAll("\\s+", " "));
         }
+        if (gasto.getTipoComprobante() != null) {
+            dto.setTipoComprobanteId(gasto.getTipoComprobante().getCatalogoOpcionesId());
+            dto.setTipoComprobanteNombre(gasto.getTipoComprobante().getNombre());
+        }
         return dto;
     }
 

@@ -105,6 +105,13 @@ public class WaterEgresoHelper {
                         .orElseThrow(() -> new NoSuchElementException("No se encontró la persona con el ID: " + request.getPersonaId()))
                 : null;
 
+        // Opcional: si el gasto ya trae su propia nota/factura/remisión se
+        // captura aquí desde el inicio; si se deja vacío, es justo el tipo de
+        // gasto que se va a juntar después en un "Vale caja" al emitir.
+        CatalogOptionsEntity tipoComprobante = request.getTipoComprobanteId() != null
+                ? waterHelper.getCatalogOptionOrThrow(request.getTipoComprobanteId())
+                : null;
+
         return WaterEgresoEntity.builder()
                 .valido(true)
                 .nivel(2)
@@ -114,6 +121,7 @@ public class WaterEgresoHelper {
                 .proveedor(request.getProveedor())
                 .concepto(concepto)
                 .persona(persona)
+                .tipoComprobante(tipoComprobante)
                 .egresoPadre(null)
                 .estatus(1)
                 .userIdAdd(1) // TODO: Keycloak
@@ -132,12 +140,17 @@ public class WaterEgresoHelper {
                         .orElseThrow(() -> new NoSuchElementException("No se encontró la persona con el ID: " + request.getPersonaId()))
                 : null;
 
+        CatalogOptionsEntity tipoComprobante = request.getTipoComprobanteId() != null
+                ? waterHelper.getCatalogOptionOrThrow(request.getTipoComprobanteId())
+                : null;
+
         existente.setFechaPago(request.getFechaPago());
         existente.setMonto(request.getMonto());
         existente.setDescripcion(request.getDescripcion());
         existente.setProveedor(request.getProveedor());
         existente.setConcepto(concepto);
         existente.setPersona(persona);
+        existente.setTipoComprobante(tipoComprobante);
         existente.setUserIdUpdate(1); // TODO: Keycloak
         existente.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
     }

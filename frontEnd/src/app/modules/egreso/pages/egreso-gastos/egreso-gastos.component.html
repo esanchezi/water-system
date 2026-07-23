@@ -58,6 +58,7 @@
                     <th></th>
                     <th>Fecha</th>
                     <th>Descripción</th>
+                    <th>Comprobante</th>
                     <th class="right">Monto</th>
                     <th></th>
                   </tr>
@@ -72,6 +73,7 @@
                     </td>
                     <td>{{ gasto.fechaPagoStr }}</td>
                     <td>{{ gasto.descripcion || '-' }}</td>
+                    <td>{{ gasto.tipoComprobanteNombre || 'Vale caja' }}</td>
                     <td class="right">${{ gasto.monto | number:'1.2-2' }}</td>
                     <td>
                       <button mat-icon-button matTooltip="Editar gasto" (click)="openEditarGastoDialog(gasto)">
