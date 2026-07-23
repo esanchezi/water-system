@@ -23,6 +23,7 @@ export class SidenavComponent implements OnInit {
     { name: 'Cuotas',     route: 'cuotaList',    icon: 'request_quote' },
     { name: 'Deudores',   route: 'deudorList',   icon: 'money_off' },
     { name: 'Totales por año', route: 'totalPorAnio', icon: 'bar_chart' },
+    { name: 'Resumen anual', route: 'resumenAnual', icon: 'summarize' },
     { name: 'Gastos del mes', route: 'egresoGastos', icon: 'fact_check' },
     { name: 'Vales',      route: 'egresoVales',  icon: 'receipt_long' },
     { name: 'Egresos',    route: 'egresoList',   icon: 'payments' },

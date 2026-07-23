@@ -12,8 +12,8 @@
           <span>Total pendiente: <strong>${{ totalPendientes | number:'1.2-2' }}</strong></span>
           <span class="sep">·</span>
           <span>Seleccionado: <strong>${{ totalSeleccionado | number:'1.2-2' }}</strong></span>
-          <button mat-raised-button color="accent" [disabled]="seleccionados.size === 0" (click)="openEmitirValeDialog()">
-            <mat-icon>receipt_long</mat-icon> Emitir vale ({{ seleccionados.size }})
+          <button mat-raised-button color="accent" [disabled]="totalItemsSeleccionados === 0" (click)="openEmitirValeDialog()">
+            <mat-icon>receipt_long</mat-icon> Emitir vale ({{ totalItemsSeleccionados }})
           </button>
         </div>
       </div>
@@ -85,6 +85,55 @@
           </mat-accordion>
         </mat-expansion-panel>
       </mat-accordion>
+
+      <mat-divider class="seccion-divider"></mat-divider>
+
+      <!-- Vales ya emitidos (nivel 1) que se pueden juntar con los gastos de
+           arriba en un solo vale nuevo -- ej. el vale de nómina de Brandy que
+           se junta con los gastos pendientes de Francisca y Elizabeth. Se
+           buscan por texto para no listar años completos de vales. -->
+      <h3>Incluir un vale ya emitido</h3>
+      <p class="hint">Busca por folio, categoría, proveedor o descripción para agregar un vale ya emitido a esta emisión (ej. juntar un vale de nómina de otra semana).</p>
+
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Buscar vale ya emitido</mat-label>
+        <input matInput [(ngModel)]="filtroVale" placeholder="Folio, categoría, proveedor o descripción..." />
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <table class="gastos-table" *ngIf="valesFiltrados.length > 0">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Folio</th>
+            <th>Fecha</th>
+            <th>Categoría(s)</th>
+            <th>Proveedor</th>
+            <th class="right">Monto</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let vale of valesFiltrados">
+            <td>
+              <mat-checkbox
+                [checked]="isValeSelected(vale)"
+                (change)="toggleVale(vale, $event.checked)">
+              </mat-checkbox>
+            </td>
+            <td>{{ vale.noFolio || '-' }}</td>
+            <td>{{ vale.fechaPagoStr }}</td>
+            <td>{{ categoriasVale(vale) }}</td>
+            <td>{{ proveedoresVale(vale) }}</td>
+            <td class="right">${{ vale.monto | number:'1.2-2' }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="hint" *ngIf="filtroVale.trim() && valesFiltrados.length === 0">No se encontraron vales que coincidan con la búsqueda.</p>
+
+      <p class="hint" *ngIf="seleccionadosVales.size > 0">
+        {{ seleccionadosVales.size }} vale(s) ya emitido(s) seleccionado(s) · Subtotal: ${{ totalSeleccionadoVales | number:'1.2-2' }}
+      </p>
 
     </mat-card-content>
   </mat-card>

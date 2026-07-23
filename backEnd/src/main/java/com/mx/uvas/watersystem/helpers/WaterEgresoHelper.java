@@ -2,6 +2,7 @@ package com.mx.uvas.watersystem.helpers;
 
 import com.mx.uvas.watersystem.dto.WaterEgresoDto;
 import com.mx.uvas.watersystem.dto.WaterEgresoEmitirDto;
+import com.mx.uvas.watersystem.dto.WaterEgresoFusionarDto;
 import com.mx.uvas.watersystem.dto.WaterEgresoGastoDto;
 import com.mx.uvas.watersystem.dto.WaterEgresoLineaDto;
 import com.mx.uvas.watersystem.model.CatalogOptionsEntity;
@@ -142,9 +143,34 @@ public class WaterEgresoHelper {
     }
 
     // Cabecera del vale consolidado que se crea al emitir: no trae proveedor
-    // ni persona propios (cada gasto ya trae los suyos), su monto es la suma
-    // de los gastos que se le re-parentan.
-    public WaterEgresoEntity buildCabeceraEmision(WaterEgresoEmitirDto request, CatalogOptionsEntity tipoComprobante, Double montoTotal) {
+    // ni persona propios (cada gasto/vale incluido ya trae los suyos), su
+    // monto es la suma de lo que se le re-parenta. concepto es opcional: se
+    // usa cuando TODO el vale es de una sola categoría (ej. Nómina), para
+    // que no aparezca "sin categoría" en reportes que agrupan por el
+    // concepto de la cabecera en vez del de cada línea.
+    public WaterEgresoEntity buildCabeceraEmision(WaterEgresoEmitirDto request, CatalogOptionsEntity tipoComprobante, CatalogOptionsEntity concepto, Double montoTotal) {
+        return WaterEgresoEntity.builder()
+                .valido(true)
+                .nivel(1)
+                .fechaPago(request.getFechaPago())
+                .monto(montoTotal)
+                .descripcion(request.getDescripcion())
+                .noFolio(request.getNoFolio())
+                .justificacion(request.getJustificacion())
+                .tipoComprobante(tipoComprobante)
+                .concepto(concepto)
+                .estatus(1)
+                .userIdAdd(1) // TODO: Keycloak
+                .dateAdd(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))
+                .lineas(new ArrayList<>())
+                .build();
+    }
+
+    // Cabecera del vale que resulta de fusionar varios vales ya emitidos.
+    // No trae proveedor/persona propios (cada vale fusionado ya trae los
+    // suyos en su propia línea); su monto es la suma de los vales que se
+    // le re-parentan.
+    public WaterEgresoEntity buildCabeceraFusion(WaterEgresoFusionarDto request, CatalogOptionsEntity tipoComprobante, Double montoTotal) {
         return WaterEgresoEntity.builder()
                 .valido(true)
                 .nivel(1)
@@ -162,7 +188,7 @@ public class WaterEgresoHelper {
     }
 
     // Suma de los montos de los gastos pendientes que se van a incluir en el
-    // vale que se está emitiendo.
+    // vale que se está emitiendo (también sirve para sumar vales al fusionarlos).
     public Double calcularTotalGastos(Iterable<WaterEgresoEntity> gastos) {
         double suma = 0d;
         for (WaterEgresoEntity g : gastos) {

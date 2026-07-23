@@ -1,0 +1,51 @@
+.hint {
+  color: rgba(0, 0, 0, 0.6);
+  margin-top: 16px;
+}
+
+.tabla-resumen {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 20px;
+}
+
+.tabla-resumen th,
+.tabla-resumen td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.15);
+  background: #fafafa;
+}
+
+.tablas-nivel3 {
+  margin-top: 8px;
+}
+
+.tabla-mensual,
+.tabla-categoria {
+  flex: 1 1 380px;
+  min-width: 320px;
+}
+
+.tabla-detalle {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.tabla-detalle th,
+.tabla-detalle td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.tabla-detalle th.right,
+.tabla-detalle td.right {
+  text-align: right;
+}
+
+.tabla-detalle tfoot td {
+  border-top: 2px solid rgba(0, 0, 0, 0.15);
+  border-bottom: none;
+}

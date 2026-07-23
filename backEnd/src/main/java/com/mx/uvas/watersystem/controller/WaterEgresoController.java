@@ -2,6 +2,7 @@ package com.mx.uvas.watersystem.controller;
 
 import com.mx.uvas.watersystem.dto.WaterEgresoDto;
 import com.mx.uvas.watersystem.dto.WaterEgresoEmitirDto;
+import com.mx.uvas.watersystem.dto.WaterEgresoFusionarDto;
 import com.mx.uvas.watersystem.dto.WaterEgresoGastoDto;
 import com.mx.uvas.watersystem.dto.WaterEgresoMarcarDto;
 import com.mx.uvas.watersystem.response.WaterEgresoGastoRestResponse;
@@ -67,6 +68,12 @@ public class WaterEgresoController {
     @PostMapping("/emitir")
     public ResponseEntity<WaterEgresoRestResponse> emitirVale(@RequestBody WaterEgresoEmitirDto request) {
         return waterEgresoService.emitirVale(request);
+    }
+
+    // Fusiona varios vales ya emitidos en uno nuevo más grande.
+    @PostMapping("/fusionar")
+    public ResponseEntity<WaterEgresoRestResponse> fusionarVales(@RequestBody WaterEgresoFusionarDto request) {
+        return waterEgresoService.fusionarVales(request);
     }
 
 }

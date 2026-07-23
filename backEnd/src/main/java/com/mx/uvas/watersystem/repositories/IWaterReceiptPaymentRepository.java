@@ -34,4 +34,13 @@ public interface IWaterReceiptPaymentRepository extends JpaRepository <WaterRece
             "AND r.noFolio > 4099 " +
             "AND p.catTiPag.catalogoOpcionesId = 16")
     List<WaterReceiptPaymentEntity> findValidosParaTotalesPorAnio();
+
+    // Igual que findValidosParaTotalesPorAnio pero SIN restringir tipo_pago:
+    // el Resumen anual necesita separar Recibos Caja (Caja Popular) de
+    // Efectivo, no solo sumar el efectivo real.
+    @Query("SELECT p FROM WaterReceiptPaymentEntity p " +
+            "JOIN FETCH p.waterReceipt r " +
+            "WHERE r.invalido IS NULL " +
+            "AND r.noFolio > 4099")
+    List<WaterReceiptPaymentEntity> findValidosParaResumenAnual();
 }

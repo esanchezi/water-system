@@ -41,3 +41,11 @@ mat-panel-title {
   align-items: center;
   gap: 8px;
 }
+
+.seccion-divider {
+  margin: 24px 0 16px;
+}
+
+.w-100 {
+  width: 100%;
+}

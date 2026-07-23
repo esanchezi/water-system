@@ -9,6 +9,7 @@ import { WaterEgresoLineaModel, WaterEgresoModel } from 'src/app/modules/shared/
 import { WaterEgresoService } from 'src/app/modules/shared/services/water-egreso.service';
 import { NewEgresoComponent } from '../../components/new-egreso/new-egreso.component';
 import { NewGastoComponent } from '../../components/new-gasto/new-gasto.component';
+import { FusionarValesComponent } from '../../components/fusionar-vales/fusionar-vales.component';
 
 const NOMBRES_MES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -38,7 +39,12 @@ export class EgresoValesComponent implements OnInit {
   private readonly sanitizer = inject(DomSanitizer);
   public dialog = inject(MatDialog);
 
-  displayColumns: string[] = ['fechaPagoStr', 'noFolio', 'tipoComprobanteNombre', 'categorias', 'proveedores', 'monto', 'revisado', 'validadoFisico', 'acciones'];
+  displayColumns: string[] = ['fusion', 'fechaPagoStr', 'noFolio', 'tipoComprobanteNombre', 'categorias', 'proveedores', 'monto', 'revisado', 'validadoFisico', 'acciones'];
+
+  // Selección para fusionar varios vales YA EMITIDOS en uno nuevo más
+  // grande (ej. el vale de nómina de Brandy + el de Francisca -> "Pago de
+  // nómina del mes"). Cada vale seleccionado pasa a ser línea del nuevo.
+  seleccionadosFusion = new Set<number>();
   dataSource = new MatTableDataSource<WaterEgresoModel>();
 
   // Vale actualmente expandido en la tabla (detalle inline, ya no en
@@ -91,6 +97,7 @@ export class EgresoValesComponent implements OnInit {
     this.dataSource = new MatTableDataSource<WaterEgresoModel>(data);
     this.dataSource.paginator = this.paginator;
     this.expandedElement = null;
+    this.seleccionadosFusion.clear();
     this.construirControlFolios(data);
     this.aniosDisponibles = Array.from(new Set(
       data.map(v => this.anioMes(v.fechaPago).anio).filter(a => !isNaN(a))
@@ -100,6 +107,48 @@ export class EgresoValesComponent implements OnInit {
 
   toggleDetalle(vale: WaterEgresoModel): void {
     this.expandedElement = this.expandedElement === vale ? null : vale;
+  }
+
+  // --- Fusionar vales ya emitidos ------------------------------------------
+
+  isSeleccionadoFusion(vale: WaterEgresoModel): boolean {
+    return vale.aguaEgresosId != null && this.seleccionadosFusion.has(vale.aguaEgresosId);
+  }
+
+  toggleSeleccionFusion(vale: WaterEgresoModel, checked: boolean): void {
+    if (vale.aguaEgresosId == null) return;
+    if (checked) {
+      this.seleccionadosFusion.add(vale.aguaEgresosId);
+    } else {
+      this.seleccionadosFusion.delete(vale.aguaEgresosId);
+    }
+  }
+
+  get totalSeleccionadoFusion(): number {
+    return this.vales
+      .filter(v => v.aguaEgresosId != null && this.seleccionadosFusion.has(v.aguaEgresosId))
+      .reduce((acc, v) => acc + (Number(v.monto) || 0), 0);
+  }
+
+  openFusionarDialog(): void {
+    if (this.seleccionadosFusion.size < 2) return;
+
+    const dialogRef = this.dialog.open(FusionarValesComponent, {
+      width: '700px',
+      data: {
+        valeIds: Array.from(this.seleccionadosFusion),
+        totalSeleccionado: this.totalSeleccionadoFusion
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result === 1) {
+        this.openSnackBar('Vales fusionados', 'Éxito');
+        this.getVales();
+      } else if (result === 2) {
+        this.openSnackBar('Error al fusionar los vales', 'Error');
+      }
+    });
   }
 
   // OJO: nunca usar `new Date(fecha)` para sacar año/mes -- ver el mismo
