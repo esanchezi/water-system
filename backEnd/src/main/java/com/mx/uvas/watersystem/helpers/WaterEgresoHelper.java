@@ -53,15 +53,29 @@ public class WaterEgresoHelper {
                 .build();
     }
 
+    // proveedor/persona/fecha/folio de la línea son opcionales: si el vale
+    // junta compras de un solo proveedor en una sola fecha, se dejan en
+    // blanco y la línea "hereda" visualmente los datos del vale (así lo
+    // hace ya el resto de la app). Si el vale junta varias compras distintas
+    // (ej. Mantenimiento con varios proveedores/fechas), cada línea puede
+    // traer los suyos propios.
     public WaterEgresoEntity buildLinea(WaterEgresoLineaDto lineaRequest, WaterEgresoEntity cabecera) {
         CatalogOptionsEntity concepto = waterHelper.getCatalogOptionOrThrow(lineaRequest.getConceptoId());
+
+        PersonEntity persona = lineaRequest.getPersonaId() != null
+                ? personRepository.findById(lineaRequest.getPersonaId())
+                        .orElseThrow(() -> new NoSuchElementException("No se encontró la persona con el ID: " + lineaRequest.getPersonaId()))
+                : null;
 
         return WaterEgresoEntity.builder()
                 .valido(true)
                 .nivel(2)
-                .fechaPago(cabecera.getFechaPago())
+                .fechaPago(lineaRequest.getFechaPago() != null ? lineaRequest.getFechaPago() : cabecera.getFechaPago())
                 .monto(lineaRequest.getMonto())
                 .descripcion(lineaRequest.getDescripcion())
+                .proveedor(lineaRequest.getProveedor())
+                .persona(persona)
+                .noFolio(lineaRequest.getNoFolio())
                 .concepto(concepto)
                 .egresoPadre(cabecera)
                 .estatus(1)

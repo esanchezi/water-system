@@ -40,7 +40,7 @@ public interface IWaterEgresoRepository extends JpaRepository<WaterEgresoEntity,
     java.util.Optional<WaterEgresoEntity> findCabeceraById(Integer id);
 
     // Gastos sueltos ya capturados pero que todavía no se han juntado en un
-    // vale (nivel = 2, fk_id_egresos = null). Base de la pantalla de "Emitir
+    // vale (nivel = 2, padre_id = null). Base de la pantalla de "Emitir
     // vale" de fin de mes.
     @Query("SELECT e FROM WaterEgresoEntity e " +
             "LEFT JOIN FETCH e.concepto " +

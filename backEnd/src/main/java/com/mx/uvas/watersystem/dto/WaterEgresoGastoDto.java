@@ -5,9 +5,9 @@ import lombok.Data;
 import java.io.Serializable;
 import java.time.LocalDate;
 
-// Captura de un gasto suelto, sin vale todavía (nivel = 2, fk_id_egresos =
-// null). Al emitir el vale de fin de mes, este gasto se re-parenta a la
-// cabecera que se crea en ese momento.
+// Captura de un gasto suelto, sin vale todavía (nivel = 2, padre_id = null).
+// Al emitir el vale de fin de mes, este gasto se re-parenta a la cabecera
+// que se crea en ese momento.
 @Data
 public class WaterEgresoGastoDto implements Serializable {
     private Integer aguaEgresosId;

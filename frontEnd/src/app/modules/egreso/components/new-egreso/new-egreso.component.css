@@ -12,3 +12,9 @@
   color: #b00020;
   font-weight: 500;
 }
+
+.linea-row {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 8px 0;
+  margin-bottom: 8px;
+}

@@ -68,13 +68,13 @@
           </mat-form-field>
         </div>
 
-        <h4>Categorías de este vale</h4>
-        <p class="hint">Captura las categorías y sus montos; el total a pagar se calcula solo con la suma.</p>
+        <h4>Gastos de este vale</h4>
+        <p class="hint">Un vale puede juntar varios gastos de distinta categoría (ej. nómina + mantenimiento + material) para pagarle todo de una vez a la misma persona. Cada gasto es como uno solo de "Gastos del mes": si dejas proveedor/fecha/folio vacíos, toma los del vale completo; solo llénalos si este gasto en particular fue con otro proveedor, en otra fecha, o con su propio comprobante.</p>
 
         <div formArrayName="lineasArray">
-          <div *ngFor="let linea of lineasArray.controls; let i = index" [formGroupName]="i"
-               fxLayout="row" fxLayoutGap="16px" fxLayoutAlign="start center">
-            <mat-form-field appearance="outline" fxFlex="30%">
+          <div *ngFor="let linea of lineasArray.controls; let i = index" [formGroupName]="i" class="linea-row"
+               fxLayout="row wrap" fxLayoutGap="16px" fxLayoutAlign="start center">
+            <mat-form-field appearance="outline" fxFlex="0 0 220px">
               <mat-label>Categoría</mat-label>
               <mat-select formControlName="conceptoId">
                 <mat-option *ngFor="let c of conceptos" [value]="c.catalogoOpcionesId">
@@ -83,14 +83,29 @@
               </mat-select>
             </mat-form-field>
 
-            <mat-form-field appearance="outline" fxFlex="20%">
+            <mat-form-field appearance="outline" fxFlex="0 0 140px">
               <mat-label>Monto</mat-label>
               <input matInput type="number" formControlName="monto" />
             </mat-form-field>
 
-            <mat-form-field appearance="outline" fxFlex="35%">
+            <mat-form-field appearance="outline" fxFlex="0 0 220px">
               <mat-label>Descripción (opcional)</mat-label>
               <input matInput formControlName="descripcion" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" fxFlex="0 0 200px">
+              <mat-label>Proveedor (si es distinto al del vale)</mat-label>
+              <input matInput formControlName="proveedor" placeholder="Ej. Ferretería Los Lopez" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" fxFlex="0 0 160px">
+              <mat-label>Fecha (si es distinta a la del vale)</mat-label>
+              <input matInput type="date" formControlName="fechaPago" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" fxFlex="0 0 140px">
+              <mat-label>Folio (si tiene el suyo)</mat-label>
+              <input matInput formControlName="noFolio" />
             </mat-form-field>
 
             <button mat-icon-button color="warn" type="button" (click)="removeLinea(i)" [disabled]="lineasArray.length === 1">
@@ -100,7 +115,7 @@
         </div>
 
         <button mat-button color="primary" type="button" (click)="addLinea()">
-          <mat-icon>add</mat-icon> Agregar categoría
+          <mat-icon>add</mat-icon> Agregar gasto
         </button>
 
         <h3>Total a pagar: ${{ totalAPagar | number:'1.2-2' }}</h3>

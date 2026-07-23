@@ -136,11 +136,19 @@ export class NewEgresoComponent implements OnInit {
     return this.egresoForm.get('lineasArray') as FormArray;
   }
 
+  // Cada línea es, en esencia, un gasto (mismos campos que "Gastos del
+  // mes"): proveedor/fecha/folio son opcionales -- si se dejan vacíos, la
+  // línea toma visualmente los del vale completo (caso normal: un solo
+  // proveedor, un solo pago). Solo se llenan cuando ese gasto en particular
+  // fue con otro proveedor, otra fecha, o trae su propio comprobante.
   addLinea(): void {
     this.lineasArray.push(this.fb.group({
       conceptoId:   ['', Validators.required],
       monto:        ['', [Validators.required, Validators.min(0.01)]],
-      descripcion:  ['']
+      descripcion:  [''],
+      proveedor:    [''],
+      fechaPago:    [''],
+      noFolio:      ['']
     }));
   }
 
@@ -169,7 +177,10 @@ export class NewEgresoComponent implements OnInit {
       lineas: (form.lineasArray as any[]).map(l => ({
         conceptoId:   l.conceptoId,
         monto:        l.monto,
-        descripcion:  l.descripcion || null
+        descripcion:  l.descripcion || null,
+        proveedor:    l.proveedor || null,
+        fechaPago:    l.fechaPago || null,
+        noFolio:      l.noFolio || null
       }))
     };
 

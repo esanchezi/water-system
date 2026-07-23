@@ -12,9 +12,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 // agua_egresos se usa tanto para la cabecera de un vale/recibo (nivel = 1,
-// fkIdEgresos = null) como para cada línea de categoría que compone ese vale
-// (nivel = 2, fkIdEgresos = id de la cabecera). El reporte de Totales por año
-// solo suma las cabeceras (nivel = 1), así que no se ve afectado por esto.
+// egresoPadre = null) como para cada línea/gasto que lo compone (nivel = 2,
+// egresoPadre = la cabecera), e incluso para el desglose interno de una
+// línea (nivel = 3+, egresoPadre = esa línea). Es la misma fila para los
+// tres casos -- la única diferencia real es a quién apunta `padre_id`
+// (columna `padre_id`, mapeada aquí como egresoPadre). El reporte de
+// Totales por año solo suma las cabeceras (nivel = 1), así que no se ve
+// afectado por esto.
 @Entity
 @Table(name = "agua_egresos")
 @NoArgsConstructor
@@ -62,11 +66,13 @@ public class WaterEgresoEntity implements Serializable {
     @JoinColumn(name = "persona_id")
     private PersonEntity persona;
 
-    // Cabecera del vale al que pertenece esta línea (null si esta fila ES la
-    // cabecera).
+    // Fila padre de esta (la cabecera si esta fila es una línea, o la línea
+    // si esta fila es un sub-item de desglose). Null si esta fila ES la
+    // cabecera del vale. Única columna de parentesco -- ya no existe la
+    // columna vieja "egresos_id" que causaba confusión.
     @JsonBackReference
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "fk_id_egresos")
+    @JoinColumn(name = "padre_id")
     private WaterEgresoEntity egresoPadre;
 
     // Líneas de categoría de este vale (solo aplica cuando esta fila es la
