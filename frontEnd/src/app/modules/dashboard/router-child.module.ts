@@ -24,6 +24,9 @@ import { CuotaListComponent } from '../cuota/pages/cuota-list/cuota-list.compone
 import { CuotaDetailComponent } from '../cuota/pages/cuota-detail/cuota-detail.component';
 import { DeudorListComponent } from '../deudor/pages/deudor-list/deudor-list.component';
 import { TotalPorAnioListComponent } from '../total-por-anio/pages/total-por-anio-list/total-por-anio-list.component';
+import { EgresoListComponent } from '../egreso/pages/egreso-list/egreso-list.component';
+import { EgresoGastosComponent } from '../egreso/pages/egreso-gastos/egreso-gastos.component';
+import { EgresoValesComponent } from '../egreso/pages/egreso-vales/egreso-vales.component';
 
 export const childRoutes: Routes = [
     { path: '', component: HomeComponent },
@@ -50,6 +53,9 @@ export const childRoutes: Routes = [
     { path: 'cuotaDetail', component: CuotaDetailComponent },
     { path: 'deudorList', component: DeudorListComponent },
     { path: 'totalPorAnio', component: TotalPorAnioListComponent },
+    { path: 'egresoList', component: EgresoListComponent },
+    { path: 'egresoGastos', component: EgresoGastosComponent },
+    { path: 'egresoVales', component: EgresoValesComponent },
 ];
 
 @NgModule({

@@ -18,6 +18,7 @@ import { ConvenioModule } from '../convenio/convenio.module';
 import { CuotaModule } from '../cuota/cuota.module';
 import { DeudorModule } from '../deudor/deudor.module';
 import { TotalPorAnioModule } from '../total-por-anio/total-por-anio.module';
+import { EgresoModule } from '../egreso/egreso.module';
 
 @NgModule({
   declarations: [
@@ -41,7 +42,8 @@ import { TotalPorAnioModule } from '../total-por-anio/total-por-anio.module';
     ConvenioModule,
     CuotaModule,
     DeudorModule,
-    TotalPorAnioModule
+    TotalPorAnioModule,
+    EgresoModule
   ]
 })
 export class DashboardModule { }

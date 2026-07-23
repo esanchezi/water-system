@@ -1,0 +1,91 @@
+<div>
+  <mat-card>
+    <mat-card-title>Gastos del mes</mat-card-title>
+    <mat-card-content>
+
+      <div class="toolbar" fxLayout="row" fxLayoutAlign="space-between center">
+        <button mat-raised-button color="primary" (click)="openNewGastoDialog()">
+          <mat-icon>add</mat-icon> Capturar gasto
+        </button>
+
+        <div class="totales">
+          <span>Total pendiente: <strong>${{ totalPendientes | number:'1.2-2' }}</strong></span>
+          <span class="sep">·</span>
+          <span>Seleccionado: <strong>${{ totalSeleccionado | number:'1.2-2' }}</strong></span>
+          <button mat-raised-button color="accent" [disabled]="seleccionados.size === 0" (click)="openEmitirValeDialog()">
+            <mat-icon>receipt_long</mat-icon> Emitir vale ({{ seleccionados.size }})
+          </button>
+        </div>
+      </div>
+
+      <p class="hint" *ngIf="grupos.length === 0">No hay gastos pendientes capturados este mes.</p>
+
+      <mat-accordion multi="true">
+        <mat-expansion-panel *ngFor="let concepto of grupos">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-checkbox
+                [checked]="isConceptoFullySelected(concepto)"
+                (click)="$event.stopPropagation()"
+                (change)="toggleConcepto(concepto, $event.checked)">
+              </mat-checkbox>
+              {{ concepto.conceptoNombre }}
+            </mat-panel-title>
+            <mat-panel-description>
+              Total: ${{ concepto.total | number:'1.2-2' }}
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+
+          <mat-accordion multi="true">
+            <mat-expansion-panel *ngFor="let persona of concepto.personas">
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  <mat-checkbox
+                    [checked]="isPersonaFullySelected(persona)"
+                    (click)="$event.stopPropagation()"
+                    (change)="togglePersona(persona, $event.checked)">
+                  </mat-checkbox>
+                  {{ persona.nombre }}
+                </mat-panel-title>
+                <mat-panel-description>
+                  Subtotal: ${{ persona.total | number:'1.2-2' }}
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+
+              <table class="gastos-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Fecha</th>
+                    <th>Descripción</th>
+                    <th class="right">Monto</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let gasto of persona.gastos">
+                    <td>
+                      <mat-checkbox
+                        [checked]="isSelected(gasto)"
+                        (change)="toggleGasto(gasto, $event.checked)">
+                      </mat-checkbox>
+                    </td>
+                    <td>{{ gasto.fechaPagoStr }}</td>
+                    <td>{{ gasto.descripcion || '-' }}</td>
+                    <td class="right">${{ gasto.monto | number:'1.2-2' }}</td>
+                    <td>
+                      <button mat-icon-button matTooltip="Editar gasto" (click)="openEditarGastoDialog(gasto)">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </mat-expansion-panel>
+          </mat-accordion>
+        </mat-expansion-panel>
+      </mat-accordion>
+
+    </mat-card-content>
+  </mat-card>
+</div>

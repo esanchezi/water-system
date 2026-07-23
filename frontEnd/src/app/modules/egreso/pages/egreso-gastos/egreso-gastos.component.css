@@ -1,0 +1,43 @@
+.toolbar {
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.totales {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.totales .sep {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.hint {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.9rem;
+}
+
+.gastos-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.gastos-table th,
+.gastos-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.gastos-table th.right,
+.gastos-table td.right {
+  text-align: right;
+}
+
+mat-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
