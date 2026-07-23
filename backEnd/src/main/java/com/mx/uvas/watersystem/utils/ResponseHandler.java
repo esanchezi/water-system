@@ -18,6 +18,11 @@ public class ResponseHandler {
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
+    public static <T> ResponseEntity<T> handleBadRequest(T response, String errorMessage) {
+        addMetadata(response, Constants.ERROR_RESPONSE_MESSAGE, Constants.ERROR_RESPONSE_CODE, errorMessage);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
     public static <T> ResponseEntity<T> handleInternalServerError(T response, String errorMessage, Exception exception) {
         log.error(errorMessage, exception);
         addMetadata(response, Constants.ERROR_RESPONSE_MESSAGE, Constants.ERROR_RESPONSE_CODE, errorMessage);

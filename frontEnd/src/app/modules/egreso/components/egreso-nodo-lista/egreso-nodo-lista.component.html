@@ -1,0 +1,39 @@
+<mat-accordion multi="true">
+  <mat-expansion-panel *ngFor="let nodo of nodos">
+    <mat-expansion-panel-header>
+      <mat-panel-title>{{ nodo.label }}</mat-panel-title>
+      <mat-panel-description>Total: ${{ nodo.total | number:'1.2-2' }}</mat-panel-description>
+    </mat-expansion-panel-header>
+
+    <app-egreso-nodo-lista
+      *ngIf="nodo.children"
+      [nodos]="nodo.children"
+      (desactivar)="onDesactivar($event)">
+    </app-egreso-nodo-lista>
+
+    <table class="lineas-table" *ngIf="nodo.filas">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Folio</th>
+          <th>Descripción</th>
+          <th class="right">Monto</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let fila of nodo.filas">
+          <td>{{ fila.fechaStr }}</td>
+          <td>{{ fila.noFolio || '-' }}</td>
+          <td class="descripcion">{{ fila.descripcion || '-' }}</td>
+          <td class="right">${{ fila.monto | number:'1.2-2' }}</td>
+          <td>
+            <button mat-icon-button color="warn" matTooltip="Desactivar vale completo" (click)="onDesactivar(fila)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </mat-expansion-panel>
+</mat-accordion>

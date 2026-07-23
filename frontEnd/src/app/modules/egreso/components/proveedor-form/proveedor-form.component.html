@@ -1,0 +1,41 @@
+<mat-dialog-content>
+  <form [formGroup]="form">
+    <mat-card>
+      <mat-card-title>{{ esEdicion ? 'Editar proveedor' : 'Agregar proveedor' }}</mat-card-title>
+      <mat-card-content>
+
+        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
+          <mat-form-field appearance="outline" fxFlex="45%">
+            <mat-label>Nombre(s)</mat-label>
+            <input matInput formControlName="nombre" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="45%">
+            <mat-label>Segundo nombre (opcional)</mat-label>
+            <input matInput formControlName="nombre2" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="45%">
+            <mat-label>Apellido paterno</mat-label>
+            <input matInput formControlName="app" required />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="45%">
+            <mat-label>Apellido materno</mat-label>
+            <input matInput formControlName="apm" />
+          </mat-form-field>
+        </div>
+
+      </mat-card-content>
+    </mat-card>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-button color="primary" (click)="onSave()" [disabled]="form.invalid">
+    <mat-icon>save</mat-icon> Guardar
+  </button>
+  <button mat-button color="primary" (click)="onCancel()">
+    <mat-icon>cancel</mat-icon> Cancelar
+  </button>
+</mat-dialog-actions>

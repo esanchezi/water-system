@@ -1,0 +1,146 @@
+<div>
+    <mat-card>
+        <mat-card-title>Vales</mat-card-title>
+        <mat-card-content>
+            <div fxLayout="row" fxLayoutAlign="space-between center" fxLayoutGap="8px">
+                <button mat-raised-button color="primary" (click)="openNewEgresoDialog()">
+                    <mat-icon>add</mat-icon> Nuevo vale
+                </button>
+                <button mat-button color="primary" (click)="mostrarControlFolios = !mostrarControlFolios">
+                    <mat-icon>{{ mostrarControlFolios ? 'expand_less' : 'expand_more' }}</mat-icon>
+                    Control de folios
+                </button>
+            </div>
+
+            <mat-card *ngIf="mostrarControlFolios" class="control-folios">
+                <p><strong>Rango:</strong> {{ folioMin || '-' }} a {{ folioMax || '-' }}
+                    &nbsp;·&nbsp; <strong>Siguiente sugerido:</strong> {{ siguienteFolioSugerido }}</p>
+
+                <div *ngIf="folioGaps.length > 0">
+                    <p class="alerta">Faltan estos folios (huecos en la secuencia):</p>
+                    <p>{{ folioGaps.length }} folio(s):
+                        <span *ngFor="let n of folioGaps; let last = last">{{ folioFaltante(n) }}<span *ngIf="!last">, </span></span>
+                    </p>
+                </div>
+                <p *ngIf="folioGaps.length === 0 && folioMax > 0" class="ok">No hay huecos en la secuencia.</p>
+
+                <div *ngIf="folioDuplicados.length > 0">
+                    <p class="alerta">Folios repetidos en más de un vale:</p>
+                    <ul>
+                        <li *ngFor="let dup of folioDuplicados">
+                            Folio {{ dup.folio }}: {{ dup.vales.length }} vales
+                            ({{ dup.vales[0].fechaPagoStr }}<span *ngFor="let v of dup.vales.slice(1)">, {{ v.fechaPagoStr }}</span>)
+                        </li>
+                    </ul>
+                </div>
+                <p *ngIf="folioDuplicados.length === 0 && folioMax > 0" class="ok">No hay folios repetidos.</p>
+            </mat-card>
+
+            <div fxLayout="row" fxLayoutGap="16px" fxLayoutAlign="start center" class="filtros">
+                <mat-form-field appearance="outline" fxFlex="0 0 140px">
+                    <mat-label>Año</mat-label>
+                    <mat-select [(ngModel)]="filtroAnio" (selectionChange)="aplicarFiltros()">
+                        <mat-option value="todos">Todos</mat-option>
+                        <mat-option *ngFor="let anio of aniosDisponibles" [value]="anio">{{ anio }}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" fxFlex="0 0 180px">
+                    <mat-label>Mes</mat-label>
+                    <mat-select [(ngModel)]="filtroMes" (selectionChange)="aplicarFiltros()">
+                        <mat-option value="todos">Todos</mat-option>
+                        <mat-option *ngFor="let mes of meses; let i = index" [value]="i">{{ mes }}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" fxFlex="0 0 200px">
+                    <mat-label>Revisado</mat-label>
+                    <mat-select [(ngModel)]="filtroRevisado" (selectionChange)="aplicarFiltros()">
+                        <mat-option value="todos">Todos</mat-option>
+                        <mat-option value="si">Solo revisados</mat-option>
+                        <mat-option value="no">Solo sin revisar</mat-option>
+                    </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" fxFlex="0 0 200px">
+                    <mat-label>Validado en físico</mat-label>
+                    <mat-select [(ngModel)]="filtroValidadoFisico" (selectionChange)="aplicarFiltros()">
+                        <mat-option value="todos">Todos</mat-option>
+                        <mat-option value="si">Solo validados</mat-option>
+                        <mat-option value="no">Solo sin validar</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+
+            <table mat-table [dataSource]="dataSource" multiTemplateDataRows class="mat-cell">
+                <ng-container matColumnDef="fechaPagoStr">
+                    <th mat-header-cell *matHeaderCellDef>Fecha</th>
+                    <td mat-cell *matCellDef="let element">{{element.fechaPagoStr}}</td>
+                </ng-container>
+                <ng-container matColumnDef="noFolio">
+                    <th mat-header-cell *matHeaderCellDef>Folio</th>
+                    <td mat-cell *matCellDef="let element">{{element.noFolio || '-'}}</td>
+                </ng-container>
+                <ng-container matColumnDef="tipoComprobanteNombre">
+                    <th mat-header-cell *matHeaderCellDef>Comprobante</th>
+                    <td mat-cell *matCellDef="let element">{{element.tipoComprobanteNombre || '-'}}</td>
+                </ng-container>
+                <ng-container matColumnDef="categorias">
+                    <th mat-header-cell *matHeaderCellDef>Categoría(s)</th>
+                    <td mat-cell *matCellDef="let element">{{categorias(element)}}</td>
+                </ng-container>
+                <ng-container matColumnDef="proveedores">
+                    <th mat-header-cell *matHeaderCellDef>Proveedor</th>
+                    <td mat-cell *matCellDef="let element">{{proveedores(element)}}</td>
+                </ng-container>
+                <ng-container matColumnDef="monto">
+                    <th mat-header-cell *matHeaderCellDef>Monto</th>
+                    <td mat-cell *matCellDef="let element">${{element.monto | number:'1.2-2'}}</td>
+                </ng-container>
+                <ng-container matColumnDef="revisado">
+                    <th mat-header-cell *matHeaderCellDef>Revisado</th>
+                    <td mat-cell *matCellDef="let element">
+                        <mat-checkbox [checked]="!!element.revisado"
+                                      (click)="$event.stopPropagation()"
+                                      (change)="toggleRevisado(element)"></mat-checkbox>
+                    </td>
+                </ng-container>
+                <ng-container matColumnDef="validadoFisico">
+                    <th mat-header-cell *matHeaderCellDef>Validado en físico</th>
+                    <td mat-cell *matCellDef="let element">
+                        <mat-checkbox [checked]="!!element.validadoFisico"
+                                      (click)="$event.stopPropagation()"
+                                      (change)="toggleValidadoFisico(element)"></mat-checkbox>
+                    </td>
+                </ng-container>
+                <ng-container matColumnDef="acciones">
+                    <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                    <td mat-cell *matCellDef="let element">
+                        <button mat-icon-button color="primary" matTooltip="Ver detalle"
+                                (click)="toggleDetalle(element); $event.stopPropagation()">
+                            <mat-icon>{{ expandedElement === element ? 'expand_less' : 'expand_more' }}</mat-icon>
+                        </button>
+                        <button mat-icon-button color="warn" matTooltip="Desactivar"
+                                (click)="eliminar(element); $event.stopPropagation()">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </td>
+                </ng-container>
+
+                <ng-container matColumnDef="detalleExpandido">
+                    <td mat-cell *matCellDef="let element" [attr.colspan]="displayColumns.length">
+                        <div class="detalle-expandido" *ngIf="expandedElement === element">
+                            <div [innerHTML]="detalleSafeHtml(element)"></div>
+                        </div>
+                    </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="displayColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns:displayColumns"
+                    (click)="toggleDetalle(row)" class="fila-vale"></tr>
+                <tr mat-row *matRowDef="let row; columns:['detalleExpandido']" class="fila-detalle"></tr>
+            </table>
+            <mat-paginator [pageSizeOptions]="[10,20,30]" showFirstLastButtons></mat-paginator>
+        </mat-card-content>
+    </mat-card>
+</div>

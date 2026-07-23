@@ -1,0 +1,24 @@
+.lineas-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.lineas-table th,
+.lineas-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.lineas-table th.right,
+.lineas-table td.right {
+  text-align: right;
+}
+
+/* Los saltos de línea que se capturan en la descripción (ej. una lista de
+   artículos, uno por renglón) sí quedan guardados en la base de datos;
+   lo que faltaba era decirle al navegador que los respete al mostrarlos
+   (por defecto HTML colapsa saltos de línea y espacios). */
+.lineas-table td.descripcion {
+  white-space: pre-line;
+}

@@ -1,0 +1,120 @@
+<mat-dialog-content>
+  <form [formGroup]="egresoForm">
+    <mat-card>
+      <mat-card-title>Nuevo vale / recibo de egreso</mat-card-title>
+      <mat-card-content>
+
+        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
+          <mat-form-field appearance="outline" fxFlex="30%">
+            <mat-label>Fecha de pago</mat-label>
+            <input matInput type="date" formControlName="fechaPago" required />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="30%">
+            <mat-label>Fecha de compra (si aplica)</mat-label>
+            <input matInput type="date" formControlName="fechaCompra" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="30%">
+            <mat-label>Tipo de comprobante</mat-label>
+            <mat-select formControlName="tipoComprobanteId">
+              <mat-option *ngFor="let t of tiposComprobante" [value]="t.catalogoOpcionesId">
+                {{ t.nombre }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="30%">
+            <mat-label>Proveedor (a quién se le pagó/compró)</mat-label>
+            <input matInput placeholder="Ej. CFE, Ferretería, Juan el pocero..." formControlName="proveedor" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="30%">
+            <mat-label>Pagado / gestionado por (opcional)</mat-label>
+            <input matInput
+                   placeholder="Buscar en personas"
+                   formControlName="personaInput"
+                   [matAutocomplete]="autoPersona" />
+            <mat-autocomplete #autoPersona="matAutocomplete"
+                               [displayWith]="displayPersona"
+                               (optionSelected)="onPersonaSelected($event.option.value)">
+              <mat-option *ngFor="let p of personasFiltradas" [value]="p">
+                {{ nombreCompleto(p) }}
+              </mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <button mat-icon-button color="primary" type="button" matTooltip="Agregar nueva persona" (click)="openAgregarPersona()">
+            <mat-icon>person_add</mat-icon>
+          </button>
+          <button mat-icon-button color="primary" type="button" matTooltip="Editar persona seleccionada"
+                  [disabled]="!personaSeleccionada" (click)="openEditarPersona()">
+            <mat-icon>edit</mat-icon>
+          </button>
+
+          <mat-form-field appearance="outline" fxFlex="20%">
+            <mat-label>N° Folio</mat-label>
+            <input matInput formControlName="noFolio" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Descripción</mat-label>
+            <input matInput formControlName="descripcion" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Justificación</mat-label>
+            <textarea matInput rows="2" formControlName="justificacion"></textarea>
+          </mat-form-field>
+        </div>
+
+        <h4>Categorías de este vale</h4>
+        <p class="hint">Captura las categorías y sus montos; el total a pagar se calcula solo con la suma.</p>
+
+        <div formArrayName="lineasArray">
+          <div *ngFor="let linea of lineasArray.controls; let i = index" [formGroupName]="i"
+               fxLayout="row" fxLayoutGap="16px" fxLayoutAlign="start center">
+            <mat-form-field appearance="outline" fxFlex="30%">
+              <mat-label>Categoría</mat-label>
+              <mat-select formControlName="conceptoId">
+                <mat-option *ngFor="let c of conceptos" [value]="c.catalogoOpcionesId">
+                  {{ c.nombre }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" fxFlex="20%">
+              <mat-label>Monto</mat-label>
+              <input matInput type="number" formControlName="monto" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" fxFlex="35%">
+              <mat-label>Descripción (opcional)</mat-label>
+              <input matInput formControlName="descripcion" />
+            </mat-form-field>
+
+            <button mat-icon-button color="warn" type="button" (click)="removeLinea(i)" [disabled]="lineasArray.length === 1">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <button mat-button color="primary" type="button" (click)="addLinea()">
+          <mat-icon>add</mat-icon> Agregar categoría
+        </button>
+
+        <h3>Total a pagar: ${{ totalAPagar | number:'1.2-2' }}</h3>
+
+      </mat-card-content>
+    </mat-card>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-button color="primary" (click)="onSave()">
+    <mat-icon>save</mat-icon> Guardar
+  </button>
+  <button mat-button color="primary" (click)="onCancel()">
+    <mat-icon>cancel</mat-icon> Cancelar
+  </button>
+</mat-dialog-actions>
