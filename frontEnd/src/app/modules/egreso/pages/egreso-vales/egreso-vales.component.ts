@@ -280,7 +280,8 @@ export class EgresoValesComponent implements OnInit {
 
   openNewEgresoDialog(): void {
     const dialogRef = this.dialog.open(NewEgresoComponent, {
-      width: '900px',
+      width: '1200px',
+      maxWidth: '95vw',
       data: { folioSugerido: this.siguienteFolioSugerido }
     });
     dialogRef.afterClosed().subscribe((result: any) => {

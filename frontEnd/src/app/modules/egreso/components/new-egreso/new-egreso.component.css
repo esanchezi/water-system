@@ -15,6 +15,14 @@
 
 .linea-row {
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 8px 0;
-  margin-bottom: 8px;
+  padding: 12px 0;
+  margin-bottom: 12px;
+}
+
+mat-dialog-content {
+  max-height: 75vh;
+}
+
+h4 {
+  margin-top: 24px;
 }

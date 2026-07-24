@@ -141,13 +141,15 @@
 
         <h3>Total a pagar: ${{ totalAPagar | number:'1.2-2' }}</h3>
 
+        <p class="error" *ngIf="errorGuardando">{{ mensajeError }}</p>
+
       </mat-card-content>
     </mat-card>
   </form>
 </mat-dialog-content>
 
 <mat-dialog-actions>
-  <button mat-button color="primary" (click)="onSave()">
+  <button mat-button color="primary" (click)="onSave()" [disabled]="guardando">
     <mat-icon>save</mat-icon> Guardar
   </button>
   <button mat-button color="primary" (click)="onCancel()">

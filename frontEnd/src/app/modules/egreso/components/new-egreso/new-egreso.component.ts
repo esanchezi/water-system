@@ -37,6 +37,13 @@ export class NewEgresoComponent implements OnInit {
   personasFiltradas: PersonModel[] = [];
   personaSeleccionada: PersonModel | null = null;
 
+  // Si falla el guardado (ej. validación del backend), el diálogo se queda
+  // abierto con todo lo capturado -- no tiene caso perder todo el formulario
+  // por un error que se puede corregir ahí mismo.
+  guardando = false;
+  errorGuardando = false;
+  mensajeError = '';
+
   constructor(
     public dialogRef: MatDialogRef<NewEgresoComponent>,
     @Optional() @Inject(MAT_DIALOG_DATA) public data: NewEgresoDialogData
@@ -240,9 +247,16 @@ export class NewEgresoComponent implements OnInit {
       }))
     };
 
+    this.guardando = true;
+    this.errorGuardando = false;
+
     this.egresoService.save(data).subscribe({
       next: () => this.dialogRef.close(1),
-      error: () => this.dialogRef.close(2)
+      error: (e: any) => {
+        this.guardando = false;
+        this.errorGuardando = true;
+        this.mensajeError = e?.error?.metadata?.[0]?.date || 'Error al guardar el vale, intenta de nuevo.';
+      }
     });
   }
 
