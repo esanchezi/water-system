@@ -25,14 +25,21 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline" fxFlex="30%">
-            <mat-label>Categoría del vale (opcional)</mat-label>
+            <mat-label>{{ esModoSimple ? 'Categoría' : 'Categoría del vale (opcional)' }}</mat-label>
             <mat-select formControlName="conceptoId">
-              <mat-option [value]="''">Sin categoría (usar la de cada línea)</mat-option>
+              <mat-option *ngIf="!esModoSimple" [value]="''">Sin categoría (usar la de cada línea)</mat-option>
               <mat-option *ngFor="let c of conceptos" [value]="c.catalogoOpcionesId">
                 {{ c.nombre }}
               </mat-option>
             </mat-select>
-            <mat-hint>Asígnala solo si todo el vale es de una sola categoría (ej. Nómina)</mat-hint>
+            <mat-hint *ngIf="esModoSimple">Este vale es un solo pago, así que la categoría es obligatoria</mat-hint>
+            <mat-hint *ngIf="!esModoSimple">Asígnala solo si todo el vale es de una sola categoría (ej. Nómina)</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="30%" *ngIf="esModoSimple">
+            <mat-label>Monto</mat-label>
+            <input matInput type="number" formControlName="monto" />
+            <mat-hint>Vale de un solo pago, sin necesidad de agregar gastos abajo</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline" fxFlex="30%">
@@ -79,8 +86,8 @@
           </mat-form-field>
         </div>
 
-        <h4>Gastos de este vale</h4>
-        <p class="hint">Un vale puede juntar varios gastos de distinta categoría (ej. nómina + mantenimiento + material) para pagarle todo de una vez a la misma persona. Cada gasto es como uno solo de "Gastos del mes": si dejas proveedor/fecha/folio vacíos, toma los del vale completo; solo llénalos si este gasto en particular fue con otro proveedor, en otra fecha, o con su propio comprobante. Al agregar un gasto nuevo se copian la categoría/proveedor/fecha del anterior (usa "Limpiar" si este es distinto).</p>
+        <h4>Gastos de este vale (opcional)</h4>
+        <p class="hint">Si el vale es un solo pago, no necesitas agregar nada aquí -- usa el campo Monto de arriba. Agrega gastos solo si quieres desglosar el vale en varias categorías/proveedores (ej. nómina + mantenimiento + material) para pagarle todo de una vez a la misma persona. Cada gasto es como uno solo de "Gastos del mes": si dejas proveedor/fecha/folio vacíos, toma los del vale completo; solo llénalos si este gasto en particular fue con otro proveedor, en otra fecha, o con su propio comprobante. Al agregar un gasto nuevo se copian la categoría/proveedor/fecha del anterior (usa "Limpiar" si este es distinto).</p>
 
         <div formArrayName="lineasArray">
           <div *ngFor="let linea of lineasArray.controls; let i = index" [formGroupName]="i" class="linea-row"
@@ -122,7 +129,7 @@
             <button mat-icon-button color="primary" type="button" matTooltip="Limpiar esta línea" (click)="limpiarLinea(i)">
               <mat-icon>backspace</mat-icon>
             </button>
-            <button mat-icon-button color="warn" type="button" (click)="removeLinea(i)" [disabled]="lineasArray.length === 1">
+            <button mat-icon-button color="warn" type="button" (click)="removeLinea(i)">
               <mat-icon>delete</mat-icon>
             </button>
           </div>

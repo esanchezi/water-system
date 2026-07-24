@@ -53,6 +53,10 @@ export class NewEgresoComponent implements OnInit {
       noFolio:          [this.data?.folioSugerido || ''],
       tipoComprobanteId:[''],
       conceptoId:       [''],
+      // Solo aplica cuando el vale es "simple" (sin líneas): el monto se
+      // captura directo aquí. Si se agrega al menos una línea, el monto se
+      // calcula solo (suma de líneas) y este campo deja de usarse.
+      monto:            [''],
       descripcion:      [''],
       justificacion:    [''],
       lineasArray:      this.fb.array([])
@@ -92,7 +96,33 @@ export class NewEgresoComponent implements OnInit {
         );
       });
 
-    this.addLinea();
+    // Un vale puede ser "simple" (una sola cosa, sin líneas -- ej. un pago
+    // único con su propia factura) o desglosado en varias líneas. Empieza
+    // como simple; en cuanto se agrega la primera línea con "Agregar gasto"
+    // pasa al modo desglosado.
+    this.actualizarValidadoresModoSimple();
+  }
+
+  // Modo simple = sin líneas: el vale usa directamente monto + categoría de
+  // la cabecera. En ese modo, monto y categoría son obligatorios (no hay
+  // líneas de las que tomarlos). En modo desglosado son opcionales/no
+  // aplican (el monto se calcula solo, la categoría es opcional).
+  get esModoSimple(): boolean {
+    return this.lineasArray.length === 0;
+  }
+
+  private actualizarValidadoresModoSimple(): void {
+    const montoCtrl = this.egresoForm.get('monto');
+    const conceptoCtrl = this.egresoForm.get('conceptoId');
+    if (this.esModoSimple) {
+      montoCtrl?.setValidators([Validators.required, Validators.min(0.01)]);
+      conceptoCtrl?.setValidators([Validators.required]);
+    } else {
+      montoCtrl?.clearValidators();
+      conceptoCtrl?.clearValidators();
+    }
+    montoCtrl?.updateValueAndValidity();
+    conceptoCtrl?.updateValueAndValidity();
   }
 
   nombreCompleto(p: PersonModel): string {
@@ -161,6 +191,7 @@ export class NewEgresoComponent implements OnInit {
       fechaPago:    [anterior?.fechaPago || ''],
       noFolio:      ['']
     }));
+    this.actualizarValidadoresModoSimple();
   }
 
   limpiarLinea(index: number): void {
@@ -171,15 +202,19 @@ export class NewEgresoComponent implements OnInit {
 
   removeLinea(index: number): void {
     this.lineasArray.removeAt(index);
+    this.actualizarValidadoresModoSimple();
   }
 
   get totalAPagar(): number {
+    if (this.esModoSimple) {
+      return Number(this.egresoForm.get('monto')?.value) || 0;
+    }
     return (this.lineasArray.value as any[])
       .reduce((acc, l) => acc + (Number(l.monto) || 0), 0);
   }
 
   onSave(): void {
-    if (this.egresoForm.invalid || this.lineasArray.length === 0 || this.totalAPagar <= 0) return;
+    if (this.egresoForm.invalid || this.totalAPagar <= 0) return;
 
     const form = this.egresoForm.value;
     const data = {
@@ -190,6 +225,9 @@ export class NewEgresoComponent implements OnInit {
       noFolio:            form.noFolio || null,
       tipoComprobanteId:  form.tipoComprobanteId || null,
       conceptoId:         form.conceptoId || null,
+      // Solo se manda cuando el vale es simple (sin líneas); si hay líneas,
+      // el backend calcula el monto solo y este valor se ignora.
+      monto:              this.esModoSimple ? form.monto : null,
       descripcion:        form.descripcion || null,
       justificacion:      form.justificacion || null,
       lineas: (form.lineasArray as any[]).map(l => ({

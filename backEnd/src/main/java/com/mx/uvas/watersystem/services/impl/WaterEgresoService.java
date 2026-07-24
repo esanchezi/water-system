@@ -50,7 +50,8 @@ public class WaterEgresoService implements IWaterEgresoService {
     private static final String EGRESO_DEACTIVATED_MESSAGE = "Egreso desactivado";
     private static final String EGRESO_MARCADO_MESSAGE = "Vale actualizado";
     private static final String ERROR_MARCANDO_EGRESO_MESSAGE = "Error al actualizar las banderas del vale";
-    private static final String LINEAS_REQUIRED_MESSAGE = "Debe capturar al menos una línea de categoría";
+    private static final String MONTO_O_LINEAS_REQUIRED_MESSAGE = "Debe capturar el monto del vale (si no lleva líneas) o al menos una línea de categoría";
+    private static final String CONCEPTO_REQUIRED_SIN_LINEAS_MESSAGE = "Un vale sin líneas debe llevar una categoría";
     private static final String GASTOS_FOUND_MESSAGE = "Gastos pendientes encontrados";
     private static final String ERROR_SEARCHING_GASTOS_MESSAGE = "Error al consultar gastos pendientes";
     private static final String GASTO_CREATED_MESSAGE = "Gasto registrado correctamente";
@@ -92,28 +93,43 @@ public class WaterEgresoService implements IWaterEgresoService {
     public ResponseEntity<WaterEgresoRestResponse> create(WaterEgresoDto request) {
         WaterEgresoRestResponse response = new WaterEgresoRestResponse();
         try {
-            if (request.getLineas() == null || request.getLineas().isEmpty()) {
-                return ResponseHandler.handleBadRequest(response, LINEAS_REQUIRED_MESSAGE);
+            boolean hayLineas = request.getLineas() != null && !request.getLineas().isEmpty();
+
+            // Un vale puede ser "simple": una sola cosa, sin necesidad de
+            // desglosarla en líneas (ej. un pago único con su propia factura).
+            // En ese caso el monto y la categoría se toman directo de la
+            // cabecera en vez de sumar/repetir líneas.
+            if (!hayLineas) {
+                if (request.getMonto() == null || request.getMonto() <= 0) {
+                    return ResponseHandler.handleBadRequest(response, MONTO_O_LINEAS_REQUIRED_MESSAGE);
+                }
+                if (request.getConceptoId() == null) {
+                    return ResponseHandler.handleBadRequest(response, CONCEPTO_REQUIRED_SIN_LINEAS_MESSAGE);
+                }
             }
 
-            Double montoTotal = waterEgresoHelper.calcularTotal(request.getLineas());
+            Double montoTotal = hayLineas
+                    ? waterEgresoHelper.calcularTotal(request.getLineas())
+                    : request.getMonto();
 
             CatalogOptionsEntity tipoComprobante = request.getTipoComprobanteId() != null
                     ? waterHelper.getCatalogOptionOrThrow(request.getTipoComprobanteId())
                     : null;
 
-            // Concepto opcional de la cabecera: solo aplica cuando todo el
-            // vale es de una sola categoría (ej. Nómina), para que no
-            // aparezca "sin categoría" en los reportes que agrupan por el
-            // concepto de la cabecera en vez del de cada línea.
+            // Concepto opcional de la cabecera cuando hay líneas (solo aplica
+            // cuando todo el vale es de una sola categoría, ej. Nómina, para
+            // que no aparezca "sin categoría" en los reportes); obligatorio
+            // cuando el vale es simple (sin líneas), ya validado arriba.
             CatalogOptionsEntity concepto = request.getConceptoId() != null
                     ? waterHelper.getCatalogOptionOrThrow(request.getConceptoId())
                     : null;
 
             WaterEgresoEntity cabecera = waterEgresoHelper.buildCabecera(request, tipoComprobante, concepto, montoTotal);
 
-            request.getLineas().forEach(lineaRequest ->
-                    cabecera.getLineas().add(waterEgresoHelper.buildLinea(lineaRequest, cabecera)));
+            if (hayLineas) {
+                request.getLineas().forEach(lineaRequest ->
+                        cabecera.getLineas().add(waterEgresoHelper.buildLinea(lineaRequest, cabecera)));
+            }
 
             waterEgresoRepository.save(cabecera);
 
