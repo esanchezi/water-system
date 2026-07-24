@@ -37,12 +37,17 @@ export class NewEgresoComponent implements OnInit {
   personasFiltradas: PersonModel[] = [];
   personaSeleccionada: PersonModel | null = null;
 
-  // Si falla el guardado (ej. validación del backend), el diálogo se queda
-  // abierto con todo lo capturado -- no tiene caso perder todo el formulario
-  // por un error que se puede corregir ahí mismo.
+  // El diálogo nunca se cierra solo al guardar -- ni con error (para no
+  // perder lo capturado si el backend lo rechaza) ni con éxito (para poder
+  // seguir capturando varios vales seguidos sin reabrir el formulario). Solo
+  // se limpian cantidad y proveedor entre uno y otro; fecha/categoría/tipo de
+  // comprobante/folio/persona se quedan igual, que es lo que casi siempre se
+  // repite. Se cierra hasta que le des "Cerrar".
   guardando = false;
   errorGuardando = false;
   mensajeError = '';
+  guardados = 0;
+  ultimoGuardadoMonto: number | null = null;
 
   constructor(
     public dialogRef: MatDialogRef<NewEgresoComponent>,
@@ -251,7 +256,15 @@ export class NewEgresoComponent implements OnInit {
     this.errorGuardando = false;
 
     this.egresoService.save(data).subscribe({
-      next: () => this.dialogRef.close(1),
+      next: () => {
+        this.guardando = false;
+        this.guardados++;
+        this.ultimoGuardadoMonto = this.totalAPagar;
+        // Solo se limpian cantidad y proveedor; el resto (fecha, categoría,
+        // tipo de comprobante, folio, persona) se queda para el siguiente vale.
+        this.egresoForm.get('monto')?.reset('');
+        this.egresoForm.get('proveedor')?.reset('');
+      },
       error: (e: any) => {
         this.guardando = false;
         this.errorGuardando = true;
@@ -260,7 +273,7 @@ export class NewEgresoComponent implements OnInit {
     });
   }
 
-  onCancel(): void {
-    this.dialogRef.close();
+  onCerrar(): void {
+    this.dialogRef.close(this.guardados > 0 ? 1 : undefined);
   }
 }

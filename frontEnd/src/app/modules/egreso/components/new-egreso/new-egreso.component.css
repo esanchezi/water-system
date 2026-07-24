@@ -13,6 +13,11 @@
   font-weight: 500;
 }
 
+.confirmacion {
+  color: #2e7d32;
+  font-weight: 500;
+}
+
 .linea-row {
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   padding: 12px 0;

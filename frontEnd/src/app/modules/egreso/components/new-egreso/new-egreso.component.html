@@ -141,6 +141,10 @@
 
         <h3>Total a pagar: ${{ totalAPagar | number:'1.2-2' }}</h3>
 
+        <p class="confirmacion" *ngIf="guardados > 0">
+          ✓ {{ guardados }} vale(s) capturado(s) en esta sesión (último: ${{ ultimoGuardadoMonto | number:'1.2-2' }}).
+          Sigue capturando o dale Cerrar cuando termines.
+        </p>
         <p class="error" *ngIf="errorGuardando">{{ mensajeError }}</p>
 
       </mat-card-content>
@@ -152,7 +156,7 @@
   <button mat-button color="primary" (click)="onSave()" [disabled]="guardando">
     <mat-icon>save</mat-icon> Guardar
   </button>
-  <button mat-button color="primary" (click)="onCancel()">
-    <mat-icon>cancel</mat-icon> Cancelar
+  <button mat-button color="primary" (click)="onCerrar()">
+    <mat-icon>{{ guardados > 0 ? 'check' : 'cancel' }}</mat-icon> {{ guardados > 0 ? 'Cerrar' : 'Cancelar' }}
   </button>
 </mat-dialog-actions>
