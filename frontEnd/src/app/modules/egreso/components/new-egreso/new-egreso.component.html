@@ -25,6 +25,17 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline" fxFlex="30%">
+            <mat-label>Categoría del vale (opcional)</mat-label>
+            <mat-select formControlName="conceptoId">
+              <mat-option [value]="''">Sin categoría (usar la de cada línea)</mat-option>
+              <mat-option *ngFor="let c of conceptos" [value]="c.catalogoOpcionesId">
+                {{ c.nombre }}
+              </mat-option>
+            </mat-select>
+            <mat-hint>Asígnala solo si todo el vale es de una sola categoría (ej. Nómina)</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="30%">
             <mat-label>Proveedor (a quién se le pagó/compró)</mat-label>
             <input matInput placeholder="Ej. CFE, Ferretería, Juan el pocero..." formControlName="proveedor" />
           </mat-form-field>
@@ -69,7 +80,7 @@
         </div>
 
         <h4>Gastos de este vale</h4>
-        <p class="hint">Un vale puede juntar varios gastos de distinta categoría (ej. nómina + mantenimiento + material) para pagarle todo de una vez a la misma persona. Cada gasto es como uno solo de "Gastos del mes": si dejas proveedor/fecha/folio vacíos, toma los del vale completo; solo llénalos si este gasto en particular fue con otro proveedor, en otra fecha, o con su propio comprobante.</p>
+        <p class="hint">Un vale puede juntar varios gastos de distinta categoría (ej. nómina + mantenimiento + material) para pagarle todo de una vez a la misma persona. Cada gasto es como uno solo de "Gastos del mes": si dejas proveedor/fecha/folio vacíos, toma los del vale completo; solo llénalos si este gasto en particular fue con otro proveedor, en otra fecha, o con su propio comprobante. Al agregar un gasto nuevo se copian la categoría/proveedor/fecha del anterior (usa "Limpiar" si este es distinto).</p>
 
         <div formArrayName="lineasArray">
           <div *ngFor="let linea of lineasArray.controls; let i = index" [formGroupName]="i" class="linea-row"
@@ -108,6 +119,9 @@
               <input matInput formControlName="noFolio" />
             </mat-form-field>
 
+            <button mat-icon-button color="primary" type="button" matTooltip="Limpiar esta línea" (click)="limpiarLinea(i)">
+              <mat-icon>backspace</mat-icon>
+            </button>
             <button mat-icon-button color="warn" type="button" (click)="removeLinea(i)" [disabled]="lineasArray.length === 1">
               <mat-icon>delete</mat-icon>
             </button>

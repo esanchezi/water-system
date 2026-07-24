@@ -52,6 +52,7 @@ export class NewEgresoComponent implements OnInit {
       personaInput:     [''],
       noFolio:          [this.data?.folioSugerido || ''],
       tipoComprobanteId:[''],
+      conceptoId:       [''],
       descripcion:      [''],
       justificacion:    [''],
       lineasArray:      this.fb.array([])
@@ -141,15 +142,31 @@ export class NewEgresoComponent implements OnInit {
   // línea toma visualmente los del vale completo (caso normal: un solo
   // proveedor, un solo pago). Solo se llenan cuando ese gasto en particular
   // fue con otro proveedor, otra fecha, o trae su propio comprobante.
+  //
+  // Al agregar una línea nueva se prellena con categoría/proveedor/fecha de
+  // la línea anterior (lo más común es que varias líneas seguidas sean de la
+  // misma categoría y proveedor, solo cambiando el monto/fecha) -- así no
+  // hay que volver a elegirlos cada vez. "Limpiar" (limpiarLinea) sirve para
+  // cuando sí cambia y prefieres partir de cero en esa línea.
   addLinea(): void {
+    const anterior = this.lineasArray.length > 0
+      ? this.lineasArray.at(this.lineasArray.length - 1).value
+      : null;
+
     this.lineasArray.push(this.fb.group({
-      conceptoId:   ['', Validators.required],
+      conceptoId:   [anterior?.conceptoId || '', Validators.required],
       monto:        ['', [Validators.required, Validators.min(0.01)]],
       descripcion:  [''],
-      proveedor:    [''],
-      fechaPago:    [''],
+      proveedor:    [anterior?.proveedor || ''],
+      fechaPago:    [anterior?.fechaPago || ''],
       noFolio:      ['']
     }));
+  }
+
+  limpiarLinea(index: number): void {
+    this.lineasArray.at(index).reset({
+      conceptoId: '', monto: '', descripcion: '', proveedor: '', fechaPago: '', noFolio: ''
+    });
   }
 
   removeLinea(index: number): void {
@@ -172,6 +189,7 @@ export class NewEgresoComponent implements OnInit {
       personaId:          this.personaSeleccionada?.personaId || null,
       noFolio:            form.noFolio || null,
       tipoComprobanteId:  form.tipoComprobanteId || null,
+      conceptoId:         form.conceptoId || null,
       descripcion:        form.descripcion || null,
       justificacion:      form.justificacion || null,
       lineas: (form.lineasArray as any[]).map(l => ({

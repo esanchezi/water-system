@@ -102,7 +102,15 @@ public class WaterEgresoService implements IWaterEgresoService {
                     ? waterHelper.getCatalogOptionOrThrow(request.getTipoComprobanteId())
                     : null;
 
-            WaterEgresoEntity cabecera = waterEgresoHelper.buildCabecera(request, tipoComprobante, montoTotal);
+            // Concepto opcional de la cabecera: solo aplica cuando todo el
+            // vale es de una sola categoría (ej. Nómina), para que no
+            // aparezca "sin categoría" en los reportes que agrupan por el
+            // concepto de la cabecera en vez del de cada línea.
+            CatalogOptionsEntity concepto = request.getConceptoId() != null
+                    ? waterHelper.getCatalogOptionOrThrow(request.getConceptoId())
+                    : null;
+
+            WaterEgresoEntity cabecera = waterEgresoHelper.buildCabecera(request, tipoComprobante, concepto, montoTotal);
 
             request.getLineas().forEach(lineaRequest ->
                     cabecera.getLineas().add(waterEgresoHelper.buildLinea(lineaRequest, cabecera)));

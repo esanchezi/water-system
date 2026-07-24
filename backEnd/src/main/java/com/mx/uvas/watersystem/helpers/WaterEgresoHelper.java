@@ -29,7 +29,7 @@ public class WaterEgresoHelper {
     // El monto de la cabecera SIEMPRE se calcula como la suma de las líneas
     // (montoTotal), nunca se toma de lo que mande el cliente en request.getMonto():
     // así no hay forma de que se descuadre.
-    public WaterEgresoEntity buildCabecera(WaterEgresoDto request, CatalogOptionsEntity tipoComprobante, Double montoTotal) {
+    public WaterEgresoEntity buildCabecera(WaterEgresoDto request, CatalogOptionsEntity tipoComprobante, CatalogOptionsEntity concepto, Double montoTotal) {
         PersonEntity persona = request.getPersonaId() != null
                 ? personRepository.findById(request.getPersonaId())
                         .orElseThrow(() -> new NoSuchElementException("No se encontró la persona con el ID: " + request.getPersonaId()))
@@ -46,6 +46,7 @@ public class WaterEgresoHelper {
                 .noFolio(request.getNoFolio())
                 .justificacion(request.getJustificacion())
                 .tipoComprobante(tipoComprobante)
+                .concepto(concepto)
                 .persona(persona)
                 .estatus(1)
                 .userIdAdd(1) // TODO: Keycloak
