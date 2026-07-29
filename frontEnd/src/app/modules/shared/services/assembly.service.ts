@@ -2,9 +2,9 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { AttendanceModel } from '../models/Assembly.model';
 import { Observable } from 'rxjs';
+import { environment } from 'src/environments/environment';
 
-const base_url= "http://localhost:8080/Los_Lopez/api/v1/assembly";
-//const base_url= "http://springboot-app-412420.wl.r.appspot.com/Los_Lopez/api/v1/waterUser";
+const base_url = `${environment.apiUrl}/assembly`;
 
 @Injectable({
   providedIn: 'root'
