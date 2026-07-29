@@ -29,7 +29,12 @@ if [ ! -d "node_modules" ]; then
 fi
 
 echo "2/3 - Construyendo Angular (producción)..."
-npx ng build
+# --base-href /Los_Lopez/ es necesario porque el backend sirve todo bajo ese
+# context-path (ver application.properties). Sin esto, el navegador pide los
+# JS/CSS en la raíz ("/runtime.js") en vez de "/Los_Lopez/runtime.js", fallan
+# en 404 y Angular nunca arranca (pantalla en blanco). No se toca el
+# index.html fuente para no afectar "ng serve" en desarrollo (localhost:4200).
+npx ng build --base-href /Los_Lopez/
 
 echo "3/3 - Copiando el build al backend..."
 rm -rf "$BACKEND_STATIC_DIR"
