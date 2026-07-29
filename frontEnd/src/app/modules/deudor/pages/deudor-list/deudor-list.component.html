@@ -46,7 +46,9 @@
 
         <ng-container matColumnDef="noUsuario">
           <th mat-header-cell *matHeaderCellDef> N° Usuario</th>
-          <td mat-cell *matCellDef="let d">{{ d.noUsuario }}</td>
+          <td mat-cell *matCellDef="let d">
+            <a class="link-usuario" (click)="verDetalleUsuario(d)" matTooltip="Ver detalle del usuario">{{ d.noUsuario }}</a>
+          </td>
           <td mat-footer-cell *matFooterCellDef></td>
         </ng-container>
 

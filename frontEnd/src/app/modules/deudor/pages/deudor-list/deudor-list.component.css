@@ -5,3 +5,9 @@
 .mat-column-montoTotalPendiente {
   text-align: right;
 }
+
+.link-usuario {
+  color: #673ab7;
+  cursor: pointer;
+  text-decoration: underline;
+}
