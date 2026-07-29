@@ -9,6 +9,10 @@ export interface WaterEgresoGastoModel {
   proveedor?: string;
   personaId?: number;
   personaNombre?: string;
+  // Opcional: si el gasto ya tiene su propia nota/factura/remisión. Si se
+  // deja vacío, es justo el tipo de gasto que se agrupa en un "Vale caja".
+  tipoComprobanteId?: number;
+  tipoComprobanteNombre?: string;
 }
 
 export interface WaterEgresoEmitirModel {
@@ -17,5 +21,7 @@ export interface WaterEgresoEmitirModel {
   noFolio?: string;
   descripcion?: string;
   justificacion?: string;
+  conceptoId?: number;
   gastoIds: number[];
+  valeIds?: number[];
 }

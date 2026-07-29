@@ -1,0 +1,105 @@
+<div>
+  <mat-card>
+    <mat-card-title>Resumen anual</mat-card-title>
+    <mat-card-content>
+
+      <p class="hint" *ngIf="!cargando && filas.length === 0">No hay datos para mostrar.</p>
+
+      <mat-accordion multi="true">
+        <mat-expansion-panel *ngFor="let fila of filas">
+          <mat-expansion-panel-header>
+            <mat-panel-title><strong>{{ fila.anio }}</strong></mat-panel-title>
+            <mat-panel-description>Saldo caja: ${{ fila.saldoCaja | number:'1.2-2' }}</mat-panel-description>
+          </mat-expansion-panel-header>
+
+          <!-- Nivel 2: resumen de caja del año -->
+          <table class="tabla-resumen">
+            <thead>
+              <tr>
+                <th>Inicial</th>
+                <th>Recibos Caja</th>
+                <th>Efectivo</th>
+                <th>Egresos</th>
+                <th>Saldo caja</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>${{ fila.inicial | number:'1.2-2' }}</td>
+                <td>${{ fila.recibosCaja | number:'1.2-2' }}</td>
+                <td>${{ fila.efectivo | number:'1.2-2' }}</td>
+                <td>${{ fila.egresos | number:'1.2-2' }}</td>
+                <td><strong>${{ fila.saldoCaja | number:'1.2-2' }}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Nivel 3: mensual y por categoría -->
+          <div class="tablas-nivel3" fxLayout="row wrap" fxLayoutGap="32px">
+            <div class="tabla-mensual">
+              <h4>Mensual</h4>
+              <table class="tabla-detalle">
+                <thead>
+                  <tr>
+                    <th>Mes</th>
+                    <th class="right">Total mes</th>
+                    <th class="right">Recibos Caja</th>
+                    <th class="right">Efectivo</th>
+                    <th class="right">Egresos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let mes of fila.meses">
+                    <td>{{ mes.mesNombre }}</td>
+                    <td class="right">${{ mes.totalMes | number:'1.2-2' }}</td>
+                    <td class="right">${{ mes.recibosCaja | number:'1.2-2' }}</td>
+                    <td class="right">${{ mes.efectivo | number:'1.2-2' }}</td>
+                    <td class="right">${{ mes.egresos | number:'1.2-2' }}</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td><strong>Total</strong></td>
+                    <td class="right"><strong>${{ (fila.recibosCaja + fila.efectivo) | number:'1.2-2' }}</strong></td>
+                    <td class="right"><strong>${{ fila.recibosCaja | number:'1.2-2' }}</strong></td>
+                    <td class="right"><strong>${{ fila.efectivo | number:'1.2-2' }}</strong></td>
+                    <td class="right"><strong>${{ fila.egresos | number:'1.2-2' }}</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div class="tabla-categoria">
+              <h4>Egresos por categoría</h4>
+              <table class="tabla-detalle">
+                <thead>
+                  <tr>
+                    <th>Mes</th>
+                    <th class="right">Luz</th>
+                    <th class="right">Mantenimiento</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let cat of fila.categorias">
+                    <td>{{ cat.mesNombre }}</td>
+                    <td class="right">${{ cat.luz | number:'1.2-2' }}</td>
+                    <td class="right">${{ cat.mantenimiento | number:'1.2-2' }}</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td><strong>Total</strong></td>
+                    <td class="right"><strong>${{ sumaLuz(fila) | number:'1.2-2' }}</strong></td>
+                    <td class="right"><strong>${{ sumaMantenimiento(fila) | number:'1.2-2' }}</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+        </mat-expansion-panel>
+      </mat-accordion>
+
+    </mat-card-content>
+  </mat-card>
+</div>

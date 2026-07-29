@@ -1,11 +1,19 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, Inject, OnInit, Optional, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model';
 import { FeeModel } from 'src/app/modules/shared/models/Fee.model';
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { FeeService } from 'src/app/modules/shared/services/fee.service';
 import { UserService } from 'src/app/modules/shared/services/user.service';
+
+// Cuando se abre "copiando" a otro usuario ya existente (mismo domicilio,
+// otro integrante de la familia con su propia toma/cuenta): se prellenan
+// datos personales y domicilio, pero N° Usuario, Cuota y Observaciones se
+// quedan en blanco porque son justo lo que cambia entre uno y otro.
+export interface NewUserDialogData {
+  copyFrom?: any;
+}
 
 @Component({
   selector: 'app-new-user',
@@ -20,6 +28,8 @@ export class NewUserComponent implements OnInit {
   private readonly catalogService = inject(CatalogService);
   private readonly feeService     = inject(FeeService);
   private readonly userService    = inject(UserService);
+
+  constructor(@Optional() @Inject(MAT_DIALOG_DATA) public data: NewUserDialogData) { }
 
   listFee: FeeModel[]           = [];
 
@@ -36,6 +46,7 @@ export class NewUserComponent implements OnInit {
     this.initForm();
     this.loadCatalogs();
     this.getAmounts();
+    this.aplicarCopia();
   }
 
   private initForm(): void {
@@ -57,6 +68,36 @@ export class NewUserComponent implements OnInit {
       numero:             ['', Validators.required],
       referencia:         [''],
       entreCalle1:        [''],
+    });
+  }
+
+  get esCopia(): boolean {
+    return !!this.data?.copyFrom;
+  }
+
+  // Copia datos personales, domicilio y demás datos del usuario "fuente"
+  // (viene de details/{usuarioId}) a este formulario -- todo excepto
+  // N° Usuario, Cuota y Observaciones, que se dejan en blanco a propósito
+  // porque son justo lo que cambia entre uno y otro usuario de la misma casa.
+  private aplicarCopia(): void {
+    const u = this.data?.copyFrom;
+    if (!u) return;
+
+    this.userForm.patchValue({
+      fkFrecuenciaPagoId: u.frecuenciaPagoId ?? this.ID_FRECUENCIA_DEFAULT,
+      estatusPagoId:      u.estatusPagoId ?? '',
+      habitaDomicilio:    String(u.habitaDomicilio ?? true),
+      tieneToma:          String(u.tieneToma ?? true),
+      email:              u.email ?? '',
+      nombre:             u.nombre ?? '',
+      nombre2:            u.nombre2 ?? '',
+      app:                u.app ?? '',
+      apm:                u.apm ?? '',
+      fkIdSeccion:        u.seccionId ?? this.ID_SECCION_DEFAULT,
+      calle:              u.calle ?? '',
+      numero:             u.numero ?? '',
+      referencia:         u.referencia ?? '',
+      entreCalle1:        u.entrecalle1 ?? '',
     });
   }
 

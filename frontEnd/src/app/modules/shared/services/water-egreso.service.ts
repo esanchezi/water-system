@@ -52,4 +52,9 @@ export class WaterEgresoService {
   emitirVale(body: any): Observable<any> {
     return this.http.post(`${BASE}/emitir`, body);
   }
+
+  // Fusiona varios vales ya emitidos en uno nuevo más grande.
+  fusionarVales(body: any): Observable<any> {
+    return this.http.post(`${BASE}/fusionar`, body);
+  }
 }

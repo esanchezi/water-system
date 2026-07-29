@@ -13,5 +13,7 @@ public interface IWaterReceiptService {
 
     WaterReceiptDto create(WaterReceiptDto request);
 
+    ResponseEntity<WaterReceiptRestResponse> update(Integer id, WaterReceiptDto request);
+
     WaterReceiptDto createCancelled(WaterReceiptDto request);
 }

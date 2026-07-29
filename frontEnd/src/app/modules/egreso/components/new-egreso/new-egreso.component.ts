@@ -37,6 +37,18 @@ export class NewEgresoComponent implements OnInit {
   personasFiltradas: PersonModel[] = [];
   personaSeleccionada: PersonModel | null = null;
 
+  // El diálogo nunca se cierra solo al guardar -- ni con error (para no
+  // perder lo capturado si el backend lo rechaza) ni con éxito (para poder
+  // seguir capturando varios vales seguidos sin reabrir el formulario). Solo
+  // se limpian cantidad y proveedor entre uno y otro; fecha/categoría/tipo de
+  // comprobante/folio/persona se quedan igual, que es lo que casi siempre se
+  // repite. Se cierra hasta que le des "Cerrar".
+  guardando = false;
+  errorGuardando = false;
+  mensajeError = '';
+  guardados = 0;
+  ultimoGuardadoMonto: number | null = null;
+
   constructor(
     public dialogRef: MatDialogRef<NewEgresoComponent>,
     @Optional() @Inject(MAT_DIALOG_DATA) public data: NewEgresoDialogData
@@ -52,6 +64,11 @@ export class NewEgresoComponent implements OnInit {
       personaInput:     [''],
       noFolio:          [this.data?.folioSugerido || ''],
       tipoComprobanteId:[''],
+      conceptoId:       [''],
+      // Solo aplica cuando el vale es "simple" (sin líneas): el monto se
+      // captura directo aquí. Si se agrega al menos una línea, el monto se
+      // calcula solo (suma de líneas) y este campo deja de usarse.
+      monto:            [''],
       descripcion:      [''],
       justificacion:    [''],
       lineasArray:      this.fb.array([])
@@ -91,7 +108,33 @@ export class NewEgresoComponent implements OnInit {
         );
       });
 
-    this.addLinea();
+    // Un vale puede ser "simple" (una sola cosa, sin líneas -- ej. un pago
+    // único con su propia factura) o desglosado en varias líneas. Empieza
+    // como simple; en cuanto se agrega la primera línea con "Agregar gasto"
+    // pasa al modo desglosado.
+    this.actualizarValidadoresModoSimple();
+  }
+
+  // Modo simple = sin líneas: el vale usa directamente monto + categoría de
+  // la cabecera. En ese modo, monto y categoría son obligatorios (no hay
+  // líneas de las que tomarlos). En modo desglosado son opcionales/no
+  // aplican (el monto se calcula solo, la categoría es opcional).
+  get esModoSimple(): boolean {
+    return this.lineasArray.length === 0;
+  }
+
+  private actualizarValidadoresModoSimple(): void {
+    const montoCtrl = this.egresoForm.get('monto');
+    const conceptoCtrl = this.egresoForm.get('conceptoId');
+    if (this.esModoSimple) {
+      montoCtrl?.setValidators([Validators.required, Validators.min(0.01)]);
+      conceptoCtrl?.setValidators([Validators.required]);
+    } else {
+      montoCtrl?.clearValidators();
+      conceptoCtrl?.clearValidators();
+    }
+    montoCtrl?.updateValueAndValidity();
+    conceptoCtrl?.updateValueAndValidity();
   }
 
   nombreCompleto(p: PersonModel): string {
@@ -141,28 +184,49 @@ export class NewEgresoComponent implements OnInit {
   // línea toma visualmente los del vale completo (caso normal: un solo
   // proveedor, un solo pago). Solo se llenan cuando ese gasto en particular
   // fue con otro proveedor, otra fecha, o trae su propio comprobante.
+  //
+  // Al agregar una línea nueva se prellena con categoría/proveedor/fecha de
+  // la línea anterior (lo más común es que varias líneas seguidas sean de la
+  // misma categoría y proveedor, solo cambiando el monto/fecha) -- así no
+  // hay que volver a elegirlos cada vez. "Limpiar" (limpiarLinea) sirve para
+  // cuando sí cambia y prefieres partir de cero en esa línea.
   addLinea(): void {
+    const anterior = this.lineasArray.length > 0
+      ? this.lineasArray.at(this.lineasArray.length - 1).value
+      : null;
+
     this.lineasArray.push(this.fb.group({
-      conceptoId:   ['', Validators.required],
+      conceptoId:   [anterior?.conceptoId || '', Validators.required],
       monto:        ['', [Validators.required, Validators.min(0.01)]],
       descripcion:  [''],
-      proveedor:    [''],
-      fechaPago:    [''],
+      proveedor:    [anterior?.proveedor || ''],
+      fechaPago:    [anterior?.fechaPago || ''],
       noFolio:      ['']
     }));
+    this.actualizarValidadoresModoSimple();
+  }
+
+  limpiarLinea(index: number): void {
+    this.lineasArray.at(index).reset({
+      conceptoId: '', monto: '', descripcion: '', proveedor: '', fechaPago: '', noFolio: ''
+    });
   }
 
   removeLinea(index: number): void {
     this.lineasArray.removeAt(index);
+    this.actualizarValidadoresModoSimple();
   }
 
   get totalAPagar(): number {
+    if (this.esModoSimple) {
+      return Number(this.egresoForm.get('monto')?.value) || 0;
+    }
     return (this.lineasArray.value as any[])
       .reduce((acc, l) => acc + (Number(l.monto) || 0), 0);
   }
 
   onSave(): void {
-    if (this.egresoForm.invalid || this.lineasArray.length === 0 || this.totalAPagar <= 0) return;
+    if (this.egresoForm.invalid || this.totalAPagar <= 0) return;
 
     const form = this.egresoForm.value;
     const data = {
@@ -172,6 +236,10 @@ export class NewEgresoComponent implements OnInit {
       personaId:          this.personaSeleccionada?.personaId || null,
       noFolio:            form.noFolio || null,
       tipoComprobanteId:  form.tipoComprobanteId || null,
+      conceptoId:         form.conceptoId || null,
+      // Solo se manda cuando el vale es simple (sin líneas); si hay líneas,
+      // el backend calcula el monto solo y este valor se ignora.
+      monto:              this.esModoSimple ? form.monto : null,
       descripcion:        form.descripcion || null,
       justificacion:      form.justificacion || null,
       lineas: (form.lineasArray as any[]).map(l => ({
@@ -184,13 +252,28 @@ export class NewEgresoComponent implements OnInit {
       }))
     };
 
+    this.guardando = true;
+    this.errorGuardando = false;
+
     this.egresoService.save(data).subscribe({
-      next: () => this.dialogRef.close(1),
-      error: () => this.dialogRef.close(2)
+      next: () => {
+        this.guardando = false;
+        this.guardados++;
+        this.ultimoGuardadoMonto = this.totalAPagar;
+        // Solo se limpian cantidad y proveedor; el resto (fecha, categoría,
+        // tipo de comprobante, folio, persona) se queda para el siguiente vale.
+        this.egresoForm.get('monto')?.reset('');
+        this.egresoForm.get('proveedor')?.reset('');
+      },
+      error: (e: any) => {
+        this.guardando = false;
+        this.errorGuardando = true;
+        this.mensajeError = e?.error?.metadata?.[0]?.date || 'Error al guardar el vale, intenta de nuevo.';
+      }
     });
   }
 
-  onCancel(): void {
-    this.dialogRef.close();
+  onCerrar(): void {
+    this.dialogRef.close(this.guardados > 0 ? 1 : undefined);
   }
 }

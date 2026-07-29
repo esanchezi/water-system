@@ -2,6 +2,7 @@ package com.mx.uvas.watersystem.services.impl;
 
 import com.mx.uvas.watersystem.dto.WaterEgresoDto;
 import com.mx.uvas.watersystem.dto.WaterEgresoEmitirDto;
+import com.mx.uvas.watersystem.dto.WaterEgresoFusionarDto;
 import com.mx.uvas.watersystem.dto.WaterEgresoGastoDto;
 import com.mx.uvas.watersystem.dto.WaterEgresoMarcarDto;
 import com.mx.uvas.watersystem.helpers.WaterEgresoHelper;
@@ -49,7 +50,8 @@ public class WaterEgresoService implements IWaterEgresoService {
     private static final String EGRESO_DEACTIVATED_MESSAGE = "Egreso desactivado";
     private static final String EGRESO_MARCADO_MESSAGE = "Vale actualizado";
     private static final String ERROR_MARCANDO_EGRESO_MESSAGE = "Error al actualizar las banderas del vale";
-    private static final String LINEAS_REQUIRED_MESSAGE = "Debe capturar al menos una línea de categoría";
+    private static final String MONTO_O_LINEAS_REQUIRED_MESSAGE = "Debe capturar el monto del vale (si no lleva líneas) o al menos una línea de categoría";
+    private static final String CONCEPTO_REQUIRED_SIN_LINEAS_MESSAGE = "Un vale sin líneas debe llevar una categoría";
     private static final String GASTOS_FOUND_MESSAGE = "Gastos pendientes encontrados";
     private static final String ERROR_SEARCHING_GASTOS_MESSAGE = "Error al consultar gastos pendientes";
     private static final String GASTO_CREATED_MESSAGE = "Gasto registrado correctamente";
@@ -57,10 +59,14 @@ public class WaterEgresoService implements IWaterEgresoService {
     private static final String GASTO_ACTUALIZADO_MESSAGE = "Gasto actualizado correctamente";
     private static final String ERROR_ACTUALIZANDO_GASTO_MESSAGE = "Error al actualizar el gasto";
     private static final String GASTO_NO_PENDIENTE_MESSAGE = "El gasto no existe o ya no está pendiente (puede que ya se haya incluido en un vale)";
-    private static final String GASTOS_REQUIRED_MESSAGE = "Debe seleccionar al menos un gasto pendiente";
+    private static final String GASTOS_REQUIRED_MESSAGE = "Debe seleccionar al menos un gasto pendiente o un vale ya emitido";
     private static final String GASTOS_NOT_FOUND_MESSAGE = "Alguno de los gastos seleccionados ya no está disponible (verifique que sigan pendientes)";
     private static final String VALE_EMITIDO_MESSAGE = "Vale emitido correctamente";
     private static final String ERROR_EMITIENDO_VALE_MESSAGE = "Error al emitir el vale";
+    private static final String VALES_REQUIRED_MESSAGE = "Debe seleccionar al menos dos vales para fusionar";
+    private static final String VALES_NOT_FOUND_MESSAGE = "Alguno de los vales seleccionados ya no está disponible (verifique que sigan activos y sin fusionar)";
+    private static final String VALE_FUSIONADO_MESSAGE = "Vales fusionados correctamente";
+    private static final String ERROR_FUSIONANDO_VALE_MESSAGE = "Error al fusionar los vales";
 
     @Override
     public ResponseEntity<WaterEgresoRestResponse> findAll() {
@@ -87,20 +93,43 @@ public class WaterEgresoService implements IWaterEgresoService {
     public ResponseEntity<WaterEgresoRestResponse> create(WaterEgresoDto request) {
         WaterEgresoRestResponse response = new WaterEgresoRestResponse();
         try {
-            if (request.getLineas() == null || request.getLineas().isEmpty()) {
-                return ResponseHandler.handleBadRequest(response, LINEAS_REQUIRED_MESSAGE);
+            boolean hayLineas = request.getLineas() != null && !request.getLineas().isEmpty();
+
+            // Un vale puede ser "simple": una sola cosa, sin necesidad de
+            // desglosarla en líneas (ej. un pago único con su propia factura).
+            // En ese caso el monto y la categoría se toman directo de la
+            // cabecera en vez de sumar/repetir líneas.
+            if (!hayLineas) {
+                if (request.getMonto() == null || request.getMonto() <= 0) {
+                    return ResponseHandler.handleBadRequest(response, MONTO_O_LINEAS_REQUIRED_MESSAGE);
+                }
+                if (request.getConceptoId() == null) {
+                    return ResponseHandler.handleBadRequest(response, CONCEPTO_REQUIRED_SIN_LINEAS_MESSAGE);
+                }
             }
 
-            Double montoTotal = waterEgresoHelper.calcularTotal(request.getLineas());
+            Double montoTotal = hayLineas
+                    ? waterEgresoHelper.calcularTotal(request.getLineas())
+                    : request.getMonto();
 
             CatalogOptionsEntity tipoComprobante = request.getTipoComprobanteId() != null
                     ? waterHelper.getCatalogOptionOrThrow(request.getTipoComprobanteId())
                     : null;
 
-            WaterEgresoEntity cabecera = waterEgresoHelper.buildCabecera(request, tipoComprobante, montoTotal);
+            // Concepto opcional de la cabecera cuando hay líneas (solo aplica
+            // cuando todo el vale es de una sola categoría, ej. Nómina, para
+            // que no aparezca "sin categoría" en los reportes); obligatorio
+            // cuando el vale es simple (sin líneas), ya validado arriba.
+            CatalogOptionsEntity concepto = request.getConceptoId() != null
+                    ? waterHelper.getCatalogOptionOrThrow(request.getConceptoId())
+                    : null;
 
-            request.getLineas().forEach(lineaRequest ->
-                    cabecera.getLineas().add(waterEgresoHelper.buildLinea(lineaRequest, cabecera)));
+            WaterEgresoEntity cabecera = waterEgresoHelper.buildCabecera(request, tipoComprobante, concepto, montoTotal);
+
+            if (hayLineas) {
+                request.getLineas().forEach(lineaRequest ->
+                        cabecera.getLineas().add(waterEgresoHelper.buildLinea(lineaRequest, cabecera)));
+            }
 
             waterEgresoRepository.save(cabecera);
 
@@ -222,35 +251,73 @@ public class WaterEgresoService implements IWaterEgresoService {
     public ResponseEntity<WaterEgresoRestResponse> emitirVale(WaterEgresoEmitirDto request) {
         WaterEgresoRestResponse response = new WaterEgresoRestResponse();
         try {
-            if (request.getGastoIds() == null || request.getGastoIds().isEmpty()) {
+            boolean hayGastos = request.getGastoIds() != null && !request.getGastoIds().isEmpty();
+            boolean hayVales = request.getValeIds() != null && !request.getValeIds().isEmpty();
+
+            if (!hayGastos && !hayVales) {
                 return ResponseHandler.handleBadRequest(response, GASTOS_REQUIRED_MESSAGE);
             }
 
-            List<WaterEgresoEntity> gastos = waterEgresoRepository.findAllById(request.getGastoIds());
+            List<WaterEgresoEntity> gastos = hayGastos
+                    ? waterEgresoRepository.findAllById(request.getGastoIds())
+                    : new ArrayList<>();
 
             // Verifica que todos existan y que sigan pendientes (nivel = 2,
             // sin cabecera, activos): evita re-emitir un gasto que ya se
             // incluyó en otro vale por una condición de carrera.
-            boolean todosValidos = gastos.size() == request.getGastoIds().size()
+            boolean gastosValidos = !hayGastos || (gastos.size() == request.getGastoIds().size()
                     && gastos.stream().allMatch(g ->
                             g.getNivel() != null && g.getNivel() == 2
                                     && g.getEgresoPadre() == null
-                                    && g.getEstatus() != null && g.getEstatus() == 1);
+                                    && g.getEstatus() != null && g.getEstatus() == 1));
 
-            if (!todosValidos) {
+            if (!gastosValidos) {
                 return ResponseHandler.handleBadRequest(response, GASTOS_NOT_FOUND_MESSAGE);
             }
 
-            Double montoTotal = waterEgresoHelper.calcularTotalGastos(gastos);
+            // Vales ya emitidos que se incluyen junto con los gastos sueltos
+            // (ej. el vale de nómina de Brandy que se junta con los gastos
+            // pendientes de Francisca y Elizabeth en un solo "Pago de nómina
+            // de mayo"). Bajan a nivel 2, igual que en una fusión.
+            List<WaterEgresoEntity> vales = hayVales
+                    ? waterEgresoRepository.findAllById(request.getValeIds())
+                    : new ArrayList<>();
+
+            boolean valesValidos = !hayVales || (vales.size() == request.getValeIds().size()
+                    && vales.stream().allMatch(v ->
+                            v.getNivel() != null && v.getNivel() == 1
+                                    && v.getEgresoPadre() == null
+                                    && v.getEstatus() != null && v.getEstatus() == 1));
+
+            if (!valesValidos) {
+                return ResponseHandler.handleBadRequest(response, VALES_NOT_FOUND_MESSAGE);
+            }
+
+            List<WaterEgresoEntity> todasLasLineas = new ArrayList<>(gastos);
+            todasLasLineas.addAll(vales);
+
+            Double montoTotal = waterEgresoHelper.calcularTotalGastos(todasLasLineas);
 
             CatalogOptionsEntity tipoComprobante = request.getTipoComprobanteId() != null
                     ? waterHelper.getCatalogOptionOrThrow(request.getTipoComprobanteId())
                     : null;
 
-            WaterEgresoEntity cabecera = waterEgresoHelper.buildCabeceraEmision(request, tipoComprobante, montoTotal);
-            cabecera.setLineas(new ArrayList<>(gastos));
+            // Concepto opcional de la cabecera: solo cuando todo el vale es de
+            // una sola categoría (ej. Nómina), para que no aparezca "sin
+            // categoría" en los reportes que agrupan por el concepto de la
+            // cabecera en vez del de cada línea.
+            CatalogOptionsEntity concepto = request.getConceptoId() != null
+                    ? waterHelper.getCatalogOptionOrThrow(request.getConceptoId())
+                    : null;
+
+            WaterEgresoEntity cabecera = waterEgresoHelper.buildCabeceraEmision(request, tipoComprobante, concepto, montoTotal);
+            cabecera.setLineas(todasLasLineas);
 
             gastos.forEach(g -> g.setEgresoPadre(cabecera));
+            vales.forEach(v -> {
+                v.setNivel(2);
+                v.setEgresoPadre(cabecera);
+            });
 
             waterEgresoRepository.save(cabecera);
 
@@ -261,6 +328,58 @@ public class WaterEgresoService implements IWaterEgresoService {
             return ResponseHandler.handleNotFoundException(response, e.getMessage());
         } catch (Exception e) {
             return ResponseHandler.handleInternalServerError(response, ERROR_EMITIENDO_VALE_MESSAGE, e);
+        }
+    }
+
+    @Override
+    public ResponseEntity<WaterEgresoRestResponse> fusionarVales(WaterEgresoFusionarDto request) {
+        WaterEgresoRestResponse response = new WaterEgresoRestResponse();
+        try {
+            if (request.getValeIds() == null || request.getValeIds().size() < 2) {
+                return ResponseHandler.handleBadRequest(response, VALES_REQUIRED_MESSAGE);
+            }
+
+            List<WaterEgresoEntity> vales = waterEgresoRepository.findAllById(request.getValeIds());
+
+            // Verifica que todos existan y sigan siendo vales de primer nivel,
+            // activos y sin fusionar ya: evita fusionar dos veces el mismo vale
+            // o uno que ya se incluyó en otro por una condición de carrera.
+            boolean todosValidos = vales.size() == request.getValeIds().size()
+                    && vales.stream().allMatch(v ->
+                            v.getNivel() != null && v.getNivel() == 1
+                                    && v.getEgresoPadre() == null
+                                    && v.getEstatus() != null && v.getEstatus() == 1);
+
+            if (!todosValidos) {
+                return ResponseHandler.handleBadRequest(response, VALES_NOT_FOUND_MESSAGE);
+            }
+
+            Double montoTotal = waterEgresoHelper.calcularTotalGastos(vales);
+
+            CatalogOptionsEntity tipoComprobante = request.getTipoComprobanteId() != null
+                    ? waterHelper.getCatalogOptionOrThrow(request.getTipoComprobanteId())
+                    : null;
+
+            WaterEgresoEntity cabecera = waterEgresoHelper.buildCabeceraFusion(request, tipoComprobante, montoTotal);
+            cabecera.setLineas(new ArrayList<>(vales));
+
+            // Cada vale fusionado baja de nivel 1 a nivel 2 (ahora es línea del
+            // vale nuevo); sus propios hijos (si tenía sub-líneas) no se tocan,
+            // siguen apuntando a este mismo id sin importar su nuevo nivel.
+            vales.forEach(v -> {
+                v.setNivel(2);
+                v.setEgresoPadre(cabecera);
+            });
+
+            waterEgresoRepository.save(cabecera);
+
+            response.setData(List.of(waterEgresoMapper.entityToDto(cabecera)));
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, VALE_FUSIONADO_MESSAGE);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (NoSuchElementException e) {
+            return ResponseHandler.handleNotFoundException(response, e.getMessage());
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, ERROR_FUSIONANDO_VALE_MESSAGE, e);
         }
     }
 

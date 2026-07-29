@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -71,6 +72,48 @@ public class WaterReceiptService implements IWaterReceiptService {
         log.info("Receipt saved id:{}",receiptPersist.getAguaReciboId());
 
         return waterReceiptMapper.entityToDto(receiptPersist);
+    }
+
+    // Edita un recibo ya existente -- incluye todo lo que trae el formulario
+    // de captura (usuario, folio, fecha, concepto, comité, tipo de pago,
+    // montos aplicados por año). Los pagos se reemplazan por completo: como
+    // la relación tiene orphanRemoval=true, basta con vaciar la colección y
+    // volver a construirla -- Hibernate borra los que ya no estén y crea los
+    // nuevos al hacer flush.
+    @Override
+    public ResponseEntity<WaterReceiptRestResponse> update(Integer id, WaterReceiptDto request) {
+        WaterReceiptRestResponse response = new WaterReceiptRestResponse();
+        try {
+            WaterReceiptEntity existente = waterReceiptRepository.findById(id)
+                    .orElseThrow(() -> new NoSuchElementException("No se encontró el recibo con el ID: " + id));
+
+            WaterUserEntity user = waterHelper.getWaterUser(request.getWaterUser().getNoUsuario());
+            CatalogOptionsEntity concepto = waterHelper.getCatalogOptionOrThrow(request.getConceptoId());
+
+            waterReceiptHelper.actualizarWaterReceiptEntity(existente, request, user, concepto);
+
+            if (existente.getWaterReceiptPayment() != null) {
+                existente.getWaterReceiptPayment().clear();
+            } else {
+                existente.setWaterReceiptPayment(new HashSet<>());
+            }
+            createReceiptPayments(request.getWaterReceiptPayment(), existente);
+
+            WaterReceiptEntity receiptPersist = waterReceiptRepository.save(existente);
+            guardarAniosPagados(request.getAniosPagados(), user);
+            log.info("Receipt updated id:{}", receiptPersist.getAguaReciboId());
+
+            response.setData(List.of(waterReceiptMapper.entityToDto(receiptPersist)));
+            response.addMetadata(OK_RESPONSE_MESSAGE, CODIGO_OO, "Recibo actualizado correctamente");
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (NoSuchElementException e) {
+            response.addMetadata(ERROR_RESPONSE_MESSAGE, CODIGO_MENOS_O1, e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            response.addMetadata(ERROR_RESPONSE_MESSAGE, CODIGO_MENOS_O1, "Error al actualizar el recibo");
+            log.error("Error al actualizar recibo: {}", e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @Override

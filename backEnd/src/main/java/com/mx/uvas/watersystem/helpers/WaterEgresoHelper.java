@@ -2,6 +2,7 @@ package com.mx.uvas.watersystem.helpers;
 
 import com.mx.uvas.watersystem.dto.WaterEgresoDto;
 import com.mx.uvas.watersystem.dto.WaterEgresoEmitirDto;
+import com.mx.uvas.watersystem.dto.WaterEgresoFusionarDto;
 import com.mx.uvas.watersystem.dto.WaterEgresoGastoDto;
 import com.mx.uvas.watersystem.dto.WaterEgresoLineaDto;
 import com.mx.uvas.watersystem.model.CatalogOptionsEntity;
@@ -28,7 +29,7 @@ public class WaterEgresoHelper {
     // El monto de la cabecera SIEMPRE se calcula como la suma de las líneas
     // (montoTotal), nunca se toma de lo que mande el cliente en request.getMonto():
     // así no hay forma de que se descuadre.
-    public WaterEgresoEntity buildCabecera(WaterEgresoDto request, CatalogOptionsEntity tipoComprobante, Double montoTotal) {
+    public WaterEgresoEntity buildCabecera(WaterEgresoDto request, CatalogOptionsEntity tipoComprobante, CatalogOptionsEntity concepto, Double montoTotal) {
         PersonEntity persona = request.getPersonaId() != null
                 ? personRepository.findById(request.getPersonaId())
                         .orElseThrow(() -> new NoSuchElementException("No se encontró la persona con el ID: " + request.getPersonaId()))
@@ -45,6 +46,7 @@ public class WaterEgresoHelper {
                 .noFolio(request.getNoFolio())
                 .justificacion(request.getJustificacion())
                 .tipoComprobante(tipoComprobante)
+                .concepto(concepto)
                 .persona(persona)
                 .estatus(1)
                 .userIdAdd(1) // TODO: Keycloak
@@ -104,6 +106,13 @@ public class WaterEgresoHelper {
                         .orElseThrow(() -> new NoSuchElementException("No se encontró la persona con el ID: " + request.getPersonaId()))
                 : null;
 
+        // Opcional: si el gasto ya trae su propia nota/factura/remisión se
+        // captura aquí desde el inicio; si se deja vacío, es justo el tipo de
+        // gasto que se va a juntar después en un "Vale caja" al emitir.
+        CatalogOptionsEntity tipoComprobante = request.getTipoComprobanteId() != null
+                ? waterHelper.getCatalogOptionOrThrow(request.getTipoComprobanteId())
+                : null;
+
         return WaterEgresoEntity.builder()
                 .valido(true)
                 .nivel(2)
@@ -113,6 +122,7 @@ public class WaterEgresoHelper {
                 .proveedor(request.getProveedor())
                 .concepto(concepto)
                 .persona(persona)
+                .tipoComprobante(tipoComprobante)
                 .egresoPadre(null)
                 .estatus(1)
                 .userIdAdd(1) // TODO: Keycloak
@@ -131,20 +141,50 @@ public class WaterEgresoHelper {
                         .orElseThrow(() -> new NoSuchElementException("No se encontró la persona con el ID: " + request.getPersonaId()))
                 : null;
 
+        CatalogOptionsEntity tipoComprobante = request.getTipoComprobanteId() != null
+                ? waterHelper.getCatalogOptionOrThrow(request.getTipoComprobanteId())
+                : null;
+
         existente.setFechaPago(request.getFechaPago());
         existente.setMonto(request.getMonto());
         existente.setDescripcion(request.getDescripcion());
         existente.setProveedor(request.getProveedor());
         existente.setConcepto(concepto);
         existente.setPersona(persona);
+        existente.setTipoComprobante(tipoComprobante);
         existente.setUserIdUpdate(1); // TODO: Keycloak
         existente.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
     }
 
     // Cabecera del vale consolidado que se crea al emitir: no trae proveedor
-    // ni persona propios (cada gasto ya trae los suyos), su monto es la suma
-    // de los gastos que se le re-parentan.
-    public WaterEgresoEntity buildCabeceraEmision(WaterEgresoEmitirDto request, CatalogOptionsEntity tipoComprobante, Double montoTotal) {
+    // ni persona propios (cada gasto/vale incluido ya trae los suyos), su
+    // monto es la suma de lo que se le re-parenta. concepto es opcional: se
+    // usa cuando TODO el vale es de una sola categoría (ej. Nómina), para
+    // que no aparezca "sin categoría" en reportes que agrupan por el
+    // concepto de la cabecera en vez del de cada línea.
+    public WaterEgresoEntity buildCabeceraEmision(WaterEgresoEmitirDto request, CatalogOptionsEntity tipoComprobante, CatalogOptionsEntity concepto, Double montoTotal) {
+        return WaterEgresoEntity.builder()
+                .valido(true)
+                .nivel(1)
+                .fechaPago(request.getFechaPago())
+                .monto(montoTotal)
+                .descripcion(request.getDescripcion())
+                .noFolio(request.getNoFolio())
+                .justificacion(request.getJustificacion())
+                .tipoComprobante(tipoComprobante)
+                .concepto(concepto)
+                .estatus(1)
+                .userIdAdd(1) // TODO: Keycloak
+                .dateAdd(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))
+                .lineas(new ArrayList<>())
+                .build();
+    }
+
+    // Cabecera del vale que resulta de fusionar varios vales ya emitidos.
+    // No trae proveedor/persona propios (cada vale fusionado ya trae los
+    // suyos en su propia línea); su monto es la suma de los vales que se
+    // le re-parentan.
+    public WaterEgresoEntity buildCabeceraFusion(WaterEgresoFusionarDto request, CatalogOptionsEntity tipoComprobante, Double montoTotal) {
         return WaterEgresoEntity.builder()
                 .valido(true)
                 .nivel(1)
@@ -162,7 +202,7 @@ public class WaterEgresoHelper {
     }
 
     // Suma de los montos de los gastos pendientes que se van a incluir en el
-    // vale que se está emitiendo.
+    // vale que se está emitiendo (también sirve para sumar vales al fusionarlos).
     public Double calcularTotalGastos(Iterable<WaterEgresoEntity> gastos) {
         double suma = 0d;
         for (WaterEgresoEntity g : gastos) {

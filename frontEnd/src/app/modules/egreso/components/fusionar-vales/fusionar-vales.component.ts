@@ -5,26 +5,21 @@ import { CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model'
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { WaterEgresoService } from 'src/app/modules/shared/services/water-egreso.service';
 
-export interface EmitirValeDialogData {
-  gastoIds: number[];
-  // Vales ya emitidos que se incluyen junto con los gastos sueltos (ej. el
-  // vale de nómina de Brandy que se junta con los gastos pendientes de
-  // Francisca y Elizabeth en un solo "Pago de nómina de mayo"). Opcional.
-  valeIds?: number[];
+export interface FusionarValesDialogData {
+  valeIds: number[];
   totalSeleccionado: number;
 }
 
-// Último paso del flujo de gastos del mes: junta los gastos (y, opcionalmente,
-// vales ya emitidos) seleccionados en un solo vale/recibo. Aquí se capturan
-// los datos propios del comprobante que ampara ese vale, y opcionalmente la
-// categoría del vale resultante (cuando todo es de un solo concepto, ej.
-// Nómina, para que no aparezca "sin categoría" en los reportes).
+// Fusiona varios vales YA EMITIDOS (cada uno con su propio folio) en un
+// vale nuevo más grande -- ej. el vale de nómina de una persona + el de
+// otra, juntos en "Pago de nómina del mes". Cada vale seleccionado pasa a
+// ser línea del vale nuevo; sus propias sub-líneas (si tenía) no se tocan.
 @Component({
-  selector: 'app-emitir-vale',
-  templateUrl: './emitir-vale.component.html',
-  styleUrls: ['./emitir-vale.component.css']
+  selector: 'app-fusionar-vales',
+  templateUrl: './fusionar-vales.component.html',
+  styleUrls: ['./fusionar-vales.component.css']
 })
-export class EmitirValeComponent implements OnInit {
+export class FusionarValesComponent implements OnInit {
 
   private readonly fb = inject(FormBuilder);
   private readonly egresoService = inject(WaterEgresoService);
@@ -32,11 +27,10 @@ export class EmitirValeComponent implements OnInit {
 
   public valeForm!: FormGroup;
   tiposComprobante: CatalogOptionModel[] = [];
-  conceptos: CatalogOptionModel[] = [];
 
   constructor(
-    public dialogRef: MatDialogRef<EmitirValeComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: EmitirValeDialogData
+    public dialogRef: MatDialogRef<FusionarValesComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: FusionarValesDialogData
   ) { }
 
   ngOnInit(): void {
@@ -45,27 +39,17 @@ export class EmitirValeComponent implements OnInit {
       tipoComprobanteId:  [''],
       noFolio:            [''],
       descripcion:        [''],
-      justificacion:      [''],
-      conceptoId:         ['']
+      justificacion:      ['']
     });
 
     this.catalogService.getOptionsByClave('TIPO_COMPROBANTE_EGRESO').subscribe({
       next: (opts) => this.tiposComprobante = opts,
       error: (e: any) => console.error(e)
     });
-
-    this.catalogService.getOptionsByClave('CONCEPTOS_EGRESO').subscribe({
-      next: (opts) => this.conceptos = opts,
-      error: (e: any) => console.error(e)
-    });
-  }
-
-  get totalSeleccionados(): number {
-    return this.data.gastoIds.length + (this.data.valeIds?.length || 0);
   }
 
   onSave(): void {
-    if (this.valeForm.invalid || this.totalSeleccionados === 0) return;
+    if (this.valeForm.invalid || !this.data.valeIds.length) return;
 
     const form = this.valeForm.value;
     const body = {
@@ -74,12 +58,10 @@ export class EmitirValeComponent implements OnInit {
       noFolio:            form.noFolio || null,
       descripcion:        form.descripcion || null,
       justificacion:      form.justificacion || null,
-      conceptoId:         form.conceptoId || null,
-      gastoIds:           this.data.gastoIds || [],
-      valeIds:            this.data.valeIds || []
+      valeIds:            this.data.valeIds
     };
 
-    this.egresoService.emitirVale(body).subscribe({
+    this.egresoService.fusionarVales(body).subscribe({
       next: () => this.dialogRef.close(1),
       error: () => this.dialogRef.close(2)
     });

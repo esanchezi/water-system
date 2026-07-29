@@ -11,6 +11,11 @@
                             matTooltip="Captura un gasto suelto para juntarlo después en un vale, desde Gastos del mes">
                         <mat-icon>receipt</mat-icon> Capturar solo gasto
                     </button>
+                    <button mat-stroked-button color="accent" [disabled]="seleccionadosFusion.size < 2"
+                            (click)="openFusionarDialog()"
+                            matTooltip="Marca 2 o más vales de la tabla (columna Fusionar) y júntalos en uno nuevo">
+                        <mat-icon>call_merge</mat-icon> Fusionar seleccionados ({{ seleccionadosFusion.size }})
+                    </button>
                 </div>
                 <button mat-button color="primary" (click)="mostrarControlFolios = !mostrarControlFolios">
                     <mat-icon>{{ mostrarControlFolios ? 'expand_less' : 'expand_more' }}</mat-icon>
@@ -79,6 +84,14 @@
             </div>
 
             <table mat-table [dataSource]="dataSource" multiTemplateDataRows class="mat-cell">
+                <ng-container matColumnDef="fusion">
+                    <th mat-header-cell *matHeaderCellDef matTooltip="Marca 2+ vales para fusionarlos en uno nuevo">Fusionar</th>
+                    <td mat-cell *matCellDef="let element">
+                        <mat-checkbox [checked]="isSeleccionadoFusion(element)"
+                                      (click)="$event.stopPropagation()"
+                                      (change)="toggleSeleccionFusion(element, $event.checked)"></mat-checkbox>
+                    </td>
+                </ng-container>
                 <ng-container matColumnDef="fechaPagoStr">
                     <th mat-header-cell *matHeaderCellDef>Fecha</th>
                     <td mat-cell *matCellDef="let element">{{element.fechaPagoStr}}</td>

@@ -6,3 +6,9 @@
 .category-container >*{
     width: 100%;
 }*/
+
+.hint-copia {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.85rem;
+  margin: 0 24px 8px;
+}

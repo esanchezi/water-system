@@ -49,7 +49,13 @@ public class WaterReceiptMapper {
         var dto = new WaterReceiptPaymentDto();
         BeanUtils.copyProperties(entity, dto);
         dto.setConcepto(entity.getCatConcepto() != null ? entity.getCatConcepto().getNombre() : null);
-        System.out.println( dto.getConcepto());
+        dto.setConceptoId(entity.getCatConcepto() != null ? entity.getCatConcepto().getCatalogoOpcionesId() : null);
+        // comiteId/tipoPagoId no se llenan solos con BeanUtils (la entidad
+        // guarda el objeto de catálogo, no el id plano) -- se necesitan
+        // explícitos para poder editar el recibo desde el mismo formulario
+        // de captura, que sí trabaja con los ids.
+        dto.setComiteId(entity.getCatComite() != null ? entity.getCatComite().getCatalogoOpcionesId() : null);
+        dto.setTipoPagoId(entity.getCatTiPag() != null ? entity.getCatTiPag().getCatalogoOpcionesId() : null);
         return dto;
     }
 }

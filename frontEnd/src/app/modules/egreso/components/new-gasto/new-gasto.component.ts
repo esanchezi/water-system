@@ -37,6 +37,7 @@ export class NewGastoComponent implements OnInit {
 
   public gastoForm!: FormGroup;
   conceptos: CatalogOptionModel[] = [];
+  tiposComprobante: CatalogOptionModel[] = [];
 
   personas: PersonModel[] = [];
   personasFiltradas: PersonModel[] = [];
@@ -62,16 +63,24 @@ export class NewGastoComponent implements OnInit {
     const gasto = this.data?.gasto;
 
     this.gastoForm = this.fb.group({
-      fechaPago:     [gasto?.fechaPago || '', Validators.required],
-      conceptoId:    [gasto?.conceptoId || '', Validators.required],
-      monto:         [gasto?.monto || '', [Validators.required, Validators.min(0.01)]],
-      proveedor:     [gasto?.proveedor || ''],
-      personaInput:  [''],
-      descripcion:   [gasto?.descripcion || '']
+      fechaPago:          [gasto?.fechaPago || '', Validators.required],
+      conceptoId:         [gasto?.conceptoId || '', Validators.required],
+      monto:              [gasto?.monto || '', [Validators.required, Validators.min(0.01)]],
+      proveedor:          [gasto?.proveedor || ''],
+      personaInput:       [''],
+      descripcion:        [gasto?.descripcion || ''],
+      tipoComprobanteId:  [gasto?.tipoComprobanteId || '']
     });
 
     this.catalogService.getOptionsByClave('CONCEPTOS_EGRESO').subscribe({
       next: (opts) => this.conceptos = opts,
+      error: (e: any) => console.error(e)
+    });
+
+    // Factura/Nota/Remisión (ya tiene su propio comprobante) o Vale caja (se
+    // deja vacío aquí y se clasifica hasta que se agrupa en el vale mensual).
+    this.catalogService.getOptionsByClave('TIPO_COMPROBANTE_EGRESO').subscribe({
+      next: (opts) => this.tiposComprobante = opts,
       error: (e: any) => console.error(e)
     });
 
@@ -152,12 +161,13 @@ export class NewGastoComponent implements OnInit {
 
     const form = this.gastoForm.value;
     const data = {
-      fechaPago:    form.fechaPago,
-      conceptoId:   form.conceptoId,
-      monto:        form.monto,
-      proveedor:    form.proveedor || null,
-      personaId:    this.personaSeleccionada?.personaId || null,
-      descripcion:  form.descripcion || null
+      fechaPago:          form.fechaPago,
+      conceptoId:         form.conceptoId,
+      monto:              form.monto,
+      proveedor:          form.proveedor || null,
+      personaId:          this.personaSeleccionada?.personaId || null,
+      descripcion:        form.descripcion || null,
+      tipoComprobanteId:  form.tipoComprobanteId || null
     };
 
     this.errorGuardando = false;

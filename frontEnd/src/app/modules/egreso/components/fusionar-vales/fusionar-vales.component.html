@@ -1,12 +1,13 @@
 <mat-dialog-content>
   <form [formGroup]="valeForm">
     <mat-card>
-      <mat-card-title>Emitir vale</mat-card-title>
+      <mat-card-title>Fusionar vales</mat-card-title>
       <mat-card-subtitle>
-        {{ data.gastoIds.length }} gasto(s)<span *ngIf="data.valeIds?.length"> + {{ data.valeIds?.length }} vale(s) ya emitido(s)</span>
-        seleccionado(s) · Total: ${{ data.totalSeleccionado | number:'1.2-2' }}
+        {{ data.valeIds.length }} vale(s) seleccionado(s) · Total: ${{ data.totalSeleccionado | number:'1.2-2' }}
       </mat-card-subtitle>
       <mat-card-content>
+
+        <p class="hint w-100">Cada vale seleccionado quedará como línea del vale nuevo (con su propio proveedor/fecha/folio, y sus sub-líneas si tenía). Aquí solo capturas los datos del vale que los va a agrupar.</p>
 
         <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
           <mat-form-field appearance="outline" fxFlex="45%">
@@ -28,17 +29,6 @@
             <input matInput formControlName="noFolio" />
           </mat-form-field>
 
-          <mat-form-field appearance="outline" fxFlex="45%">
-            <mat-label>Categoría (opcional)</mat-label>
-            <mat-select formControlName="conceptoId">
-              <mat-option [value]="''">Sin categoría (usar la de cada línea)</mat-option>
-              <mat-option *ngFor="let c of conceptos" [value]="c.catalogoOpcionesId">
-                {{ c.nombre }}
-              </mat-option>
-            </mat-select>
-            <mat-hint>Asígnala solo si todo el vale es de una sola categoría (ej. Nómina)</mat-hint>
-          </mat-form-field>
-
           <mat-form-field appearance="outline" class="w-100">
             <mat-label>Descripción</mat-label>
             <input matInput formControlName="descripcion" />
@@ -57,7 +47,7 @@
 
 <mat-dialog-actions>
   <button mat-button color="primary" (click)="onSave()" [disabled]="valeForm.invalid">
-    <mat-icon>save</mat-icon> Emitir
+    <mat-icon>save</mat-icon> Fusionar
   </button>
   <button mat-button color="primary" (click)="onCancel()">
     <mat-icon>cancel</mat-icon> Cancelar

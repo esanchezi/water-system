@@ -7,6 +7,7 @@ import { EgresoValesComponent } from './pages/egreso-vales/egreso-vales.componen
 import { NewEgresoComponent } from './components/new-egreso/new-egreso.component';
 import { NewGastoComponent } from './components/new-gasto/new-gasto.component';
 import { EmitirValeComponent } from './components/emitir-vale/emitir-vale.component';
+import { FusionarValesComponent } from './components/fusionar-vales/fusionar-vales.component';
 import { EgresoNodoListaComponent } from './components/egreso-nodo-lista/egreso-nodo-lista.component';
 import { ProveedorFormComponent } from './components/proveedor-form/proveedor-form.component';
 import { MaterialModule } from '../core/material.module';
@@ -19,6 +20,7 @@ import { MaterialModule } from '../core/material.module';
     NewEgresoComponent,
     NewGastoComponent,
     EmitirValeComponent,
+    FusionarValesComponent,
     EgresoNodoListaComponent,
     ProveedorFormComponent
   ],
@@ -32,6 +34,7 @@ import { MaterialModule } from '../core/material.module';
     NewEgresoComponent,
     NewGastoComponent,
     EmitirValeComponent,
+    FusionarValesComponent,
     ProveedorFormComponent
   ]
 })
