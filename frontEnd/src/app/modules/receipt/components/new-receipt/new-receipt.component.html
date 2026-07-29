@@ -4,7 +4,7 @@
 
       <!-- PRIMER CARD -->
       <mat-card>
-        <mat-card-title>Agregar nuevo recibo</mat-card-title>
+        <mat-card-title>{{ esEdicion ? 'Editar recibo N° ' + receiptForm.get('noFolio')?.value : 'Agregar nuevo recibo' }}</mat-card-title>
         <mat-card-content>
 
           <!-- 🔹 AUTOCOMPLETE USUARIO -->
@@ -134,11 +134,13 @@
 
         <div class="years-card">
             <h3>Años liquidados con este recibo</h3>
+            <p class="hint" *ngIf="usuarioSeleccionado">Los años marcados con ✓ ya están pagados en el historial de este usuario (para validar antes de marcar otro).</p>
             <div class="years-grid" formArrayName="aniosPagadosArray">
                 <mat-checkbox
                 *ngFor="let ctrl of aniosPagadosArray.controls; let i = index"
-                [formControlName]="i">
-                {{ years[i] }}
+                [formControlName]="i"
+                [class.anio-ya-pagado]="aniosPagadosUsuario.has(years[i])">
+                {{ years[i] }}<span *ngIf="aniosPagadosUsuario.has(years[i])"> ✓</span>
                 </mat-checkbox>
             </div>
         </div>
@@ -152,7 +154,7 @@
 
 <mat-dialog-actions>
   <button mat-button color="primary" (click)="onSave()">
-    <mat-icon>save</mat-icon> Guardar
+    <mat-icon>save</mat-icon> {{ esEdicion ? 'Guardar cambios' : 'Guardar' }}
   </button>
   <button mat-button color="primary" (click)="onCancel()">
     <mat-icon>cancel</mat-icon> Cancelar

@@ -43,6 +43,21 @@ public class WaterReceiptHelper {
                 .build();
     }
 
+    // Actualiza un recibo ya existente in-place (no crea una fila nueva).
+    // Los pagos (waterReceiptPayment) NO se tocan aquí -- el llamador los
+    // reemplaza aparte, ya que es una colección independiente.
+    public void actualizarWaterReceiptEntity(WaterReceiptEntity existente, WaterReceiptDto request, WaterUserEntity user, CatalogOptionsEntity concepto) {
+        existente.setWaterUser(user);
+        existente.setCatConcepto(concepto);
+        existente.setNoFolio(request.getNoFolio());
+        existente.setFecha(LocalDate.parse(request.getFechaStr()));
+        existente.setObservaciones(request.getObservaciones());
+        existente.setConcepto(request.getConcepto());
+        existente.setTotal(request.getTotal());
+        existente.setUserIdUpdate(1);
+        existente.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+    }
+
     public WaterReceiptEntity buildWaterReceiptCancelledEntity(WaterReceiptDto request) {
         return WaterReceiptEntity.builder()
                 .noFolio(request.getNoFolio())

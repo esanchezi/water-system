@@ -3,3 +3,13 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
+
+.anio-ya-pagado {
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.hint {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.85rem;
+}

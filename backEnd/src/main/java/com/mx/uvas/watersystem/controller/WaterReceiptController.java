@@ -36,6 +36,11 @@ public class WaterReceiptController {
         return ResponseEntity.ok(waterReceiptService.create(request));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<WaterReceiptRestResponse> put(@PathVariable Integer id, @RequestBody WaterReceiptDto request){
+        return waterReceiptService.update(id, request);
+    }
+
     @PostMapping("/cancelled")
     public ResponseEntity<WaterReceiptDto> receiptCancelled (@RequestBody WaterReceiptDto request){
         return ResponseEntity.ok(waterReceiptService.createCancelled(request));
