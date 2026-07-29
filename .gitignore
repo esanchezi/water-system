@@ -13,8 +13,8 @@ backend/target/
 backend/logs/
 backend/bin/
 
-# Build de Angular copiado aquí por build-standalone.sh para que el backend
-# lo sirva -- es un artefacto generado, no se versiona.
+# Build de Angular copiado al backend para servirlo standalone (ver
+# build-standalone.sh) -- es un artefacto generado, no se versiona.
 backEnd/src/main/resources/static/
 
 # Eclipse
