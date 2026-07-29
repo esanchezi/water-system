@@ -39,4 +39,16 @@ public class WaterUserDetailsDto {
     private String casaNombre;
     private Integer casaId;
 
+    // Negocio (opcional)
+    private Boolean esNegocio;
+    private Integer giroNegocioId;
+    private String giroNegocioNombre;
+    private Boolean tieneLocal;
+    private Boolean localRentadoPorUsuario;
+    private Boolean familiaCompleta;
+    private Boolean viudoPadreMadreSoltero;
+    private Boolean esTiendaAbarrotes;
+    private Boolean negocioAtendidoPorUsuario;
+    private Boolean negocioGrande;
+
 }

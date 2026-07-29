@@ -15,3 +15,9 @@
     --color: white;
     background-color: rgba(139, 19, 219, 0.07);
  }
+
+.sugerencia-cuota {
+  font-size: 1.05rem;
+  color: #673ab7;
+  margin-top: 12px;
+}

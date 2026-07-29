@@ -18,6 +18,16 @@ export interface WaterUserModel{
     habitaDomicilio: boolean;
     tieneToma: boolean;
     inmuebleRenta: boolean;
+    esNegocio?: boolean;
+    giroNegocioId?: number;
+    giroNegocioNombre?: string;
+    tieneLocal?: boolean;
+    localRentadoPorUsuario?: boolean;
+    familiaCompleta?: boolean;
+    viudoPadreMadreSoltero?: boolean;
+    esTiendaAbarrotes?: boolean;
+    negocioAtendidoPorUsuario?: boolean;
+    negocioGrande?: boolean;
     email: string;
     observaciones: string;
     casaNo: number;
@@ -60,6 +70,16 @@ export interface WaterUserModel{
     estatusPagoId: number;
     estatusComiteId: number;
     estatusTomaId: number;
+    esNegocio?: boolean;
+    giroNegocioId?: number;
+    giroNegocioNombre?: string;
+    tieneLocal?: boolean;
+    localRentadoPorUsuario?: boolean;
+    familiaCompleta?: boolean;
+    viudoPadreMadreSoltero?: boolean;
+    esTiendaAbarrotes?: boolean;
+    negocioAtendidoPorUsuario?: boolean;
+    negocioGrande?: boolean;
   }
   
   export interface UserAutocompleteModel {

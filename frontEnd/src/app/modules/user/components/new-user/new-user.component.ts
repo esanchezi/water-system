@@ -6,13 +6,24 @@ import { FeeModel } from 'src/app/modules/shared/models/Fee.model';
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { FeeService } from 'src/app/modules/shared/services/fee.service';
 import { UserService } from 'src/app/modules/shared/services/user.service';
+import { PreregistroUsuarioService } from 'src/app/modules/shared/services/preregistro-usuario.service';
 
 // Cuando se abre "copiando" a otro usuario ya existente (mismo domicilio,
 // otro integrante de la familia con su propia toma/cuenta): se prellenan
 // datos personales y domicilio, pero N° Usuario, Cuota y Observaciones se
 // quedan en blanco porque son justo lo que cambia entre uno y otro.
+//
+// Cuando se abre desde "convertir a usuario" de un preregistro: se prellena
+// el nombre capturado en el preregistro (tal cual, sin separar en
+// nombre/apellidos porque ahí solo se guardó como texto libre), y al
+// guardar exitosamente se enlaza automáticamente esta casa al usuario nuevo
+// y se marca el preregistro como convertido -- todo en un solo paso, sin
+// que la usuaria tenga que anotar el N° de usuario a mano después.
 export interface NewUserDialogData {
   copyFrom?: any;
+  preregistroId?: number;
+  casaIdDestino?: number;
+  nombrePrellenado?: string;
 }
 
 @Component({
@@ -28,6 +39,7 @@ export class NewUserComponent implements OnInit {
   private readonly catalogService = inject(CatalogService);
   private readonly feeService     = inject(FeeService);
   private readonly userService    = inject(UserService);
+  private readonly preregistroService = inject(PreregistroUsuarioService);
 
   constructor(@Optional() @Inject(MAT_DIALOG_DATA) public data: NewUserDialogData) { }
 
@@ -47,6 +59,7 @@ export class NewUserComponent implements OnInit {
     this.loadCatalogs();
     this.getAmounts();
     this.aplicarCopia();
+    this.aplicarPrellenadoPreregistro();
   }
 
   private initForm(): void {
@@ -98,6 +111,20 @@ export class NewUserComponent implements OnInit {
       numero:             u.numero ?? '',
       referencia:         u.referencia ?? '',
       entreCalle1:        u.entrecalle1 ?? '',
+    });
+  }
+
+  get esConversionPreregistro(): boolean {
+    return !!this.data?.preregistroId;
+  }
+
+  // El preregistro solo guarda "nombre" como texto libre (no separado en
+  // nombre/apellidos), así que aquí solo se prellena el primer campo -- la
+  // usuaria completa/corrige el resto al capturar.
+  private aplicarPrellenadoPreregistro(): void {
+    if (!this.data?.preregistroId) return;
+    this.userForm.patchValue({
+      nombre: this.data.nombrePrellenado ?? ''
     });
   }
 
@@ -173,8 +200,42 @@ export class NewUserComponent implements OnInit {
 
   private saveUserData(data: any): void {
     this.userService.saveUser(data).subscribe({
-      next: () => this.dialogRef.close(true),
+      next: (usuarioCreado: any) => {
+        // Si viene de "convertir a usuario" de un preregistro: enlazamos la
+        // casa y marcamos el preregistro como convertido antes de cerrar,
+        // para que quede en un solo paso (la usuaria no tiene que anotar
+        // el N° de usuario a mano).
+        if (this.esConversionPreregistro && usuarioCreado?.aguaUsuarioId) {
+          this.enlazarConversionPreregistro(usuarioCreado.aguaUsuarioId);
+        } else {
+          this.dialogRef.close(true);
+        }
+      },
       error: () => this.dialogRef.close(false)
     });
+  }
+
+  private enlazarConversionPreregistro(aguaUsuarioId: number): void {
+    const casaId = this.data.casaIdDestino;
+    const preregistroId = this.data.preregistroId!;
+
+    const marcarConvertido = () => {
+      this.preregistroService.marcarConvertido(preregistroId, aguaUsuarioId).subscribe({
+        next: () => this.dialogRef.close(true),
+        // El usuario ya se creó correctamente aunque falle el enlace del
+        // preregistro -- no bloqueamos el cierre por esto, solo se quedaría
+        // el preregistro como pendiente para enlazar después.
+        error: () => this.dialogRef.close(true)
+      });
+    };
+
+    if (casaId) {
+      this.userService.assignHouse(aguaUsuarioId, casaId).subscribe({
+        next: () => marcarConvertido(),
+        error: () => marcarConvertido()
+      });
+    } else {
+      marcarConvertido();
+    }
   }
 }

@@ -63,6 +63,64 @@
       </mat-form-field>
     </mat-expansion-panel>
 
+    <!-- Preregistro: gente que vive aquí pero aún no es usuario formal -->
+    <mat-expansion-panel (opened)="getPreregistros()">
+      <mat-expansion-panel-header>
+        <mat-panel-title>Preregistro de personas</mat-panel-title>
+        <mat-panel-description>
+          Gente que vive aquí pero aún no es un usuario de agua formal
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+
+      <div *ngFor="let p of listPreregistro" class="preregistro-item">
+        <div fxLayout="row" fxLayoutAlign="space-between center">
+          <div>
+            <strong>{{ p.nombre }}</strong> — {{ p.telefono || 'sin teléfono' }}
+            <span class="estatus-tag">
+              {{ p.estatus === 1 ? 'Pendiente' : (p.estatus === 2 ? 'Convertido' : 'Descartado') }}
+            </span>
+          </div>
+          <div *ngIf="p.estatus === PREREGISTRO_PENDIENTE">
+            <button mat-icon-button color="primary" (click)="onConvertirAUsuario(p)" title="Convertir a usuario (abre el alta prellenada)">
+              <mat-icon>how_to_reg</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="onMarcarDescartado(p)" title="Descartar">
+              <mat-icon>cancel</mat-icon>
+            </button>
+          </div>
+        </div>
+        <p *ngIf="p.observaciones" class="mat-hint">{{ p.observaciones }}</p>
+        <p *ngIf="p.motivoPendiente" class="mat-hint"><em>Motivo: {{ p.motivoPendiente }}</em></p>
+        <p *ngIf="p.aguaUsuarioIdConvertido" class="mat-hint">Convertido al usuario N° {{ p.aguaUsuarioIdConvertido }}</p>
+        <hr>
+      </div>
+
+      <p *ngIf="listPreregistro.length === 0" class="mat-hint">Aún no hay nadie en preregistro para esta casa.</p>
+
+      <h4>Agregar persona en preregistro</h4>
+      <form [formGroup]="preregistroForm">
+        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
+          <mat-form-field appearance="outline" fxFlex="30%">
+            <mat-label>Nombre</mat-label>
+            <input matInput formControlName="nombre" placeholder="nombre" required />
+          </mat-form-field>
+          <mat-form-field appearance="outline" fxFlex="20%">
+            <mat-label>Teléfono (opcional)</mat-label>
+            <input matInput formControlName="telefono" placeholder="teléfono" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" fxFlex="40%">
+            <mat-label>Observaciones (opcional)</mat-label>
+            <input matInput formControlName="observaciones" placeholder="observaciones" />
+          </mat-form-field>
+        </div>
+        <mat-card-actions align="end">
+          <button mat-raised-button color="primary" [disabled]="preregistroForm.invalid" (click)="onSavePreregistro()">
+            <mat-icon>person_add</mat-icon> Agregar
+          </button>
+        </mat-card-actions>
+      </form>
+    </mat-expansion-panel>
+
     <!-- Historial de pagos -->
     <mat-expansion-panel *ngFor="let user of listWaterUser; trackBy: trackByUser">
       <mat-expansion-panel-header>

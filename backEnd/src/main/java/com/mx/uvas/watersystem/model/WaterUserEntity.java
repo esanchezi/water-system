@@ -26,6 +26,27 @@ public class WaterUserEntity implements Serializable {
     private Boolean habitaDomicilio;
     private Boolean tieneToma;
     private Boolean inmuebleRenta;
+    // Si es negocio (en vez de domicilio habitacional) -- ayuda a entender
+    // el uso del pozo/consumo. El giro (abarrotes, papelería, etc.) es
+    // opcional y viene de catálogo, no está fijo en código, para no
+    // amarrarnos a una lista cerrada de tipos de negocio.
+    private Boolean esNegocio;
+    // Solo aplica cuando esNegocio = true: si opera en un local (espacio
+    // físico dedicado) o no (ej. vende desde la misma casa sin local
+    // aparte), y si ese local lo renta el mismo usuario -- ambos datos
+    // ayudan a decidir la cuota (ver reglas de negocio en curso).
+    private Boolean tieneLocal;
+    private Boolean localRentadoPorUsuario;
+
+    // Clasificación para la calculadora de cuota SUGERIDA (ver
+    // WaterUserService/frontend: nunca cambia la cuota sola, solo propone
+    // una categoría en base a estas respuestas -- la decisión final la
+    // toma la persona capturando).
+    private Boolean familiaCompleta;           // dominio doméstico
+    private Boolean viudoPadreMadreSoltero;    // dominio doméstico, si no es familia completa
+    private Boolean esTiendaAbarrotes;         // dominio negocio
+    private Boolean negocioAtendidoPorUsuario; // dominio negocio
+    private Boolean negocioGrande;             // dominio negocio
     private String email;
     private String observaciones;
     private Integer estatus;
@@ -89,5 +110,9 @@ public class WaterUserEntity implements Serializable {
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "grupo_id", nullable = true)
     private WaterGroupEntity waterGroup;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "giro_negocio_id", nullable = true)
+    private CatalogOptionsEntity giroNegocio;
 
 }

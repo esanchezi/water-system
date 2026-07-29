@@ -18,6 +18,16 @@ public class WaterUserDto implements Serializable {
     private Boolean habitaDomicilio;
     private Boolean tieneToma;
     private Boolean inmuebleRenta;
+    private Boolean esNegocio;
+    private Integer giroNegocioId;
+    private String giroNegocioNombre;
+    private Boolean tieneLocal;
+    private Boolean localRentadoPorUsuario;
+    private Boolean familiaCompleta;
+    private Boolean viudoPadreMadreSoltero;
+    private Boolean esTiendaAbarrotes;
+    private Boolean negocioAtendidoPorUsuario;
+    private Boolean negocioGrande;
     private String email;
     private String observaciones;
     private FeeDto fee;

@@ -1,10 +1,14 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { FormControl } from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { WaterHouseModel, WaterUserModel } from 'src/app/modules/shared/models/WaterUser.model';
 import { MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { HouseService } from 'src/app/modules/shared/services/house.service';
 import { UserService } from 'src/app/modules/shared/services/user.service';
+import { PreregistroUsuarioService } from 'src/app/modules/shared/services/preregistro-usuario.service';
+import { PREREGISTRO_ESTATUS_PENDIENTE, PreregistroUsuarioModel } from 'src/app/modules/shared/models/PreregistroUsuario.model';
+import { MatDialog } from '@angular/material/dialog';
+import { NewUserComponent } from '../../../user/components/new-user/new-user.component';
 import { debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import Swal from 'sweetalert2';
 
@@ -24,9 +28,22 @@ export class HouseDetailsComponent implements OnInit {
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly houseService   = inject(HouseService);
   private readonly userService    = inject(UserService);
+  private readonly preregistroService = inject(PreregistroUsuarioService);
+  private readonly fb             = inject(FormBuilder);
+  private readonly dialog         = inject(MatDialog);
 
   waterHouse!: WaterHouseModel;
   listWaterUser: WaterUserModel[] = [];
+
+  // Gente que vive en la casa pero aún no es un usuario de agua formal.
+  listPreregistro: PreregistroUsuarioModel[] = [];
+  readonly PREREGISTRO_PENDIENTE = PREREGISTRO_ESTATUS_PENDIENTE;
+  preregistroForm: FormGroup = this.fb.group({
+    nombre:          ['', Validators.required],
+    telefono:        [''],
+    observaciones:   [''],
+    motivoPendiente: ['']
+  });
 
   readonly DEFAULT_COORDS: google.maps.LatLngLiteral = {
     lat: 21.04386,
@@ -148,6 +165,75 @@ export class HouseDetailsComponent implements OnInit {
 
   trackByUser(index: number, user: WaterUserModel): number {
     return user.aguaUsuarioId;
+  }
+
+  getPreregistros(): void {
+    if (!this.waterHouse?.casaId) return;
+    this.preregistroService.getByCasaId(this.waterHouse.casaId).subscribe({
+      next: (resp: any) => {
+        if (resp.metadata?.[0]?.code === '00') {
+          this.listPreregistro = resp.data || [];
+        }
+      },
+      error: (e: any) => console.error('Error al cargar preregistros', e)
+    });
+  }
+
+  onSavePreregistro(): void {
+    if (this.preregistroForm.invalid || !this.waterHouse?.casaId) return;
+    this.preregistroService.create(this.waterHouse.casaId, this.preregistroForm.value).subscribe({
+      next: (resp: any) => {
+        this.listPreregistro = resp.data || [];
+        this.preregistroForm.reset();
+      },
+      error: (e: any) => {
+        console.error(e);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo agregar el preregistro.', confirmButtonText: 'Cerrar' });
+      }
+    });
+  }
+
+  // Abre el formulario normal de "Nuevo usuario", prellenado con el nombre
+  // capturado en el preregistro. Al guardar exitosamente, esta casa y el
+  // preregistro quedan enlazados automáticamente al usuario nuevo -- no
+  // hace falta anotar el N° de usuario a mano ni abrir el alta por
+  // separado.
+  onConvertirAUsuario(item: PreregistroUsuarioModel): void {
+    const dialogRef = this.dialog.open(NewUserComponent, {
+      width: '900px',
+      data: {
+        preregistroId: item.preregistroId,
+        casaIdDestino: this.waterHouse.casaId,
+        nombrePrellenado: item.nombre
+      }
+    });
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result === true) {
+        Swal.fire({ icon: 'success', title: 'Usuario creado', text: 'Se enlazó a esta casa y el preregistro quedó marcado como convertido.', confirmButtonText: 'Aceptar' });
+        this.getPreregistros();
+      }
+    });
+  }
+
+  onMarcarDescartado(item: PreregistroUsuarioModel): void {
+    Swal.fire({
+      title: 'Descartar preregistro',
+      text: '¿Por qué ya no se va a convertir en usuario? (opcional)',
+      input: 'text',
+      inputLabel: 'Motivo',
+      showCancelButton: true,
+      confirmButtonText: 'Descartar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.preregistroService.marcarDescartado(item.preregistroId, result.value).subscribe({
+        next: () => this.getPreregistros(),
+        error: (e: any) => {
+          console.error(e);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo descartar el registro.', confirmButtonText: 'Cerrar' });
+        }
+      });
+    });
   }
 
   save(updatedHouse: WaterHouseModel): void {

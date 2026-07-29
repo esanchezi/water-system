@@ -177,8 +177,29 @@
                         <mat-checkbox color="primary" formControlName="habitaDomicilio">Habita domicilio</mat-checkbox>
                         <mat-checkbox color="primary" formControlName="tieneToma">Tiene toma</mat-checkbox>
                         <mat-checkbox color="primary" formControlName="inmuebleRenta">Es renta</mat-checkbox>
+                        <mat-checkbox color="primary" formControlName="esNegocio">Es negocio (no habitacional)</mat-checkbox>
                       </div>
-                  
+
+                      <div *ngIf="detailsForm.value.esNegocio">
+                        <div fxLayout="row" fxLayoutAlign="start center">
+                          <mat-form-field appearance="outline" fxFlex="40%">
+                            <mat-label>Giro del negocio (opcional)</mat-label>
+                            <mat-select formControlName="giroNegocioId">
+                              <mat-option [value]="null">Sin especificar</mat-option>
+                              <mat-option *ngFor="let g of girosNegocio" [value]="g.catalogoOpcionesId">
+                                {{ g.nombre }}
+                              </mat-option>
+                            </mat-select>
+                          </mat-form-field>
+                        </div>
+                        <div fxLayout="row" fxLayoutGap="32px" fxLayoutAlign="start center">
+                          <mat-checkbox color="primary" formControlName="tieneLocal">Tiene local (espacio físico dedicado)</mat-checkbox>
+                          <mat-checkbox color="primary" formControlName="localRentadoPorUsuario" *ngIf="detailsForm.value.tieneLocal">
+                            El local lo renta el mismo usuario
+                          </mat-checkbox>
+                        </div>
+                      </div>
+
                       <div>
                         <mat-form-field appearance="outline" class="w-100">
                           <mat-label>Observaciones</mat-label>
@@ -192,6 +213,49 @@
                         </button>
                       </mat-card-actions>
                     </div>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel hideToggle>
+                    <mat-expansion-panel-header>
+                        <mat-panel-title>Calculadora de cuota (sugerencia)</mat-panel-title>
+                        <mat-panel-description>Solo propone una categoría, no cambia la cuota sola</mat-panel-description>
+                    </mat-expansion-panel-header>
+                    <form [formGroup]="detailsForm">
+                        <div *ngIf="!detailsForm.value.esNegocio">
+                            <p class="mat-hint">Uso doméstico</p>
+                            <div fxLayout="row" fxLayoutGap="32px" fxLayoutAlign="start center">
+                                <mat-checkbox color="primary" formControlName="familiaCompleta">Es familia completa</mat-checkbox>
+                                <mat-checkbox color="primary" formControlName="viudoPadreMadreSoltero" *ngIf="!detailsForm.value.familiaCompleta">
+                                    Es viudo(a) / padre o madre soltero con hijos
+                                </mat-checkbox>
+                            </div>
+                        </div>
+                        <div *ngIf="detailsForm.value.esNegocio">
+                            <p class="mat-hint">Negocio</p>
+                            <div fxLayout="row" fxLayoutGap="32px" fxLayoutAlign="start center">
+                                <mat-checkbox color="primary" formControlName="esTiendaAbarrotes">Es tienda de abarrotes</mat-checkbox>
+                                <mat-checkbox color="primary" formControlName="negocioAtendidoPorUsuario" *ngIf="!detailsForm.value.esTiendaAbarrotes">
+                                    El usuario es quien atiende
+                                </mat-checkbox>
+                                <mat-checkbox color="primary" formControlName="negocioGrande"
+                                              *ngIf="!detailsForm.value.esTiendaAbarrotes && !detailsForm.value.negocioAtendidoPorUsuario">
+                                    Es negocio grande
+                                </mat-checkbox>
+                            </div>
+                        </div>
+
+                        <p class="sugerencia-cuota"><strong>Sugerencia: {{ sugerenciaCuota }}</strong></p>
+                        <p class="mat-hint">
+                            Esta sugerencia no cambia la Cuota por sí sola -- confírmala seleccionando la categoría
+                            correspondiente en "Cuota" arriba y guarda normalmente. Árbol de reglas en construcción:
+                            aún faltan casos como granja o jardín.
+                        </p>
+                        <mat-card-actions align="end">
+                            <button mat-raised-button color="primary" (click)="onSaveWaterUser()">
+                                <mat-icon>save</mat-icon> Guardar clasificación
+                            </button>
+                        </mat-card-actions>
+                    </form>
                 </mat-expansion-panel>
 
                 <mat-expansion-panel hideToggle>

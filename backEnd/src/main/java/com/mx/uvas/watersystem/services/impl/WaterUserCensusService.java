@@ -155,23 +155,38 @@ public class WaterUserCensusService implements IWaterUserCensusService {
 
             int[] conteos = new int[RANGOS.length];
             int sinClasificar = 0;
+            // LinkedHashMap para que las zonas salgan siempre en el mismo
+            // orden en que se van encontrando (no importa mucho el orden,
+            // pero evita que "brinque" el reporte entre refrescos).
+            java.util.Map<String, Integer> conteoPorZona = new java.util.LinkedHashMap<>();
+            int sinZona = 0;
 
             for (WaterUserCensusEntity persona : activos) {
                 if (persona.getEdad() == null || persona.getAnioRegistro() == null) {
                     sinClasificar++;
-                    continue;
-                }
-                int edadActual = persona.getEdad() + (anioActual - persona.getAnioRegistro());
-                boolean clasificada = false;
-                for (int i = 0; i < RANGOS.length; i++) {
-                    if (edadActual >= RANGOS[i][0] && edadActual <= RANGOS[i][1]) {
-                        conteos[i]++;
-                        clasificada = true;
-                        break;
+                } else {
+                    int edadActual = persona.getEdad() + (anioActual - persona.getAnioRegistro());
+                    boolean clasificada = false;
+                    for (int i = 0; i < RANGOS.length; i++) {
+                        if (edadActual >= RANGOS[i][0] && edadActual <= RANGOS[i][1]) {
+                            conteos[i]++;
+                            clasificada = true;
+                            break;
+                        }
+                    }
+                    if (!clasificada) {
+                        sinClasificar++;
                     }
                 }
-                if (!clasificada) {
-                    sinClasificar++;
+
+                // Zona = calle de la casa del usuario al que pertenece esta
+                // persona del censo. Un usuario sin casa asignada, o una
+                // casa sin calle capturada, cae en "sin zona asignada".
+                String zona = obtenerZona(persona);
+                if (zona == null) {
+                    sinZona++;
+                } else {
+                    conteoPorZona.merge(zona, 1, Integer::sum);
                 }
             }
 
@@ -180,10 +195,17 @@ public class WaterUserCensusService implements IWaterUserCensusService {
                 rangos.add(new RangoEdadDto(RANGOS_LABEL[i], conteos[i]));
             }
 
+            List<RangoEdadDto> porZona = new ArrayList<>();
+            conteoPorZona.forEach((nombreZona, cantidad) -> porZona.add(new RangoEdadDto(nombreZona, cantidad)));
+            // Orden descendente por cantidad -- las zonas con más personas primero.
+            porZona.sort((a, b) -> b.getCantidad().compareTo(a.getCantidad()));
+
             WaterUserCensusResumenDto dto = new WaterUserCensusResumenDto();
             dto.setRangos(rangos);
             dto.setSinClasificar(sinClasificar);
             dto.setTotalPersonas(activos.size());
+            dto.setPorZona(porZona);
+            dto.setSinZonaAsignada(sinZona);
 
             response.setData(List.of(dto));
             response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, "Resumen calculado");
@@ -191,6 +213,17 @@ public class WaterUserCensusService implements IWaterUserCensusService {
         } catch (Exception e) {
             return ResponseHandler.handleInternalServerError(response, "Error al calcular el resumen del censo", e);
         }
+    }
+
+    // Devuelve el nombre de la calle de la casa del usuario dueño de este
+    // registro de censo, o null si el usuario no tiene casa asignada o la
+    // casa no tiene calle capturada.
+    private String obtenerZona(WaterUserCensusEntity persona) {
+        if (persona.getWaterUser() == null) return null;
+        WaterUserEntity usuario = persona.getWaterUser();
+        if (usuario.getWaterHouse() == null) return null;
+        if (usuario.getWaterHouse().getCatCalle() == null) return null;
+        return usuario.getWaterHouse().getCatCalle().getNombre();
     }
 
     private WaterUserCensusDto entityToDto(WaterUserCensusEntity entity) {

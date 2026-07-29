@@ -24,6 +24,18 @@
           </tr>
         </table>
 
+        <h3>Por zona (calle)</h3>
+        <table class="tabla-resumen">
+          <tr *ngFor="let z of resumen.porZona">
+            <td>{{ z.label }}</td>
+            <td class="cantidad">{{ z.cantidad }}</td>
+          </tr>
+          <tr class="fila-sin-clasificar">
+            <td>Sin zona asignada (usuario o casa sin calle capturada)</td>
+            <td class="cantidad">{{ resumen.sinZonaAsignada }}</td>
+          </tr>
+        </table>
+
         <p class="hint">
           Este total viene del censo capturado en la ficha de cada usuario (sección "Censo de personas").
           Entre más usuarios tengan su censo completo, más preciso es este resumen.

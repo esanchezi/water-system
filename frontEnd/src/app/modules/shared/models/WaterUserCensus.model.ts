@@ -25,4 +25,6 @@ export interface WaterUserCensusResumenModel {
   rangos: RangoEdadModel[];
   sinClasificar: number;
   totalPersonas: number;
+  porZona: RangoEdadModel[];
+  sinZonaAsignada: number;
 }

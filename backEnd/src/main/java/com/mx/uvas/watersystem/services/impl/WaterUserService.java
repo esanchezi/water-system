@@ -129,6 +129,14 @@ public class WaterUserService implements IWaterUserService {
         user.setTieneToma(dto.getTieneToma());
         user.setInmuebleRenta(dto.getInmuebleRenta());
         user.setInmuebleRenta(dto.getInmuebleRenta());
+        user.setEsNegocio(dto.getEsNegocio());
+        user.setTieneLocal(dto.getTieneLocal());
+        user.setLocalRentadoPorUsuario(dto.getLocalRentadoPorUsuario());
+        user.setFamiliaCompleta(dto.getFamiliaCompleta());
+        user.setViudoPadreMadreSoltero(dto.getViudoPadreMadreSoltero());
+        user.setEsTiendaAbarrotes(dto.getEsTiendaAbarrotes());
+        user.setNegocioAtendidoPorUsuario(dto.getNegocioAtendidoPorUsuario());
+        user.setNegocioGrande(dto.getNegocioGrande());
        // user.setEmail(dto.getEmail());
         user.setObservaciones(dto.getObservaciones());
         user.setUserIdUpdate(1);
@@ -161,6 +169,14 @@ public class WaterUserService implements IWaterUserService {
 
         if(dto.getGrupoId() != null){
             user.setWaterGroup(waterGroupRepository.findById(dto.getGrupoId()).orElse(null));
+        }
+
+        // Giro del negocio -- solo aplica cuando esNegocio = true, pero se
+        // deja actualizar/limpiar independiente de ese flag por si acaso.
+        if (dto.getGiroNegocioId() != null) {
+            user.setGiroNegocio(catalogOptionsRepository.findById(dto.getGiroNegocioId()).orElse(null));
+        } else {
+            user.setGiroNegocio(null);
         }
 
         waterUserRepository.save(user);
@@ -252,6 +268,10 @@ public class WaterUserService implements IWaterUserService {
                 .orElseThrow(() -> new NoSuchElementException("No se encontró la opcion de pago con el ID: " + optionId));
     }
     private WaterUserEntity buildWaterUserEntity(WaterUserDto request, FeeEntity fee, CatalogOptionsEntity frecuencia, CatalogOptionsEntity estatusPago) {
+        CatalogOptionsEntity giroNegocio = request.getGiroNegocioId() != null
+                ? catalogOptionsRepository.findById(request.getGiroNegocioId()).orElse(null)
+                : null;
+
         return WaterUserEntity.builder()
                 .person(personHelper.createPerson(request.getPerson()))
                 .address(waterUserHelper.createAdress(request.getAdress()))
@@ -261,6 +281,15 @@ public class WaterUserService implements IWaterUserService {
                 .noUsuario(request.getNoUsuario())
                 .habitaDomicilio(request.getHabitaDomicilio())
                 .tieneToma(request.getTieneToma())
+                .esNegocio(request.getEsNegocio())
+                .giroNegocio(giroNegocio)
+                .tieneLocal(request.getTieneLocal())
+                .localRentadoPorUsuario(request.getLocalRentadoPorUsuario())
+                .familiaCompleta(request.getFamiliaCompleta())
+                .viudoPadreMadreSoltero(request.getViudoPadreMadreSoltero())
+                .esTiendaAbarrotes(request.getEsTiendaAbarrotes())
+                .negocioAtendidoPorUsuario(request.getNegocioAtendidoPorUsuario())
+                .negocioGrande(request.getNegocioGrande())
                 .email(request.getEmail())
                 .observaciones(request.getObservaciones())
                 .estatus(1)

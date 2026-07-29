@@ -45,11 +45,13 @@ public interface IWaterUserRepository extends JpaRepository<WaterUserEntity,Inte
             "wu.estatusToma.catalogoOpcionesId," +
             "p.personaId, p.nombre, COALESCE(p.nombre2,''), p.app, COALESCE(p.apm,''), " +
             "a.direccionId,a.catSeccion.catalogoOpcionesId, a.calle, a.numero, a.referencia, a.entrecalle1, a.entrecalle2, a.catSeccion.nombre, " +
-            "h.nombre,h.casaId) " +
+            "h.nombre,h.casaId, wu.esNegocio, gn.catalogoOpcionesId, gn.nombre, wu.tieneLocal, wu.localRentadoPorUsuario, " +
+            "wu.familiaCompleta, wu.viudoPadreMadreSoltero, wu.esTiendaAbarrotes, wu.negocioAtendidoPorUsuario, wu.negocioGrande) " +
             "FROM WaterUserEntity wu " +
             "JOIN wu.person p " +
             "JOIN wu.address a " +
             "LEFT JOIN wu.waterHouse h " +
+            "LEFT JOIN wu.giroNegocio gn " +
             "WHERE wu.aguaUsuarioId = :aguaUsuarioId")
     WaterUserDetailsDto getUserDetails(@Param("aguaUsuarioId") Integer aguaUsuarioId);
 

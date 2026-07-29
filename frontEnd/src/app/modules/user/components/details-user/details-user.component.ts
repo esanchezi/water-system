@@ -106,6 +106,10 @@ export class DetailsUserComponent implements OnInit {
   tiposAviso:      CatalogOptionModel[] = [];
   responsablesPendiente: CatalogOptionModel[] = [];
   calles:          CatalogOptionModel[] = [];
+  // Giro del negocio -- catálogo opcional (clave GIRO_NEGOCIO), se crea
+  // desde el módulo de Catálogos. Si no existe todavía, esta lista sale
+  // vacía y el select simplemente no muestra opciones.
+  girosNegocio:    CatalogOptionModel[] = [];
 
   // Domicilio / Casa: cascada Calle -> Casa + mapa + vecinos de la misma casa
   allHouses:        WaterHouseModel[] = [];
@@ -131,6 +135,15 @@ export class DetailsUserComponent implements OnInit {
       habitaDomicilio:    ['', Validators.required],
       tieneToma:          ['', Validators.required],
       inmuebleRenta:      ['', Validators.required],
+      esNegocio:          [false],
+      giroNegocioId:      [''],
+      tieneLocal:         [false],
+      localRentadoPorUsuario: [false],
+      familiaCompleta:    [true],
+      viudoPadreMadreSoltero: [false],
+      esTiendaAbarrotes:  [false],
+      negocioAtendidoPorUsuario: [false],
+      negocioGrande:      [false],
       observaciones:      [''],
       casaNo:             [''],
       domicilioCalleId:   [''],
@@ -236,6 +249,10 @@ export class DetailsUserComponent implements OnInit {
     });
     this.catalogService.getOptions(15).subscribe({
       next: (opts) => this.calles = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('GIRO_NEGOCIO').subscribe({
+      next: (opts) => this.girosNegocio = opts,
       error: (e: any) => console.error(e)
     });
   }
@@ -575,6 +592,30 @@ export class DetailsUserComponent implements OnInit {
     });
   }
 
+  // Calculadora de cuota SUGERIDA -- nunca cambia this.cuotaId sola, solo
+  // propone una categoría para que la persona capturando la confirme
+  // seleccionando manualmente la Cuota correspondiente arriba. El árbol
+  // todavía tiene ramas pendientes de definir (granja, jardín) y una rama
+  // que depende de asamblea ("a decisión del comité"), por eso es
+  // deliberadamente una sugerencia y no una asignación automática.
+  get sugerenciaCuota(): string {
+    const f = this.detailsForm?.value;
+    if (!f) return '';
+
+    if (!f.esNegocio) {
+      // Uso doméstico
+      if (f.familiaCompleta) return 'Cuota completa';
+      if (f.viudoPadreMadreSoltero) return 'Media cuota';
+      return 'No requiere cuota propia: agregar como integrante de una familia ya registrada en este domicilio';
+    }
+
+    // Negocio
+    if (f.esTiendaAbarrotes) return 'No se cobra (exento)';
+    if (f.negocioAtendidoPorUsuario) return 'Un cuarto de cuota';
+    if (f.negocioGrande) return 'A decisión del comité / asamblea';
+    return 'Media cuota';
+  }
+
   getCenso(): void {
     this.censusService.getByAguaUsuarioId(this.user.aguaUsuarioId).subscribe({
       next: (resp: any) => this.processCensoResponse(resp),
@@ -675,6 +716,15 @@ export class DetailsUserComponent implements OnInit {
       habitaDomicilio: form.habitaDomicilio,
       tieneToma:       form.tieneToma,
       inmuebleRenta:   form.inmuebleRenta,
+      esNegocio:       form.esNegocio,
+      giroNegocioId:   form.giroNegocioId || null,
+      tieneLocal:      form.tieneLocal,
+      localRentadoPorUsuario: form.localRentadoPorUsuario,
+      familiaCompleta: form.familiaCompleta,
+      viudoPadreMadreSoltero: form.viudoPadreMadreSoltero,
+      esTiendaAbarrotes: form.esTiendaAbarrotes,
+      negocioAtendidoPorUsuario: form.negocioAtendidoPorUsuario,
+      negocioGrande:   form.negocioGrande,
       observaciones:   form.observaciones,
       cuotaId:         form.fkIdCuota,
       estatusPagoId:   form.estatusPagoId,
@@ -712,6 +762,15 @@ export class DetailsUserComponent implements OnInit {
           habitaDomicilio:    u.habitaDomicilio,
           tieneToma:          u.tieneToma,
           inmuebleRenta:      u.inmuebleRenta,
+          esNegocio:          u.esNegocio || false,
+          giroNegocioId:      u.giroNegocioId || null,
+          tieneLocal:         u.tieneLocal || false,
+          localRentadoPorUsuario: u.localRentadoPorUsuario || false,
+          familiaCompleta:    u.familiaCompleta ?? true,
+          viudoPadreMadreSoltero: u.viudoPadreMadreSoltero || false,
+          esTiendaAbarrotes:  u.esTiendaAbarrotes || false,
+          negocioAtendidoPorUsuario: u.negocioAtendidoPorUsuario || false,
+          negocioGrande:      u.negocioGrande || false,
           casaNo:             u.casaId,
           grupoId:            u.grupoId,
           nombre:             u.nombre,
