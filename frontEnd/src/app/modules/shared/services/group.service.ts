@@ -2,12 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { WaterGroupModel } from '../models/WaterUser.model';
+import { environment } from 'src/environments/environment';
 
 
 @Injectable({providedIn: 'root'})
 export class GroupService {
 
-  private readonly baseUrl = 'http://localhost:8080/Los_Lopez/api/v1/waterGroup'; // 🔹
+  private readonly baseUrl = `${environment.apiUrl}/waterGroup`;
 
   constructor(private http:HttpClient) {}
 

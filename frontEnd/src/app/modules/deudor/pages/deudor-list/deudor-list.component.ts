@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewChild, inject } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
+import { Router } from '@angular/router';
 import { DeudorModel } from 'src/app/modules/shared/models/Deudor.model';
 import { DeudorService } from 'src/app/modules/shared/services/deudor.service';
 
@@ -12,6 +13,7 @@ import { DeudorService } from 'src/app/modules/shared/services/deudor.service';
 export class DeudorListComponent implements OnInit {
 
   private readonly deudorService = inject(DeudorService);
+  private readonly router = inject(Router);
 
   displayColumns: string[] = [
     'calleNombre', 'casaNo', 'noUsuario', 'nombreCompleto', 'estatusComiteNombre',
@@ -74,6 +76,15 @@ export class DeudorListComponent implements OnInit {
         this.cargando = false;
         console.error('Error al cargar deudores', e);
       }
+    });
+  }
+
+  // Lleva al detalle del usuario (misma pantalla que usa el módulo de
+  // usuarios). Solo se necesita usuarioId -- details-user vuelve a pedir
+  // todos los datos completos al backend con ese id.
+  verDetalleUsuario(d: DeudorModel): void {
+    this.router.navigate(['dashboard/detailsUser'], {
+      queryParams: { element: JSON.stringify({ usuarioId: d.aguaUsuarioId }) }
     });
   }
 

@@ -47,6 +47,27 @@ export class HouseNewComponent implements OnInit {
       lat:           [this.center.lat],
       lng:           [this.center.lng]
     });
+    this.usarUbicacionActual();
+  }
+
+  // Una casa nueva nunca tiene ubicación guardada todavía, así que en vez de
+  // arrancar siempre en el centro fijo (León, Los López), intentamos usar la
+  // ubicación real del dispositivo -- útil cuando se está dando de alta la
+  // casa estando físicamente ahí (ej. desde la tablet). Si el navegador no
+  // soporta geolocalización o el usuario no da permiso, se deja el centro
+  // por default sin interrumpir el flujo.
+  private usarUbicacionActual(): void {
+    if (!('geolocation' in navigator)) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const ubicacionActual = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        this.center = ubicacionActual;
+        this.markerPosition = ubicacionActual;
+        this.form.patchValue(ubicacionActual);
+      },
+      (err) => console.warn('No se pudo obtener la ubicación actual', err),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
   }
 
   onMapClick(event: google.maps.MapMouseEvent): void {
