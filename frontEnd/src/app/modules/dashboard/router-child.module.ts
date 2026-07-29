@@ -27,6 +27,7 @@ import { TotalPorAnioListComponent } from '../total-por-anio/pages/total-por-ani
 import { EgresoListComponent } from '../egreso/pages/egreso-list/egreso-list.component';
 import { EgresoGastosComponent } from '../egreso/pages/egreso-gastos/egreso-gastos.component';
 import { EgresoValesComponent } from '../egreso/pages/egreso-vales/egreso-vales.component';
+import { ResumenAnualListComponent } from '../resumen-anual/pages/resumen-anual-list/resumen-anual-list.component';
 
 export const childRoutes: Routes = [
     { path: '', component: HomeComponent },
@@ -56,6 +57,7 @@ export const childRoutes: Routes = [
     { path: 'egresoList', component: EgresoListComponent },
     { path: 'egresoGastos', component: EgresoGastosComponent },
     { path: 'egresoVales', component: EgresoValesComponent },
+    { path: 'resumenAnual', component: ResumenAnualListComponent },
 ];
 
 @NgModule({

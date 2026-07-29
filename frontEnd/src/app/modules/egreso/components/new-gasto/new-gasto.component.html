@@ -29,6 +29,17 @@
             <input matInput placeholder="Ej. CFE, Ferretería, Juan el pocero..." formControlName="proveedor" />
           </mat-form-field>
 
+          <mat-form-field appearance="outline" fxFlex="45%">
+            <mat-label>Tipo de comprobante (opcional)</mat-label>
+            <mat-select formControlName="tipoComprobanteId">
+              <mat-option [value]="''">Sin nota/factura (va a Vale caja)</mat-option>
+              <mat-option *ngFor="let t of tiposComprobante" [value]="t.catalogoOpcionesId">
+                {{ t.nombre }}
+              </mat-option>
+            </mat-select>
+            <mat-hint>Si ya tienes nota, factura o remisión, selecciónalo aquí</mat-hint>
+          </mat-form-field>
+
           <mat-form-field appearance="outline" fxFlex="33%">
             <mat-label>Pagado / gestionado por (opcional)</mat-label>
             <input matInput

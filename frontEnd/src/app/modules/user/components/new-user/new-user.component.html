@@ -1,4 +1,5 @@
-<h2 mat-dialog-title>Agregar nuevo usuario</h2>
+<h2 mat-dialog-title>{{ esCopia ? 'Nuevo usuario (copiado)' : 'Agregar nuevo usuario' }}</h2>
+<p *ngIf="esCopia" class="hint-copia">Se copiaron los datos personales y el domicilio. Captura el nuevo N° Usuario, la Cuota y, si aplica, las Observaciones.</p>
 
 <mat-dialog-content>
   <form [formGroup]="userForm">

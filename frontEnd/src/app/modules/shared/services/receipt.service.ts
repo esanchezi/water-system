@@ -20,6 +20,11 @@ export class ReceiptService {
     return this.http.post(endpoint, body);
   }
 
+  updateReceipt(id: number, body: any){
+    const endpoint = `${base_url}/${id}`;
+    return this.http.put(endpoint, body);
+  }
+
   saveReceiptCancelled(body:any){
     const endpoint = `${base_url}/cancelled`;
     return this.http.post(endpoint, body);

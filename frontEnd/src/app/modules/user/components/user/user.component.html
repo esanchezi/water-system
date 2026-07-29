@@ -86,8 +86,12 @@
             <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef> Acciones</th>
                 <td mat-cell *matCellDef="let element; let i = index;" >
-                    <button mat-icon-button color="accent" (click)="edit(element)">
+                    <button mat-icon-button color="accent" (click)="edit(element)" matTooltip="Editar">
                         <mat-icon aria-label="Edit">edit</mat-icon>
+                    </button>
+                    <button mat-icon-button color="primary" (click)="copiarUsuario(element)"
+                            matTooltip="Copiar datos para dar de alta a otro usuario de la misma casa">
+                        <mat-icon aria-label="Copiar">content_copy</mat-icon>
                     </button>
                     <button mat-icon-button color="accent">
                         <mat-icon aria-label="Delete">delete</mat-icon>

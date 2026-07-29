@@ -192,6 +192,38 @@ export class UserComponent implements OnInit{
 
   }
 
+  // Da de alta un usuario NUEVO copiando los datos personales y de domicilio
+  // de uno ya existente (mismo caso: la misma familia agrega otra toma/cuenta
+  // a nombre de alguien que ya está registrado en esa casa). Solo cambian
+  // N° Usuario, Cuota y, si aplica, Observaciones -- eso se captura en blanco.
+  copiarUsuario(element: WaterUserBasicModel): void {
+    this.userService.getUserDetails(element.usuarioId).subscribe({
+      next: (resp: any) => {
+        if (resp.metadata?.[0]?.code !== '00') {
+          this.openSnackBar('No se pudo cargar el usuario a copiar', 'Error');
+          return;
+        }
+        const copyFrom = resp.data[0];
+        const dialogRef = this.dialog.open(NewUserComponent, {
+          width: '900px',
+          data: { copyFrom }
+        });
+        dialogRef.afterClosed().subscribe((result: any) => {
+          if (result == 1) {
+            this.openSnackBar('Usuario agregado', 'Éxito');
+            this.getUsers();
+          } else if (result == 2) {
+            this.openSnackBar('Error al guardar usuario', 'Error');
+          }
+        });
+      },
+      error: (e: any) => {
+        console.error(e);
+        this.openSnackBar('No se pudo cargar el usuario a copiar', 'Error');
+      }
+    });
+  }
+
   openSnackBar(message:string, action:string): MatSnackBarRef<SimpleSnackBar>{
     return this.snackBar.open(message,action,{duration:2000})
   }

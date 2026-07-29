@@ -66,7 +66,10 @@ export class ReceiptComponent implements OnInit{
               conceptoReceipt: recibo.concepto,
               observaciones: recibo.observaciones,
               total: recibo.total,
-              waterUser: recibo.waterUser
+              waterUser: recibo.waterUser,
+              // El recibo completo (con TODAS sus líneas), para poder abrir
+              // "Editar" con todo el formulario, no solo esta fila aplanada.
+              reciboOriginal: recibo
             });
           });
         } else {
@@ -79,7 +82,8 @@ export class ReceiptComponent implements OnInit{
             waterUser: recibo.waterUser,
             concepto: null,
             montoAplicado: null,
-            anio: null
+            anio: null,
+            reciboOriginal: recibo
           });
         }
       });
@@ -100,6 +104,24 @@ export class ReceiptComponent implements OnInit{
         this.getReceipt();
       }else if (result == 2){
         this.openSnackBar("Error al guardar categoria","Error")
+      }
+    });
+  }
+
+  // Editar un recibo ya existente abre el mismo formulario de captura,
+  // prellenado con todo (usuario, folio, montos aplicados, años, etc.).
+  editarRecibo(element: any): void {
+    const dialogRef = this.dialog.open(NewReceiptComponent, {
+      width: '1200px',
+      data: { receipt: element.reciboOriginal }
+    });
+
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result == 1) {
+        this.openSnackBar('Recibo actualizado', 'Éxito');
+        this.getReceipt();
+      } else if (result == 2) {
+        this.openSnackBar('Error al actualizar el recibo', 'Error');
       }
     });
   }

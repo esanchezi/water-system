@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarRef, SimpleSnackBar } from '@angular/material/snack-bar';
 import { WaterEgresoGastoModel } from 'src/app/modules/shared/models/WaterEgresoGasto.model';
+import { WaterEgresoModel } from 'src/app/modules/shared/models/WaterEgreso.model';
 import { WaterEgresoService } from 'src/app/modules/shared/services/water-egreso.service';
 import { NewGastoComponent } from '../../components/new-gasto/new-gasto.component';
 import { EmitirValeComponent } from '../../components/emitir-vale/emitir-vale.component';
@@ -40,8 +41,17 @@ export class EgresoGastosComponent implements OnInit {
   grupos: ConceptoGrupo[] = [];
   seleccionados = new Set<number>();
 
+  // Vales ya emitidos (nivel 1) que se pueden incluir junto con los gastos
+  // sueltos en un vale nuevo -- ej. el vale de nómina de Brandy que se junta
+  // con los gastos pendientes de Francisca y Elizabeth. Se buscan por texto
+  // (folio/categoría/proveedor) para no listar años completos de vales.
+  valesDisponibles: WaterEgresoModel[] = [];
+  seleccionadosVales = new Set<number>();
+  filtroVale = '';
+
   ngOnInit(): void {
     this.getPendientes();
+    this.getVales();
   }
 
   getPendientes(): void {
@@ -51,11 +61,77 @@ export class EgresoGastosComponent implements OnInit {
     });
   }
 
+  getVales(): void {
+    this.egresoService.getAll().subscribe({
+      next: (resp: any) => {
+        if (resp.metadata?.[0]?.code !== '00') return;
+        const data: WaterEgresoModel[] = resp.data || [];
+        data.sort((a, b) => (b.fechaPago || '').localeCompare(a.fechaPago || ''));
+        this.valesDisponibles = data;
+        this.seleccionadosVales.clear();
+      },
+      error: (e: any) => console.error(e)
+    });
+  }
+
   private processResponse(resp: any): void {
     if (resp.metadata?.[0]?.code !== '00') return;
     this.pendientes = resp.data || [];
     this.seleccionados.clear();
     this.grupos = this.agrupar(this.pendientes);
+  }
+
+  // --- Vales ya emitidos, para incluir junto con los gastos sueltos --------
+
+  get valesFiltrados(): WaterEgresoModel[] {
+    const texto = this.filtroVale.trim().toLowerCase();
+    if (!texto) return [];
+    return this.valesDisponibles.filter(v => {
+      const folio = (v.noFolio || '').toLowerCase();
+      const categoria = this.categoriasVale(v).toLowerCase();
+      const proveedor = this.proveedoresVale(v).toLowerCase();
+      const descripcion = (v.descripcion || '').toLowerCase();
+      return folio.includes(texto) || categoria.includes(texto)
+        || proveedor.includes(texto) || descripcion.includes(texto);
+    }).slice(0, 20);
+  }
+
+  categoriasVale(vale: WaterEgresoModel): string {
+    if (!vale.lineas || vale.lineas.length === 0) {
+      return vale.conceptoNombre || 'Sin categoría';
+    }
+    const nombres = Array.from(new Set(vale.lineas.map(l => l.conceptoNombre || 'Sin categoría')));
+    return nombres.length > 2 ? `${nombres.length} categorías` : nombres.join(', ');
+  }
+
+  proveedoresVale(vale: WaterEgresoModel): string {
+    if (!vale.lineas || vale.lineas.length === 0) {
+      return vale.proveedor || vale.personaNombre || '-';
+    }
+    const nombres = Array.from(new Set(
+      vale.lineas.map(l => l.proveedor || l.personaNombre).filter(Boolean) as string[]
+    ));
+    if (nombres.length === 0) return vale.proveedor || vale.personaNombre || '-';
+    return nombres.length > 1 ? 'Varios' : nombres[0];
+  }
+
+  isValeSelected(vale: WaterEgresoModel): boolean {
+    return vale.aguaEgresosId != null && this.seleccionadosVales.has(vale.aguaEgresosId);
+  }
+
+  toggleVale(vale: WaterEgresoModel, checked: boolean): void {
+    if (vale.aguaEgresosId == null) return;
+    if (checked) {
+      this.seleccionadosVales.add(vale.aguaEgresosId);
+    } else {
+      this.seleccionadosVales.delete(vale.aguaEgresosId);
+    }
+  }
+
+  get totalSeleccionadoVales(): number {
+    return this.valesDisponibles
+      .filter(v => v.aguaEgresosId != null && this.seleccionadosVales.has(v.aguaEgresosId))
+      .reduce((acc, v) => acc + (Number(v.monto) || 0), 0);
   }
 
   private agrupar(gastos: WaterEgresoGastoModel[]): ConceptoGrupo[] {
@@ -101,10 +177,19 @@ export class EgresoGastosComponent implements OnInit {
     return this.pendientes.reduce((acc, g) => acc + (Number(g.monto) || 0), 0);
   }
 
-  get totalSeleccionado(): number {
+  get totalSeleccionadoGastos(): number {
     return this.pendientes
       .filter(g => g.aguaEgresosId != null && this.seleccionados.has(g.aguaEgresosId))
       .reduce((acc, g) => acc + (Number(g.monto) || 0), 0);
+  }
+
+  // Total combinado: gastos sueltos + vales ya emitidos seleccionados.
+  get totalSeleccionado(): number {
+    return this.totalSeleccionadoGastos + this.totalSeleccionadoVales;
+  }
+
+  get totalItemsSeleccionados(): number {
+    return this.seleccionados.size + this.seleccionadosVales.size;
   }
 
   isSelected(gasto: WaterEgresoGastoModel): boolean {
@@ -164,12 +249,13 @@ export class EgresoGastosComponent implements OnInit {
   }
 
   openEmitirValeDialog(): void {
-    if (this.seleccionados.size === 0) return;
+    if (this.totalItemsSeleccionados === 0) return;
 
     const dialogRef = this.dialog.open(EmitirValeComponent, {
       width: '700px',
       data: {
         gastoIds: Array.from(this.seleccionados),
+        valeIds: Array.from(this.seleccionadosVales),
         totalSeleccionado: this.totalSeleccionado
       }
     });
@@ -178,6 +264,7 @@ export class EgresoGastosComponent implements OnInit {
       if (result === 1) {
         this.openSnackBar('Vale emitido', 'Éxito');
         this.getPendientes();
+        this.getVales();
       } else if (result === 2) {
         this.openSnackBar('Error al emitir el vale', 'Error');
       }
