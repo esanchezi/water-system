@@ -1,5 +1,9 @@
 import { MediaMatcher } from '@angular/cdk/layout';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { AuthService } from '../../../shared/services/auth.service';
+import { ChangePasswordComponent } from '../change-password/change-password.component';
 
 @Component({
   selector: 'app-sidenav',
@@ -7,6 +11,10 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./sidenav.component.css'],
 })
 export class SidenavComponent implements OnInit {
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+
   mobileQuery: MediaQueryList;
   username:any;
 
@@ -38,10 +46,15 @@ export class SidenavComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.username = "";
+    this.username = this.authService.getNombre() || this.authService.getUsername() || '';
   }
 
   logout() {
-    //this.keycloakservice.logout();
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
+
+  openChangePassword(): void {
+    this.dialog.open(ChangePasswordComponent, { width: '400px' });
   }
 }

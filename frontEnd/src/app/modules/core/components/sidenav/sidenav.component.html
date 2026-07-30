@@ -17,7 +17,11 @@
             <mat-icon>person_outline</mat-icon>
           </button>
           <mat-menu #menu="matMenu">
-            <button mat-menu-item >
+            <button mat-menu-item (click)="openChangePassword()">
+              <mat-icon>lock_reset</mat-icon>
+              Cambiar contraseña
+            </button>
+            <button mat-menu-item (click)="logout()">
               <mat-icon>exit_to_app</mat-icon>
               Cerrar Sesión
             </button>
@@ -42,7 +46,6 @@
         <div class="profile-card">
           <div class="header">
             <h2>{{username}}</h2>
-            <h4>gmail.com</h4>
           </div>
         </div>
         <mat-divider></mat-divider>
