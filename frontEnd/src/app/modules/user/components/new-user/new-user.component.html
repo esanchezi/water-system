@@ -1,5 +1,6 @@
-<h2 mat-dialog-title>{{ esCopia ? 'Nuevo usuario (copiado)' : 'Agregar nuevo usuario' }}</h2>
+<h2 mat-dialog-title>{{ esConversionPreregistro ? 'Convertir preregistro en usuario' : (esCopia ? 'Nuevo usuario (copiado)' : 'Agregar nuevo usuario') }}</h2>
 <p *ngIf="esCopia" class="hint-copia">Se copiaron los datos personales y el domicilio. Captura el nuevo N° Usuario, la Cuota y, si aplica, las Observaciones.</p>
+<p *ngIf="esConversionPreregistro" class="hint-copia">Se prellenó el nombre capturado en el preregistro. Completa el resto de los datos; al guardar, esta casa y el preregistro quedan enlazados automáticamente al usuario nuevo.</p>
 
 <mat-dialog-content>
   <form [formGroup]="userForm">

@@ -17,6 +17,7 @@ import { WaterHouseModel, WaterUserDetailModel, WaterUserModel } from 'src/app/m
 import { WaterUserNotifyModel } from 'src/app/modules/shared/models/WaterUserNotify.model';
 import { WaterUserChargeModel } from 'src/app/modules/shared/models/WaterUserCharge.model';
 import { WaterUserAnnualPaymentModel } from 'src/app/modules/shared/models/WaterUserAnnualPayment.model';
+import { WaterUserCensusModel } from 'src/app/modules/shared/models/WaterUserCensus.model';
 import { AssemblyService } from 'src/app/modules/shared/services/assembly.service';
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { FeeService } from 'src/app/modules/shared/services/fee.service';
@@ -27,6 +28,7 @@ import { UserChargeService } from 'src/app/modules/shared/services/user-charge.s
 import { UserService } from 'src/app/modules/shared/services/user.service';
 import { HouseService } from 'src/app/modules/shared/services/house.service';
 import { WaterUserAnnualPaymentService } from 'src/app/modules/shared/services/water-user-annual-payment.service';
+import { WaterUserCensusService } from 'src/app/modules/shared/services/water-user-census.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -50,6 +52,7 @@ export class DetailsUserComponent implements OnInit {
   private readonly userService      = inject(UserService);
   private readonly houseService     = inject(HouseService);
   private readonly annualPaymentService = inject(WaterUserAnnualPaymentService);
+  private readonly censusService    = inject(WaterUserCensusService);
   private readonly dialog           = inject(MatDialog);
 
   public detailsForm: FormGroup = this.fb.group({});
@@ -57,6 +60,7 @@ export class DetailsUserComponent implements OnInit {
   public chargeForm:  FormGroup = this.fb.group({});
   public paymentForm: FormGroup = this.fb.group({});
   public annualPaymentForm: FormGroup = this.fb.group({});
+  public censusForm: FormGroup = this.fb.group({});
 
   displayColumns:         string[] = ['noFolio','fecha','concepto','total','conceptoPayment','montoRecibido','montoAplicado','anio'];
   displayColumnsNotify:   string[] = ['tipo','aviso','comentario','estatus','responsable'];
@@ -64,6 +68,7 @@ export class DetailsUserComponent implements OnInit {
   displayColumnsCharge:   string[] = ['concepto','descripcion','monto','fechaStr','montoPagado','montoCondonado','saldo','estatusPago'];
   displayColumnsAgreement: string[] = ['noFolio','fechaStr','motivo','adeudo','fechaCompromisoPagoStr','montoCondonadoTotal','estatusConvenio'];
   displayColumnsAnnualPayment: string[] = ['anio','fechaValidacion','observaciones','estatus','acciones'];
+  displayColumnsCenso: string[] = ['edadActual','observaciones','acciones'];
 
   // Totales de la tabla de Cargos / Multas (fila de pie de tabla)
   totalMonto      = 0;
@@ -77,6 +82,7 @@ export class DetailsUserComponent implements OnInit {
   dataSourceCharge   = new MatTableDataSource<WaterUserChargeModel>();
   dataSourceAgreement = new MatTableDataSource<WaterAgreementModel>();
   dataSourceAnnualPayment = new MatTableDataSource<WaterUserAnnualPaymentModel>();
+  dataSourceCenso = new MatTableDataSource<WaterUserCensusModel>();
 
   usuario!: WaterUserModel;
   user!:    WaterUserDetailModel;
@@ -100,6 +106,10 @@ export class DetailsUserComponent implements OnInit {
   tiposAviso:      CatalogOptionModel[] = [];
   responsablesPendiente: CatalogOptionModel[] = [];
   calles:          CatalogOptionModel[] = [];
+  // Giro del negocio -- catálogo opcional (clave GIRO_NEGOCIO), se crea
+  // desde el módulo de Catálogos. Si no existe todavía, esta lista sale
+  // vacía y el select simplemente no muestra opciones.
+  girosNegocio:    CatalogOptionModel[] = [];
 
   // Domicilio / Casa: cascada Calle -> Casa + mapa + vecinos de la misma casa
   allHouses:        WaterHouseModel[] = [];
@@ -125,6 +135,15 @@ export class DetailsUserComponent implements OnInit {
       habitaDomicilio:    ['', Validators.required],
       tieneToma:          ['', Validators.required],
       inmuebleRenta:      ['', Validators.required],
+      esNegocio:          [false],
+      giroNegocioId:      [''],
+      tieneLocal:         [false],
+      localRentadoPorUsuario: [false],
+      familiaCompleta:    [true],
+      viudoPadreMadreSoltero: [false],
+      esTiendaAbarrotes:  [false],
+      negocioAtendidoPorUsuario: [false],
+      negocioGrande:      [false],
       observaciones:      [''],
       casaNo:             [''],
       domicilioCalleId:   [''],
@@ -168,6 +187,14 @@ export class DetailsUserComponent implements OnInit {
       anio:           ['', Validators.required],
       fechaValidacion: [''],
       observaciones:  ['']
+    });
+
+    // La edad es opcional a propósito -- si no se da, la persona igual
+    // cuenta en el censo, solo que aparece como "sin clasificar" en el
+    // resumen por edades.
+    this.censusForm = this.fb.group({
+      edad:          [''],
+      observaciones: ['']
     });
 
     this.loadCatalogs();
@@ -222,6 +249,10 @@ export class DetailsUserComponent implements OnInit {
     });
     this.catalogService.getOptions(15).subscribe({
       next: (opts) => this.calles = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('GIRO_NEGOCIO').subscribe({
+      next: (opts) => this.girosNegocio = opts,
       error: (e: any) => console.error(e)
     });
   }
@@ -561,6 +592,81 @@ export class DetailsUserComponent implements OnInit {
     });
   }
 
+  // Calculadora de cuota SUGERIDA -- nunca cambia this.cuotaId sola, solo
+  // propone una categoría para que la persona capturando la confirme
+  // seleccionando manualmente la Cuota correspondiente arriba. El árbol
+  // todavía tiene ramas pendientes de definir (granja, jardín) y una rama
+  // que depende de asamblea ("a decisión del comité"), por eso es
+  // deliberadamente una sugerencia y no una asignación automática.
+  get sugerenciaCuota(): string {
+    const f = this.detailsForm?.value;
+    if (!f) return '';
+
+    if (!f.esNegocio) {
+      // Uso doméstico
+      if (f.familiaCompleta) return 'Cuota completa';
+      if (f.viudoPadreMadreSoltero) return 'Media cuota';
+      return 'No requiere cuota propia: agregar como integrante de una familia ya registrada en este domicilio';
+    }
+
+    // Negocio
+    if (f.esTiendaAbarrotes) return 'No se cobra (exento)';
+    if (f.negocioAtendidoPorUsuario) return 'Un cuarto de cuota';
+    if (f.negocioGrande) return 'A decisión del comité / asamblea';
+    return 'Media cuota';
+  }
+
+  getCenso(): void {
+    this.censusService.getByAguaUsuarioId(this.user.aguaUsuarioId).subscribe({
+      next: (resp: any) => this.processCensoResponse(resp),
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  private processCensoResponse(resp: any): void {
+    if (resp.metadata[0].code !== '00') return;
+    const dataCenso: WaterUserCensusModel[] = resp.data;
+    this.dataSourceCenso = new MatTableDataSource<WaterUserCensusModel>(dataCenso);
+  }
+
+  onSaveCenso(): void {
+    const form = this.censusForm.value;
+    const data = {
+      edad:          form.edad !== '' && form.edad !== null ? Number(form.edad) : null,
+      observaciones: form.observaciones
+    };
+    this.censusService.create(this.user.aguaUsuarioId, data).subscribe({
+      next: () => {
+        this.censusForm.reset();
+        this.getCenso();
+      },
+      error: (e: any) => {
+        console.error(e);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo agregar la persona al censo.', confirmButtonText: 'Cerrar' });
+      }
+    });
+  }
+
+  onDeactivateCenso(item: WaterUserCensusModel): void {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Quitar del censo',
+      text: '¿Confirmas quitar a esta persona del censo (ej. ya no vive en el domicilio)?',
+      showCancelButton: true,
+      confirmButtonText: 'Quitar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.censusService.deactivate(item.censoId).subscribe({
+        next: () => this.getCenso(),
+        error: (e: any) => {
+          console.error(e);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo quitar el registro.', confirmButtonText: 'Cerrar' });
+        }
+      });
+    });
+  }
+
   openNewConvenioDialog(): void {
     const nombreUsuario = `${this.person?.nombre || ''} ${this.person?.app || ''}`.trim();
     const dialogRef = this.dialog.open(NewConvenioComponent, {
@@ -610,6 +716,15 @@ export class DetailsUserComponent implements OnInit {
       habitaDomicilio: form.habitaDomicilio,
       tieneToma:       form.tieneToma,
       inmuebleRenta:   form.inmuebleRenta,
+      esNegocio:       form.esNegocio,
+      giroNegocioId:   form.giroNegocioId || null,
+      tieneLocal:      form.tieneLocal,
+      localRentadoPorUsuario: form.localRentadoPorUsuario,
+      familiaCompleta: form.familiaCompleta,
+      viudoPadreMadreSoltero: form.viudoPadreMadreSoltero,
+      esTiendaAbarrotes: form.esTiendaAbarrotes,
+      negocioAtendidoPorUsuario: form.negocioAtendidoPorUsuario,
+      negocioGrande:   form.negocioGrande,
       observaciones:   form.observaciones,
       cuotaId:         form.fkIdCuota,
       estatusPagoId:   form.estatusPagoId,
@@ -647,6 +762,15 @@ export class DetailsUserComponent implements OnInit {
           habitaDomicilio:    u.habitaDomicilio,
           tieneToma:          u.tieneToma,
           inmuebleRenta:      u.inmuebleRenta,
+          esNegocio:          u.esNegocio || false,
+          giroNegocioId:      u.giroNegocioId || null,
+          tieneLocal:         u.tieneLocal || false,
+          localRentadoPorUsuario: u.localRentadoPorUsuario || false,
+          familiaCompleta:    u.familiaCompleta ?? true,
+          viudoPadreMadreSoltero: u.viudoPadreMadreSoltero || false,
+          esTiendaAbarrotes:  u.esTiendaAbarrotes || false,
+          negocioAtendidoPorUsuario: u.negocioAtendidoPorUsuario || false,
+          negocioGrande:      u.negocioGrande || false,
           casaNo:             u.casaId,
           grupoId:            u.grupoId,
           nombre:             u.nombre,

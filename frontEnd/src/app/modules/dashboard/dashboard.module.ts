@@ -20,6 +20,7 @@ import { DeudorModule } from '../deudor/deudor.module';
 import { TotalPorAnioModule } from '../total-por-anio/total-por-anio.module';
 import { EgresoModule } from '../egreso/egreso.module';
 import { ResumenAnualModule } from '../resumen-anual/resumen-anual.module';
+import { CensoModule } from '../censo/censo.module';
 
 @NgModule({
   declarations: [
@@ -45,7 +46,8 @@ import { ResumenAnualModule } from '../resumen-anual/resumen-anual.module';
     DeudorModule,
     TotalPorAnioModule,
     EgresoModule,
-    ResumenAnualModule
+    ResumenAnualModule,
+    CensoModule
   ]
 })
 export class DashboardModule { }

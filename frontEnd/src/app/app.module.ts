@@ -13,6 +13,9 @@ import localeEsMx from '@angular/common/locales/es-MX';
 import { CurrencyPipe } from '@angular/common';
 import { MatCardModule } from "@angular/material/card";
 import { MatFormFieldModule } from "@angular/material/form-field";
+import { HTTP_INTERCEPTORS } from '@angular/common/http';
+import { LoginModule } from './modules/login/login.module';
+import { AuthInterceptor } from './modules/shared/interceptors/auth.interceptor';
 
 registerLocaleData(localeEsMx);
 
@@ -29,10 +32,12 @@ registerLocaleData(localeEsMx);
     GoogleMapsModule,
     WaterValvesModule,
     MatCardModule,
-    MatFormFieldModule
+    MatFormFieldModule,
+    LoginModule
 ],
   providers: [
-    CurrencyPipe
+    CurrencyPipe,
+    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true }
   ],
   bootstrap: [AppComponent]
 })

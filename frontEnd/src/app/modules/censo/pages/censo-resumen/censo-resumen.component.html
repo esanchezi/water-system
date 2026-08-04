@@ -1,0 +1,48 @@
+<div>
+  <mat-card>
+    <mat-card-title>Censo de personas</mat-card-title>
+    <mat-card-subtitle>
+      Total de personas registradas en el censo de todos los usuarios, agrupadas por edad
+    </mat-card-subtitle>
+
+    <mat-card-content>
+      <p *ngIf="cargando">Cargando...</p>
+
+      <div *ngIf="!cargando && resumen">
+        <table class="tabla-resumen">
+          <tr *ngFor="let r of resumen.rangos">
+            <td>{{ r.label }}</td>
+            <td class="cantidad">{{ r.cantidad }}</td>
+          </tr>
+          <tr class="fila-sin-clasificar">
+            <td>Sin clasificar (sin edad registrada)</td>
+            <td class="cantidad">{{ resumen.sinClasificar }}</td>
+          </tr>
+          <tr class="fila-total">
+            <td><strong>Total de personas</strong></td>
+            <td class="cantidad"><strong>{{ resumen.totalPersonas }}</strong></td>
+          </tr>
+        </table>
+
+        <h3>Por zona (calle)</h3>
+        <table class="tabla-resumen">
+          <tr *ngFor="let z of resumen.porZona">
+            <td>{{ z.label }}</td>
+            <td class="cantidad">{{ z.cantidad }}</td>
+          </tr>
+          <tr class="fila-sin-clasificar">
+            <td>Sin zona asignada (usuario o casa sin calle capturada)</td>
+            <td class="cantidad">{{ resumen.sinZonaAsignada }}</td>
+          </tr>
+        </table>
+
+        <p class="hint">
+          Este total viene del censo capturado en la ficha de cada usuario (sección "Censo de personas").
+          Entre más usuarios tengan su censo completo, más preciso es este resumen.
+        </p>
+      </div>
+
+      <p *ngIf="!cargando && !resumen">No se pudo cargar el resumen.</p>
+    </mat-card-content>
+  </mat-card>
+</div>

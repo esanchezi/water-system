@@ -1,5 +1,9 @@
 import { MediaMatcher } from '@angular/cdk/layout';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { AuthService } from '../../../shared/services/auth.service';
+import { ChangePasswordComponent } from '../change-password/change-password.component';
 
 @Component({
   selector: 'app-sidenav',
@@ -7,6 +11,10 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./sidenav.component.css'],
 })
 export class SidenavComponent implements OnInit {
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+
   mobileQuery: MediaQueryList;
   username:any;
 
@@ -22,6 +30,7 @@ export class SidenavComponent implements OnInit {
     { name: 'Convenios',  route: 'convenioList', icon: 'handshake' },
     { name: 'Cuotas',     route: 'cuotaList',    icon: 'request_quote' },
     { name: 'Deudores',   route: 'deudorList',   icon: 'money_off' },
+    { name: 'Censo',      route: 'censoResumen', icon: 'groups_2' },
     { name: 'Totales por año', route: 'totalPorAnio', icon: 'bar_chart' },
     { name: 'Resumen anual', route: 'resumenAnual', icon: 'summarize' },
     { name: 'Gastos del mes', route: 'egresoGastos', icon: 'fact_check' },
@@ -37,10 +46,15 @@ export class SidenavComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.username = "";
+    this.username = this.authService.getNombre() || this.authService.getUsername() || '';
   }
 
   logout() {
-    //this.keycloakservice.logout();
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
+
+  openChangePassword(): void {
+    this.dialog.open(ChangePasswordComponent, { width: '400px' });
   }
 }

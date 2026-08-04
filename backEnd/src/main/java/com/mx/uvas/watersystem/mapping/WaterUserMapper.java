@@ -47,6 +47,13 @@ public class WaterUserMapper {
             response.setFee(fee);
         }
 
+        // Giro del negocio (solo aplica si esNegocio = true, pero se manda
+        // igual si está capturado por si acaso).
+        if (entity.getGiroNegocio() != null) {
+            response.setGiroNegocioId(entity.getGiroNegocio().getCatalogoOpcionesId());
+            response.setGiroNegocioNombre(entity.getGiroNegocio().getNombre());
+        }
+
         // Persona
         if (entity.getPerson() != null) {
             PersonDto person = new PersonDto();

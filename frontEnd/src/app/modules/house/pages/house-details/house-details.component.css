@@ -5,3 +5,16 @@
 .mat-form-field.full-width {
   width: 100%;
 }
+
+.preregistro-item {
+  padding: 8px 0;
+}
+
+.estatus-tag {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .08);
+  color: rgba(0, 0, 0, .6);
+}

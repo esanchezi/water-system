@@ -1,0 +1,31 @@
+.tabla-resumen {
+  width: 100%;
+  max-width: 480px;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.tabla-resumen td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, .08);
+}
+
+.tabla-resumen .cantidad {
+  text-align: right;
+}
+
+.fila-sin-clasificar td {
+  color: rgba(0, 0, 0, .6);
+  font-style: italic;
+}
+
+.fila-total td {
+  border-top: 2px solid rgba(0, 0, 0, .2);
+  border-bottom: none;
+}
+
+.hint {
+  margin-top: 16px;
+  color: rgba(0, 0, 0, .6);
+  font-size: 0.85rem;
+}
