@@ -1,0 +1,13 @@
+.panel-usuario {
+  background-color: #e8f1fb;
+  margin-bottom: 8px;
+  border-radius: 6px;
+}
+
+.panel-usuario .mat-expansion-panel-header {
+  background-color: #e8f1fb;
+}
+
+.panel-usuario:hover {
+  background-color: #dce9f7;
+}

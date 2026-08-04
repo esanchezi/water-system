@@ -18,6 +18,13 @@ h1.app-name{
     margin-top: 15px;
 }
 
+.app-logo{
+    height: 36px;
+    width: 36px;
+    object-fit: contain;
+    margin-left: 6px;
+}
+
 .sidenav-container{
     flex: 1;
 

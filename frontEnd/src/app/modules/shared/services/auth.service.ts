@@ -53,7 +53,34 @@ export class AuthService {
     return localStorage.getItem(NOMBRE_KEY);
   }
 
+  // Antes solo revisaba que hubiera un token guardado, sin ver si ya
+  // venció -- eso dejaba entrar al tablero con una sesión vieja y solo
+  // hasta que fallaba la primera llamada a la API se notaba el problema
+  // (pantalla "cargando" o en blanco). Ahora se revisa la fecha de
+  // expiración del propio token (campo "exp") antes de dejar pasar.
   isLoggedIn(): boolean {
-    return !!this.getToken();
+    const token = this.getToken();
+    if (!token) {
+      return false;
+    }
+    if (this.isTokenExpired(token)) {
+      this.logout();
+      return false;
+    }
+    return true;
+  }
+
+  private isTokenExpired(token: string): boolean {
+    try {
+      const payload = token.split('.')[1];
+      const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+      if (!decoded.exp) {
+        return false;
+      }
+      return Date.now() >= decoded.exp * 1000;
+    } catch {
+      // Si no se puede leer el token, se trata como vencido/ inválido.
+      return true;
+    }
   }
 }

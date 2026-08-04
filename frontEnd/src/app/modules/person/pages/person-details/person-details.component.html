@@ -5,10 +5,10 @@
     </mat-card-content>
   </mat-card>
 
-    <mat-expansion-panel *ngFor="let user of listWaterUser; trackBy: trackByUser">
+    <mat-expansion-panel class="panel-usuario" *ngFor="let user of listWaterUser; trackBy: trackByUser">
         <mat-expansion-panel-header>
             <mat-panel-title>
-            {{ user.person.nombre }} {{ user.person.app }} {{ user.person.apm }}
+            {{ user.person.nombre }} {{ user.person.nombre2 }} {{ user.person.app }} {{ user.person.apm }}
             </mat-panel-title>
             <mat-panel-description>
             Usuario #{{ user.noUsuario }} - {{ user.observaciones }}
