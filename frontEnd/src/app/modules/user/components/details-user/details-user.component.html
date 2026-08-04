@@ -103,8 +103,10 @@
                 </mat-card>
               </mat-card>
 
+            <app-user-receipt [usuario]="usuario"></app-user-receipt>
+
             <mat-accordion class="user-headers-align">
-                <mat-expansion-panel hideToggle>
+                <mat-expansion-panel class="panel-oscuro" hideToggle>
                     <mat-expansion-panel-header>
                       <mat-panel-title>Usuario</mat-panel-title>
                       <mat-panel-description>
@@ -215,7 +217,7 @@
                     </div>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel hideToggle>
+                <mat-expansion-panel class="panel-claro" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Calculadora de cuota (sugerencia)</mat-panel-title>
                         <mat-panel-description>Solo propone una categoría, no cambia la cuota sola</mat-panel-description>
@@ -258,7 +260,7 @@
                     </form>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel hideToggle>
+                <mat-expansion-panel class="panel-oscuro" hideToggle>
                     <mat-expansion-panel-header>
                       <mat-panel-title>Domicilio / Casa</mat-panel-title>
                       <mat-panel-description>
@@ -335,7 +337,7 @@
                     </mat-card-actions>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel (opened)="getNotify()" hideToggle>
+                <mat-expansion-panel class="panel-claro" (opened)="getNotify()" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Avisos Usuario</mat-panel-title>
                         <mat-panel-description>Avisos realizados al usuario</mat-panel-description>
@@ -413,7 +415,7 @@
                     </form>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel (opened)="getCharges()" hideToggle>
+                <mat-expansion-panel class="panel-oscuro" (opened)="getCharges()" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Cargos / Multas</mat-panel-title>
                         <mat-panel-description>Cargos extra y multas aplicadas al usuario</mat-panel-description>
@@ -543,7 +545,7 @@
                     </form>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel (opened)="getAgreements()" hideToggle>
+                <mat-expansion-panel class="panel-claro" (opened)="getAgreements()" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Convenios</mat-panel-title>
                         <mat-panel-description>Convenios de pago / condonaciones del usuario</mat-panel-description>
@@ -588,7 +590,7 @@
                     </mat-card-actions>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel (opened)="getAnnualPayments()" hideToggle>
+                <mat-expansion-panel class="panel-oscuro" (opened)="getAnnualPayments()" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Años pagados</mat-panel-title>
                         <mat-panel-description>Marca los años ya cubiertos en su totalidad</mat-panel-description>
@@ -649,7 +651,7 @@
                     </form>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel (opened)="getCenso()" hideToggle>
+                <mat-expansion-panel class="panel-claro" (opened)="getCenso()" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Censo de personas</mat-panel-title>
                         <mat-panel-description>Integrantes que habitan con este usuario (edad opcional)</mat-panel-description>
@@ -701,7 +703,7 @@
                     </form>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel hideToggle>
+                <mat-expansion-panel class="panel-oscuro" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Censo</mat-panel-title>
                         <mat-panel-description>Censo usuario</mat-panel-description>
@@ -712,7 +714,7 @@
         </div>
     </form>
 
-    <mat-expansion-panel (opened)="getAssembly()" hideToggle>
+    <mat-expansion-panel class="panel-claro" (opened)="getAssembly()" hideToggle>
         <mat-expansion-panel-header>
             <mat-panel-title>Asambleas</mat-panel-title>
             <mat-panel-description>Asistencia asamblea</mat-panel-description>
@@ -734,6 +736,4 @@
             <tr mat-row *matRowDef="let row; columns:displayColumnsAssembly"></tr>
         </table>
     </mat-expansion-panel>
-
-    <app-user-receipt [usuario]="usuario"></app-user-receipt>
 </div>

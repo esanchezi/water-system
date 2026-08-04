@@ -7,17 +7,11 @@
     margin-left: 8px;
   }
 
-.mat-expansion-panel-header.mat-expanded,
-.mat-expansion-panel-header.mat-expanded:hover {
-  background: #730adc40;
-}
-.mat-expansion-panel-header {
-    --color: white;
-    background-color: rgba(139, 19, 219, 0.07);
- }
+/* El color de cada acordeon (claro/oscuro alternado) ahora se controla
+   con las clases globales .panel-claro / .panel-oscuro (ver styles.css) */
 
 .sugerencia-cuota {
   font-size: 1.05rem;
-  color: #673ab7;
+  color: #1565c0;
   margin-top: 12px;
 }

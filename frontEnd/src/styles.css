@@ -2,3 +2,26 @@
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+/* Acordeones alternados (claro/oscuro) con titulo en negritas. Clases
+   globales para que apliquen igual sin importar en que componente esten
+   (por ejemplo app-user-receipt, que vive en un componente aparte). */
+.panel-claro,
+.panel-claro > .mat-expansion-panel-header {
+  background-color: #e3f2fd !important;
+}
+
+.panel-oscuro,
+.panel-oscuro > .mat-expansion-panel-header {
+  background-color: #90caf9 !important;
+}
+
+.panel-claro .mat-panel-title,
+.panel-oscuro .mat-panel-title {
+  font-weight: 700;
+}
+
+.panel-claro > .mat-expansion-panel-header.mat-expanded,
+.panel-oscuro > .mat-expansion-panel-header.mat-expanded {
+  background-color: inherit !important;
+}
