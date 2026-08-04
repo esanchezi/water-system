@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@CrossOrigin(origins = {"http://localhost:4200", "http://localhost"})
 @RestController
 @RequestMapping(path = "/api/v1/waterUserCharge")
 @AllArgsConstructor

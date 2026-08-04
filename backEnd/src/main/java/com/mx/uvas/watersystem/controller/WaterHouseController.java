@@ -13,8 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Collections;
 import java.util.List;
 
-@CrossOrigin(origins = {"http://localhost:4200", "http://localhost"})
-//@CrossOrigin(origins = {"*"})
 @RestController
 @RequestMapping(path = "/api/v1/waterHouse" )
 @AllArgsConstructor

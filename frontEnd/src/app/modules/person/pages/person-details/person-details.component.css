@@ -1,13 +1,29 @@
 .panel-usuario {
-  background-color: #e8f1fb;
   margin-bottom: 8px;
   border-radius: 6px;
 }
 
-.panel-usuario .mat-expansion-panel-header {
-  background-color: #e8f1fb;
+/* Colores alternados: uno claro, uno mas oscuro */
+.panel-usuario:nth-of-type(odd) {
+  background-color: #e3f2fd;
+}
+
+.panel-usuario:nth-of-type(odd) .mat-expansion-panel-header {
+  background-color: #e3f2fd;
+}
+
+.panel-usuario:nth-of-type(even) {
+  background-color: #90caf9;
+}
+
+.panel-usuario:nth-of-type(even) .mat-expansion-panel-header {
+  background-color: #90caf9;
+}
+
+.panel-usuario .mat-panel-title {
+  font-weight: 700;
 }
 
 .panel-usuario:hover {
-  background-color: #dce9f7;
+  filter: brightness(0.97);
 }
