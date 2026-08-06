@@ -4,7 +4,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, forkJoin } from 'rxjs';
 import { WaterAgreementModel } from 'src/app/modules/shared/models/WaterAgreement.model';
 import { AgreementService } from 'src/app/modules/shared/services/agreement.service';
 import { NewConvenioComponent } from 'src/app/modules/convenio/components/new-convenio/new-convenio.component';
@@ -194,7 +194,8 @@ export class DetailsUserComponent implements OnInit {
     // resumen por edades.
     this.censusForm = this.fb.group({
       edad:          [''],
-      observaciones: ['']
+      observaciones: [''],
+      cantidadSinEdad: [1]
     });
 
     this.loadCatalogs();
@@ -644,6 +645,65 @@ export class DetailsUserComponent implements OnInit {
         console.error(e);
         Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo agregar la persona al censo.', confirmButtonText: 'Cerrar' });
       }
+    });
+  }
+
+  // Cuando la familia no quiere dar edades individuales pero sí sabemos
+  // cuántas personas son en total, esto evita capturar una por una: agrega
+  // de golpe N personas "sin clasificar" (edad null), cada una editable
+  // después si algún día se obtiene el dato.
+  onAgregarVariasSinEdad(): void {
+    const cantidad = Number(this.censusForm.value.cantidadSinEdad);
+    if (!cantidad || cantidad < 1) return;
+
+    const llamadas = Array.from({ length: cantidad }, () =>
+      this.censusService.create(this.user.aguaUsuarioId, { edad: null, observaciones: '' })
+    );
+
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    forkJoin(llamadas).subscribe({
+      next: () => {
+        this.censusForm.patchValue({ cantidadSinEdad: 1 });
+        this.getCenso();
+        Swal.fire({ icon: 'success', title: `${cantidad} persona(s) agregada(s) sin edad`, confirmButtonText: 'Aceptar' });
+      },
+      error: (e: any) => {
+        console.error(e);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron agregar las personas.', confirmButtonText: 'Cerrar' });
+      }
+    });
+  }
+
+  // Permite corregir después la edad (o quitarla) y las observaciones de
+  // una persona ya capturada en el censo -- útil cuando se agregó "sin
+  // clasificar" y más adelante sí se obtiene el dato real.
+  onEditarCenso(item: WaterUserCensusModel): void {
+    Swal.fire({
+      title: 'Editar persona del censo',
+      html:
+        `<input id="swal-edad" type="number" min="0" class="swal2-input" placeholder="Edad (opcional)" value="${item.edad ?? ''}">` +
+        `<input id="swal-observaciones" type="text" class="swal2-input" placeholder="Observaciones" value="${item.observaciones ?? ''}">`,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        const edadInput = (document.getElementById('swal-edad') as HTMLInputElement)?.value;
+        const observaciones = (document.getElementById('swal-observaciones') as HTMLInputElement)?.value || '';
+        return {
+          edad: edadInput !== '' ? Number(edadInput) : null,
+          observaciones
+        };
+      }
+    }).then((result) => {
+      if (!result.isConfirmed || !result.value) return;
+      this.censusService.update(item.censoId, result.value).subscribe({
+        next: () => this.getCenso(),
+        error: (e: any) => {
+          console.error(e);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar el registro.', confirmButtonText: 'Cerrar' });
+        }
+      });
     });
   }
 

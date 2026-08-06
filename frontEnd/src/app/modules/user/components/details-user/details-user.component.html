@@ -668,6 +668,10 @@
                         <ng-container matColumnDef="acciones">
                             <th mat-header-cell *matHeaderCellDef></th>
                             <td mat-cell *matCellDef="let element">
+                                <button mat-icon-button color="primary"
+                                        (click)="onEditarCenso(element)" title="Editar edad/observaciones">
+                                    <mat-icon>edit</mat-icon>
+                                </button>
                                 <button mat-icon-button color="warn"
                                         (click)="onDeactivateCenso(element)" title="Quitar del censo">
                                     <mat-icon>delete</mat-icon>
@@ -700,6 +704,23 @@
                                 <mat-icon>person_add</mat-icon> Agregar al censo
                             </button>
                         </mat-card-actions>
+
+                        <mat-divider style="margin: 12px 0;"></mat-divider>
+
+                        <p class="mat-hint">
+                            Si no quieren dar las edades pero sabes cuántas personas son en total,
+                            agrégalas de una vez como "sin clasificar" -- después se pueden editar
+                            una por una si se obtiene el dato.
+                        </p>
+                        <div fxLayout="row" fxLayoutGap="24px" fxLayoutAlign="start center">
+                            <mat-form-field appearance="outline" fxFlex="20%">
+                                <mat-label>Cuántas personas sin edad</mat-label>
+                                <input matInput type="number" min="1" formControlName="cantidadSinEdad" />
+                            </mat-form-field>
+                            <button mat-stroked-button color="primary" (click)="onAgregarVariasSinEdad()">
+                                <mat-icon>group_add</mat-icon> Agregar sin edad
+                            </button>
+                        </div>
                     </form>
                 </mat-expansion-panel>
 
