@@ -43,8 +43,10 @@ export interface WaterUserModel{
     direccionId: number;
     casaId: number;
     nombre: string;
+    nombre2?: string;
     app: string;
     apm: string;
+    alias?: string;
     direccion: string;
     casa: string;
     calleId: number;

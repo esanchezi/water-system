@@ -18,6 +18,7 @@ import java.io.Serializable;
         private String nombre2;
         private String app;
         private String apm;
+        private String alias;
         private String direccion;
         private String casa;
         private Integer calleId;

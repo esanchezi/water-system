@@ -26,10 +26,10 @@ export class UserComponent implements OnInit{
   private readonly router = inject(Router);
   private readonly catalogService = inject(CatalogService);
   public dialog = inject(MatDialog);
-  displayColumns: string[]=['noUser','nombre','direccion','casa','observaciones','actions'];
+  displayColumns: string[]=['noUser','nombre','alias','direccion','casa','observaciones','actions'];
   dataSource = new MatTableDataSource<WaterUserBasicModel>();
   nombreFiltro: string = '';
-  apellidoFiltro: string = '';
+  aliasFiltro: string = '';
   noUserFiltro: string = '';
   calleIdFiltro: number | null = null;
   calleNombreFiltro: string = '';
@@ -52,8 +52,12 @@ export class UserComponent implements OnInit{
     this.dataSource.filterPredicate = (data: WaterUserBasicModel, filter: string) => {
       const searchTerms = JSON.parse(filter);
 
-      const nombre = data.nombre?.toLowerCase() || '';
-      const apellido = data.app?.toLowerCase() || '';
+      // Nombre completo unificado (antes eran dos campos separados: nombre y
+      // app/apellido). Se compara palabra por palabra para que funcione sin
+      // importar el orden en que se escriban (ej. "Pérez Juan" o "Juan Pérez").
+      const nombreCompleto = [data.nombre, data.nombre2, data.app, data.apm]
+        .filter(Boolean).join(' ').toLowerCase();
+      const alias = data.alias?.toLowerCase() || '';
       const noUser = data.noUsuario?.toString() || '';
       const calleId = data.calleId?.toString() || '';
       const calleTexto = data.calleTexto?.toLowerCase() || '';
@@ -72,14 +76,23 @@ export class UserComponent implements OnInit{
         casaNo.includes(searchTerms.casaNo) ||
         numeroTexto.includes(searchTerms.casaNo);
 
-      // Sección se filtra a través de la calle asignada en el catálogo
-      // (calleId -> zonaId). Si el usuario no tiene casa/calle de catálogo
-      // asignada, no puede quedar dentro de una sección específica.
+      // Sección se filtra por la calle asignada en el catálogo (calleId ->
+      // zonaId) O, si el usuario no tiene casa asignada, por el texto libre
+      // de su dirección (calleTexto) contra los nombres de calle de esa
+      // sección -- si no, los usuarios sin casa desaparecían del filtro.
       const matchSeccion = !searchTerms.seccionId ||
-        String(this.zonaPorCalleId.get(data.calleId as number)) === searchTerms.seccionId;
+        String(this.zonaPorCalleId.get(data.calleId as number)) === searchTerms.seccionId ||
+        this.todasLasCalles.some(c =>
+          String(c.zonaId) === searchTerms.seccionId && calleTexto.includes(c.nombre.toLowerCase())
+        );
 
-      return nombre.includes(searchTerms.nombre) &&
-            apellido.includes(searchTerms.apellido) &&
+      const palabrasNombre: string[] = searchTerms.nombre
+        ? searchTerms.nombre.split(' ').filter((w: string) => w.length > 0)
+        : [];
+      const matchNombre = palabrasNombre.every((palabra: string) => nombreCompleto.includes(palabra));
+
+      return matchNombre &&
+            alias.includes(searchTerms.alias) &&
             noUser.includes(searchTerms.noUser) &&
             matchCalle &&
             matchCasa &&
@@ -147,7 +160,7 @@ export class UserComponent implements OnInit{
   aplicarFiltro() {
     this.dataSource.filter = JSON.stringify({
       nombre: this.nombreFiltro.trim().toLowerCase(),
-      apellido: this.apellidoFiltro.trim().toLowerCase(),
+      alias: this.aliasFiltro.trim().toLowerCase(),
       noUser: this.noUserFiltro.trim(),
       calleId: this.calleIdFiltro != null ? String(this.calleIdFiltro) : '',
       calleNombre: this.calleNombreFiltro.trim().toLowerCase(),
