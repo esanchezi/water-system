@@ -9,6 +9,7 @@ public class WaterUserDetailsDto {
     // Usuario
     private Integer aguaUsuarioId;
     private Integer noUsuario;
+    private String alias;
     private Boolean habitaDomicilio;
     private Boolean tieneToma;
     private Boolean inmuebleRenta;
@@ -45,8 +46,8 @@ public class WaterUserDetailsDto {
     private String giroNegocioNombre;
     private Boolean tieneLocal;
     private Boolean localRentadoPorUsuario;
-    private Boolean familiaCompleta;
-    private Boolean viudoPadreMadreSoltero;
+    private Integer tipoUsuarioId;
+    private String tipoUsuarioNombre;
     private Boolean esTiendaAbarrotes;
     private Boolean negocioAtendidoPorUsuario;
     private Boolean negocioGrande;

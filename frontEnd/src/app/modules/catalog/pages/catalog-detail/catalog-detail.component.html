@@ -3,14 +3,14 @@
   <!-- Header del catálogo -->
   <mat-card class="catalog-header">
     <mat-card-header>
-      <mat-card-title>{{ catalog?.nombre }}</mat-card-title>
-      <mat-card-subtitle>{{ catalog?.descripcion }}</mat-card-subtitle>
+      <mat-card-title>{{ catalog.nombre }}</mat-card-title>
+      <mat-card-subtitle>{{ catalog.descripcion }}</mat-card-subtitle>
     </mat-card-header>
     <mat-card-content>
-      <span>ID: <strong>{{ catalog?.catalogoId }}</strong></span>
+      <span>ID: <strong>{{ catalog.catalogoId }}</strong></span>
       &nbsp;&nbsp;
-      <mat-chip [color]="catalog?.estatus === 1 ? 'primary' : 'warn'" selected>
-        {{ catalog?.estatus === 1 ? 'Activo' : 'Inactivo' }}
+      <mat-chip [color]="catalog.estatus === 1 ? 'primary' : 'warn'" selected>
+        {{ catalog.estatus === 1 ? 'Activo' : 'Inactivo' }}
       </mat-chip>
     </mat-card-content>
   </mat-card>
@@ -48,6 +48,11 @@
         <ng-container matColumnDef="descripcion">
           <th mat-header-cell *matHeaderCellDef>Descripción</th>
           <td mat-cell *matCellDef="let row">{{ row.descripcion }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="zonaNombre">
+          <th mat-header-cell *matHeaderCellDef>Zona</th>
+          <td mat-cell *matCellDef="let row">{{ row.zonaNombre || '-' }}</td>
         </ng-container>
 
         <ng-container matColumnDef="estatus">

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Transactional
 @Service
@@ -41,6 +42,26 @@ public class WaterGroupService extends BaseService<WaterGroupEntity, WaterGroupD
                 USUARIOS_FOUND_MESSAGE,
                 ERROR_SEARCHING_USUARIOS_MESSAGE
         );
+    }
+
+    @Override
+    public ResponseEntity<WaterGroupRestResponse> findById(Integer grupoId) {
+        WaterGroupRestResponse response = new WaterGroupRestResponse();
+        try {
+            Optional<WaterGroupEntity> optional = waterGroupRepository.findById(grupoId);
+
+            if (optional.isEmpty()) {
+                return ResponseHandler.handleNotFoundException(response, "Grupo no encontrado con id: " + grupoId);
+            }
+
+            WaterGroupDto dto = waterGroupMapper.entityToDto(optional.get());
+            response.setData(List.of(dto));
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, USUARIOS_FOUND_MESSAGE);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, ERROR_SEARCHING_USUARIOS_MESSAGE, e);
+        }
     }
 
     @Override

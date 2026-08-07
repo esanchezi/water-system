@@ -8,12 +8,12 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
    (por ejemplo app-user-receipt, que vive en un componente aparte). */
 .panel-claro,
 .panel-claro > .mat-expansion-panel-header {
-  background-color: #e3f2fd !important;
+  background-color: #f0f0f0 !important;
 }
 
 .panel-oscuro,
 .panel-oscuro > .mat-expansion-panel-header {
-  background-color: #90caf9 !important;
+  background-color: #bdbdbd !important;
 }
 
 .panel-claro .mat-panel-title,

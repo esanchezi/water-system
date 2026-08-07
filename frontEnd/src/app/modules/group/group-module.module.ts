@@ -5,9 +5,10 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { SharedModule } from '../shared/shared.module';
 import { GroupListComponent } from './pages/group-list/group-list.component';
 import { GroupDetailsComponent } from './pages/group-details/group-details.component';
+import { GroupNewComponent } from './pages/group-new/group-new.component';
 
 @NgModule({
-  declarations: [ GroupListComponent, GroupDetailsComponent],
+  declarations: [ GroupListComponent, GroupDetailsComponent, GroupNewComponent],
   imports: [
     CommonModule,
     MaterialModule,

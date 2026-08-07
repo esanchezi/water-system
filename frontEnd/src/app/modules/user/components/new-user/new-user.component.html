@@ -70,10 +70,14 @@
             <input matInput formControlName="noUsuario" required />
           </mat-form-field>
           <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Alias (opcional)</mat-label>
+            <input matInput placeholder="ej. Compadre, El Güero..." formControlName="alias" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
             <mat-label>Cuota</mat-label>
             <mat-select formControlName="fkIdCuota">
               <mat-option *ngFor="let fee of listFee" [value]="fee.cuotaId">
-                {{ fee.userType?.nombre }} - {{ fee.uso?.nombre }}
+                {{ fee.userType.nombre }} - {{ fee.uso.nombre }}
                 <ng-container *ngIf="montoVigente(fee) as m"> (${{ m }})</ng-container>
               </mat-option>
             </mat-select>

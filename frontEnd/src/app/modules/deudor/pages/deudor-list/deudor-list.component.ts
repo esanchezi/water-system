@@ -4,6 +4,8 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { DeudorModel } from 'src/app/modules/shared/models/Deudor.model';
 import { DeudorService } from 'src/app/modules/shared/services/deudor.service';
+import { PreregistroUsuarioModel } from 'src/app/modules/shared/models/PreregistroUsuario.model';
+import { PreregistroUsuarioService } from 'src/app/modules/shared/services/preregistro-usuario.service';
 
 @Component({
   selector: 'app-deudor-list',
@@ -13,6 +15,7 @@ import { DeudorService } from 'src/app/modules/shared/services/deudor.service';
 export class DeudorListComponent implements OnInit {
 
   private readonly deudorService = inject(DeudorService);
+  private readonly preregistroService = inject(PreregistroUsuarioService);
   private readonly router = inject(Router);
 
   displayColumns: string[] = [
@@ -28,6 +31,7 @@ export class DeudorListComponent implements OnInit {
   anios: number[] = Array.from({ length: 6 }, (_, i) => this.anioActual - i);
 
   calleFiltro = '';
+  casaFiltro = '';
   estatusComiteFiltro = '';
   // Se arma con los estatus que realmente vienen en los datos cargados (el
   // backend ya excluyó condonación/convenio/validar de las cuentas).
@@ -43,8 +47,42 @@ export class DeudorListComponent implements OnInit {
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
+  // Gente en preregistro (todavía no es usuario formal) con deuda
+  // aproximada capturada -- se muestra aparte porque no tiene el mismo
+  // desglose por año que un deudor real, solo un estimado manual.
+  listPreregistroDeuda: PreregistroUsuarioModel[] = [];
+  cargandoPreregistro = false;
+  totalPreregistroAportaciones = 0;
+  totalPreregistroMultas = 0;
+  totalPreregistroGeneral = 0;
+
   ngOnInit(): void {
     this.load();
+  }
+
+  getPreregistroConDeuda(): void {
+    if (this.listPreregistroDeuda.length > 0 || this.cargandoPreregistro) return;
+    this.cargandoPreregistro = true;
+    this.preregistroService.getConDeuda().subscribe({
+      next: (resp: any) => {
+        this.cargandoPreregistro = false;
+        if (resp.metadata?.[0]?.code === '00') {
+          const data: PreregistroUsuarioModel[] = resp.data || [];
+          this.listPreregistroDeuda = data;
+          this.totalPreregistroAportaciones = data.reduce((acc, p) => acc + (Number(p.deudaAportaciones) || 0), 0);
+          this.totalPreregistroMultas = data.reduce((acc, p) => acc + (Number(p.deudaMultasRecargos) || 0), 0);
+          this.totalPreregistroGeneral = this.totalPreregistroAportaciones + this.totalPreregistroMultas;
+        }
+      },
+      error: (e: any) => {
+        this.cargandoPreregistro = false;
+        console.error('Error al cargar preregistro con deuda', e);
+      }
+    });
+  }
+
+  totalDeudaPreregistro(p: PreregistroUsuarioModel): number {
+    return (Number(p.deudaAportaciones) || 0) + (Number(p.deudaMultasRecargos) || 0);
   }
 
   load(): void {
@@ -61,8 +99,9 @@ export class DeudorListComponent implements OnInit {
           this.dataSource.filterPredicate = (row: DeudorModel, filter: string) => {
             const f = JSON.parse(filter);
             const matchCalle = !f.calle || (row.calleNombre ?? '').toLowerCase().includes(f.calle);
+            const matchCasa = !f.casa || String(row.casaNo ?? '').includes(f.casa);
             const matchEstatus = !f.estatus || row.estatusComiteNombre === f.estatus;
-            return matchCalle && matchEstatus;
+            return matchCalle && matchCasa && matchEstatus;
           };
 
           this.estatusComiteOpciones = [...new Set(
@@ -93,6 +132,11 @@ export class DeudorListComponent implements OnInit {
     this.applyFilters();
   }
 
+  applyCasaFilter(event: Event): void {
+    this.casaFiltro = (event.target as HTMLInputElement).value;
+    this.applyFilters();
+  }
+
   applyEstatusComiteFilter(): void {
     this.applyFilters();
   }
@@ -100,6 +144,7 @@ export class DeudorListComponent implements OnInit {
   private applyFilters(): void {
     this.dataSource.filter = JSON.stringify({
       calle: this.calleFiltro.trim().toLowerCase(),
+      casa: this.casaFiltro.trim(),
       estatus: this.estatusComiteFiltro
     });
     this.calcularTotales(this.dataSource.filteredData);

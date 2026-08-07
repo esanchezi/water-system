@@ -21,6 +21,7 @@ import { TotalPorAnioModule } from '../total-por-anio/total-por-anio.module';
 import { EgresoModule } from '../egreso/egreso.module';
 import { ResumenAnualModule } from '../resumen-anual/resumen-anual.module';
 import { CensoModule } from '../censo/censo.module';
+import { PreregistroModule } from '../preregistro/preregistro.module';
 
 @NgModule({
   declarations: [
@@ -47,7 +48,8 @@ import { CensoModule } from '../censo/censo.module';
     TotalPorAnioModule,
     EgresoModule,
     ResumenAnualModule,
-    CensoModule
+    CensoModule,
+    PreregistroModule
   ]
 })
 export class DashboardModule { }

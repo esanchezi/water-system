@@ -2,11 +2,14 @@
     <h2 class="alinear">Grupos</h2>
     <div mat-card-image></div>
     <mat-card-header>
-        <div>
+        <div style="display:flex; align-items:center; gap:16px; width: 100%;">
             <mat-form-field appearance="fill">
                 <mat-label>Buscar por nombre o apellido</mat-label>
                 <input matInput (keyup)="applyNombreFilter($event)" placeholder="Escribe nombre o apellido...">
             </mat-form-field>
+            <button mat-raised-button color="primary" (click)="addGroup()">
+                <mat-icon>add</mat-icon> Agregar grupo
+            </button>
         </div>
     </mat-card-header>
     <mat-card-content>

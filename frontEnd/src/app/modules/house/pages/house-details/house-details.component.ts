@@ -7,6 +7,8 @@ import { HouseService } from 'src/app/modules/shared/services/house.service';
 import { UserService } from 'src/app/modules/shared/services/user.service';
 import { PreregistroUsuarioService } from 'src/app/modules/shared/services/preregistro-usuario.service';
 import { PREREGISTRO_ESTATUS_PENDIENTE, PreregistroUsuarioModel } from 'src/app/modules/shared/models/PreregistroUsuario.model';
+import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
+import { CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model';
 import { MatDialog } from '@angular/material/dialog';
 import { NewUserComponent } from '../../../user/components/new-user/new-user.component';
 import { debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
@@ -29,6 +31,7 @@ export class HouseDetailsComponent implements OnInit {
   private readonly houseService   = inject(HouseService);
   private readonly userService    = inject(UserService);
   private readonly preregistroService = inject(PreregistroUsuarioService);
+  private readonly catalogService = inject(CatalogService);
   private readonly fb             = inject(FormBuilder);
   private readonly dialog         = inject(MatDialog);
 
@@ -42,8 +45,21 @@ export class HouseDetailsComponent implements OnInit {
     nombre:          ['', Validators.required],
     telefono:        [''],
     observaciones:   [''],
-    motivoPendiente: ['']
+    motivoPendiente: [''],
+    // Negocio que nunca va a tener su propio usuario (ej. tiendita
+    // atendida por el usuario del domicilio) pero que sí se cuenta en el
+    // censo de negocios.
+    esNegocio:       [false],
+    giroNegocioId:   [null],
+    motivoNoUsuarioId: [null],
+    // Deuda aproximada -- estimación manual, no hay cargos reales todavía
+    // porque esta persona no es usuario formal.
+    deudaAportaciones:   [null],
+    deudaMultasRecargos: [null],
+    deudaObservaciones:  ['']
   });
+  girosNegocio: CatalogOptionModel[] = [];
+  motivosNoUsuario: CatalogOptionModel[] = [];
 
   readonly DEFAULT_COORDS: google.maps.LatLngLiteral = {
     lat: 21.04386,
@@ -59,6 +75,11 @@ export class HouseDetailsComponent implements OnInit {
   userSearchCtrl = new FormControl('');
   userSearchResults: UserSearchResult[] = [];
 
+  // Si el censo de personas está habilitado para cada usuario de la casa
+  // (según la clasificación de uso capturada en app-user-uso) -- se
+  // actualiza en vivo con cada cambio, no depende de recargar la página.
+  censoHabilitadoPorUsuario = new Map<number, boolean>();
+
   ngOnInit(): void {
     this.activatedRoute.queryParams.subscribe(params => {
       if (params?.['element']) {
@@ -66,6 +87,15 @@ export class HouseDetailsComponent implements OnInit {
       }
       this.configurarMapa();
       this.inicializarUsuarios();
+    });
+
+    this.catalogService.getOptionsByClave('NEGOCIO').subscribe({
+      next: (opts) => this.girosNegocio = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('MOTIVO_NOUSUARIO').subscribe({
+      next: (opts) => this.motivosNoUsuario = opts,
+      error: (e: any) => console.error(e)
     });
 
     this.userSearchCtrl.valueChanges.pipe(
@@ -128,6 +158,36 @@ export class HouseDetailsComponent implements OnInit {
     this.ubicacionModificada = true;
   }
 
+  // Reubica el marcador usando el GPS del dispositivo (útil cuando la
+  // ubicación guardada quedó mal capturada y hay que corregirla parado
+  // frente a la casa, en vez de buscarla a mano en el mapa).
+  obteniendoGps = false;
+
+  onUsarUbicacionGps(): void {
+    if (!navigator.geolocation) {
+      Swal.fire({ icon: 'error', title: 'No disponible', text: 'Este dispositivo/navegador no soporta GPS.', confirmButtonText: 'Cerrar' });
+      return;
+    }
+    this.obteniendoGps = true;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        this.obteniendoGps = false;
+        this.markerPosition = { lat: position.coords.latitude, lng: position.coords.longitude };
+        this.center = this.markerPosition;
+        this.zoom = 19;
+        this.ubicacionModificada = true;
+      },
+      (error) => {
+        this.obteniendoGps = false;
+        const mensaje = error.code === error.PERMISSION_DENIED
+          ? 'Debes permitir el acceso a tu ubicación para usar esta opción.'
+          : 'No se pudo obtener tu ubicación GPS. Intenta de nuevo.';
+        Swal.fire({ icon: 'error', title: 'No se pudo obtener la ubicación', text: mensaje, confirmButtonText: 'Cerrar' });
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  }
+
   guardarUbicacion(): void {
     if (!this.waterHouse) return;
     const data = {
@@ -165,6 +225,39 @@ export class HouseDetailsComponent implements OnInit {
 
   trackByUser(index: number, user: WaterUserModel): number {
     return user.aguaUsuarioId;
+  }
+
+  onUsoCambio(user: WaterUserModel, evt: { esUsoDomestico: boolean; esUsoNegocio: boolean }): void {
+    this.censoHabilitadoPorUsuario.set(user.aguaUsuarioId, evt.esUsoDomestico);
+  }
+
+  censoHabilitado(user: WaterUserModel): boolean {
+    return this.censoHabilitadoPorUsuario.get(user.aguaUsuarioId) ?? false;
+  }
+
+  // Quita al usuario de esta casa sin borrarlo -- útil cuando se agregó
+  // por error o el usuario ya no vive/atiende este domicilio.
+  onQuitarUsuario(user: WaterUserModel): void {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Quitar usuario de la casa',
+      text: `¿Confirmas quitar a ${user.person?.nombre || 'este usuario'} de esta casa? El usuario no se borra, solo se desvincula.`,
+      showCancelButton: true,
+      confirmButtonText: 'Quitar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.userService.unassignHouse(user.aguaUsuarioId).subscribe({
+        next: () => {
+          this.listWaterUser = this.listWaterUser.filter(u => u.aguaUsuarioId !== user.aguaUsuarioId);
+          Swal.fire({ icon: 'success', title: 'Usuario desvinculado', confirmButtonText: 'Aceptar' });
+        },
+        error: (e: any) => {
+          console.error(e);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo quitar el usuario de la casa.', confirmButtonText: 'Cerrar' });
+        }
+      });
+    });
   }
 
   getPreregistros(): void {

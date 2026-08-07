@@ -28,4 +28,10 @@ export class UserChargeService {
   addPayment(aguaUsuarioCargoId: number, body: any): Observable<any> {
     return this.http.post(`${BASE}/${aguaUsuarioCargoId}/pagos`, body);
   }
+
+  // Todos los cargos (multas, recargos, etc.) de todos los usuarios de un
+  // grupo -- para verlos juntos sin entrar usuario por usuario.
+  getChargesByGrupo(grupoId: number): Observable<any> {
+    return this.http.get(`${BASE}/grupo/${grupoId}`);
+  }
 }

@@ -1,46 +1,84 @@
 <div>
   <mat-card>
-    <mat-card-title>Censo de personas</mat-card-title>
+    <mat-card-title>Censo</mat-card-title>
     <mat-card-subtitle>
-      Total de personas registradas en el censo de todos los usuarios, agrupadas por edad
+      Personas registradas en el censo (por edad y zona) y negocios dados de alta (por giro)
     </mat-card-subtitle>
 
     <mat-card-content>
       <p *ngIf="cargando">Cargando...</p>
 
-      <div *ngIf="!cargando && resumen">
-        <table class="tabla-resumen">
-          <tr *ngFor="let r of resumen.rangos">
-            <td>{{ r.label }}</td>
-            <td class="cantidad">{{ r.cantidad }}</td>
-          </tr>
-          <tr class="fila-sin-clasificar">
-            <td>Sin clasificar (sin edad registrada)</td>
-            <td class="cantidad">{{ resumen.sinClasificar }}</td>
-          </tr>
-          <tr class="fila-total">
-            <td><strong>Total de personas</strong></td>
-            <td class="cantidad"><strong>{{ resumen.totalPersonas }}</strong></td>
-          </tr>
-        </table>
+      <mat-accordion *ngIf="!cargando && resumen">
+        <mat-expansion-panel class="panel-claro">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Por edad</mat-panel-title>
+            <mat-panel-description>Total de personas: {{ resumen.totalPersonas }}</mat-panel-description>
+          </mat-expansion-panel-header>
+          <table class="tabla-resumen">
+            <tr *ngFor="let r of resumen.rangos">
+              <td>{{ r.label }}</td>
+              <td class="cantidad">{{ r.cantidad }}</td>
+            </tr>
+            <tr class="fila-sin-clasificar">
+              <td>Sin clasificar (sin edad registrada)</td>
+              <td class="cantidad">{{ resumen.sinClasificar }}</td>
+            </tr>
+            <tr class="fila-total">
+              <td><strong>Total de personas</strong></td>
+              <td class="cantidad"><strong>{{ resumen.totalPersonas }}</strong></td>
+            </tr>
+          </table>
+        </mat-expansion-panel>
 
-        <h3>Por zona (calle)</h3>
-        <table class="tabla-resumen">
-          <tr *ngFor="let z of resumen.porZona">
-            <td>{{ z.label }}</td>
-            <td class="cantidad">{{ z.cantidad }}</td>
-          </tr>
-          <tr class="fila-sin-clasificar">
-            <td>Sin zona asignada (usuario o casa sin calle capturada)</td>
-            <td class="cantidad">{{ resumen.sinZonaAsignada }}</td>
-          </tr>
-        </table>
+        <mat-expansion-panel class="panel-oscuro">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Por zona (calle)</mat-panel-title>
+          </mat-expansion-panel-header>
+          <table class="tabla-resumen">
+            <tr *ngFor="let z of resumen.porZona">
+              <td>{{ z.label }}</td>
+              <td class="cantidad">{{ z.cantidad }}</td>
+            </tr>
+            <tr class="fila-sin-clasificar">
+              <td>Sin zona asignada (usuario o casa sin calle capturada)</td>
+              <td class="cantidad">{{ resumen.sinZonaAsignada }}</td>
+            </tr>
+          </table>
+          <p class="hint">
+            Este total viene del censo capturado en la ficha de cada usuario (sección "Censo de personas").
+            Entre más usuarios tengan su censo completo, más preciso es este resumen.
+          </p>
+        </mat-expansion-panel>
 
-        <p class="hint">
-          Este total viene del censo capturado en la ficha de cada usuario (sección "Censo de personas").
-          Entre más usuarios tengan su censo completo, más preciso es este resumen.
-        </p>
-      </div>
+        <mat-expansion-panel class="panel-claro">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Negocios</mat-panel-title>
+            <mat-panel-description>Total de negocios: {{ resumen.totalNegocios }}</mat-panel-description>
+          </mat-expansion-panel-header>
+          <table class="tabla-resumen">
+            <tr *ngFor="let g of resumen.porGiro">
+              <td>{{ g.label }}</td>
+              <td class="cantidad">{{ g.cantidad }}</td>
+            </tr>
+            <tr class="fila-sin-clasificar">
+              <td>Sin giro especificado</td>
+              <td class="cantidad">{{ resumen.sinGiroAsignado }}</td>
+            </tr>
+            <tr class="fila-total">
+              <td><strong>Total de negocios</strong></td>
+              <td class="cantidad"><strong>{{ resumen.totalNegocios }}</strong></td>
+            </tr>
+          </table>
+          <p class="hint">
+            Este total viene de los usuarios marcados como negocio en la ficha de usuario (panel "Usuario",
+            es negocio) -- no requiere capturar nada en el censo de personas.
+          </p>
+          <p class="hint footnote">
+            De estos {{ resumen.totalNegocios }} negocios, {{ resumen.negociosConUsuario }} ya son usuario formal (se les cobra)
+            y {{ resumen.negociosSinUsuario }} todavía no son usuario (solo están en preregistro).
+          </p>
+        </mat-expansion-panel>
+      </mat-accordion>
 
       <p *ngIf="!cargando && !resumen">No se pudo cargar el resumen.</p>
     </mat-card-content>

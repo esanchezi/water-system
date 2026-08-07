@@ -11,7 +11,7 @@
   <mat-accordion>
 
     <!-- Mapa -->
-    <mat-expansion-panel>
+    <mat-expansion-panel class="panel-claro">
       <mat-expansion-panel-header>
         <mat-panel-title>Ubicación de la propiedad</mat-panel-title>
         <mat-panel-description>
@@ -19,7 +19,7 @@
         </mat-panel-description>
       </mat-expansion-panel-header>
 
-      <p class="mat-hint">Haz click en el mapa o arrastra el marcador para corregir la ubicación de la casa.</p>
+      <p class="mat-hint">Haz click en el mapa, arrastra el marcador, o usa tu GPS para corregir la ubicación de la casa (aunque ya tenga una guardada).</p>
       <google-map height="400px" width="100%" [center]="center" [zoom]="zoom" (mapClick)="onMapClick($event)">
         <map-marker [position]="markerPosition" [options]="{draggable: true}" title="Casa" (mapDragend)="onMarkerDragEnd($event)"></map-marker>
       </google-map>
@@ -29,7 +29,11 @@
         Longitud: {{ markerPosition.lng | number:'1.6-6' }}
       </p>
 
-      <div fxLayout="row" fxLayoutAlign="end center" style="margin-top: 8px;">
+      <div fxLayout="row" fxLayoutAlign="space-between center" style="margin-top: 8px;">
+        <button mat-stroked-button [disabled]="obteniendoGps" (click)="onUsarUbicacionGps()">
+          <mat-icon>{{ obteniendoGps ? 'hourglass_empty' : 'my_location' }}</mat-icon>
+          {{ obteniendoGps ? 'Obteniendo ubicación...' : 'Reubicar con mi GPS' }}
+        </button>
         <button mat-stroked-button color="accent" [disabled]="!ubicacionModificada" (click)="guardarUbicacion()">
           <mat-icon>place</mat-icon> Guardar ubicación
         </button>
@@ -37,7 +41,7 @@
     </mat-expansion-panel>
 
     <!-- Agregar usuario existente a esta casa -->
-    <mat-expansion-panel>
+    <mat-expansion-panel class="panel-oscuro">
       <mat-expansion-panel-header>
         <mat-panel-title>Agregar usuario</mat-panel-title>
         <mat-panel-description>
@@ -46,9 +50,9 @@
       </mat-expansion-panel-header>
 
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>N° de usuario</mat-label>
+        <mat-label>N° de usuario, nombre o alias</mat-label>
         <input matInput
-               placeholder="Escribe el N° de usuario"
+               placeholder="Escribe el N° de usuario, nombre o alias"
                [formControl]="userSearchCtrl"
                [matAutocomplete]="userAuto" />
         <button mat-icon-button matSuffix type="button" *ngIf="userSearchCtrl.value" (click)="limpiarBusquedaUsuario()" title="Limpiar">
@@ -59,12 +63,12 @@
             N° {{ user.noUsuario }} - {{ user.nombreCompleto }}
           </mat-option>
         </mat-autocomplete>
-        <mat-hint>Busca por N° de usuario; el nombre se muestra para validar antes de asignarlo.</mat-hint>
+        <mat-hint>Busca por N° de usuario, nombre o alias; el nombre se muestra para validar antes de asignarlo.</mat-hint>
       </mat-form-field>
     </mat-expansion-panel>
 
     <!-- Preregistro: gente que vive aquí pero aún no es usuario formal -->
-    <mat-expansion-panel (opened)="getPreregistros()">
+    <mat-expansion-panel class="panel-claro" (opened)="getPreregistros()">
       <mat-expansion-panel-header>
         <mat-panel-title>Preregistro de personas</mat-panel-title>
         <mat-panel-description>
@@ -91,6 +95,15 @@
         </div>
         <p *ngIf="p.observaciones" class="mat-hint">{{ p.observaciones }}</p>
         <p *ngIf="p.motivoPendiente" class="mat-hint"><em>Motivo: {{ p.motivoPendiente }}</em></p>
+        <p *ngIf="p.esNegocio" class="mat-hint">
+          <em>Negocio{{ p.giroNegocioNombre ? ' — ' + p.giroNegocioNombre : '' }}{{ p.motivoNoUsuarioNombre ? ' (no usuario: ' + p.motivoNoUsuarioNombre + ')' : '' }}</em>
+        </p>
+        <p *ngIf="p.deudaAportaciones || p.deudaMultasRecargos" class="mat-hint">
+          <em>Deuda aproximada: {{ (p.deudaAportaciones || 0) + (p.deudaMultasRecargos || 0) | currency }}
+          (aportaciones: {{ p.deudaAportaciones || 0 | currency }}, multas/recargos: {{ p.deudaMultasRecargos || 0 | currency }})</em>
+          <br *ngIf="p.deudaObservaciones" />
+          <em *ngIf="p.deudaObservaciones">{{ p.deudaObservaciones }}</em>
+        </p>
         <p *ngIf="p.aguaUsuarioIdConvertido" class="mat-hint">Convertido al usuario N° {{ p.aguaUsuarioIdConvertido }}</p>
         <hr>
       </div>
@@ -113,6 +126,39 @@
             <input matInput formControlName="observaciones" placeholder="observaciones" />
           </mat-form-field>
         </div>
+        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start center">
+          <mat-checkbox formControlName="esNegocio">Es un negocio (nunca tendrá usuario propio)</mat-checkbox>
+          <mat-form-field appearance="outline" fxFlex="30%" *ngIf="preregistroForm.value.esNegocio">
+            <mat-label>Giro del negocio</mat-label>
+            <mat-select formControlName="giroNegocioId">
+              <mat-option *ngFor="let g of girosNegocio" [value]="g.catalogoOpcionesId">{{ g.nombre }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" fxFlex="30%" *ngIf="preregistroForm.value.esNegocio">
+            <mat-label>Motivo por el que no es usuario</mat-label>
+            <mat-select formControlName="motivoNoUsuarioId">
+              <mat-option *ngFor="let m of motivosNoUsuario" [value]="m.catalogoOpcionesId">{{ m.nombre }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Deuda aproximada -- estimación manual, esta persona todavía no
+             tiene cargos reales porque no es usuario formal. -->
+        <p class="mat-hint">Deuda aproximada (opcional, estimación manual)</p>
+        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
+          <mat-form-field appearance="outline" fxFlex="20%">
+            <mat-label>Aportaciones</mat-label>
+            <input matInput type="number" formControlName="deudaAportaciones" placeholder="0.00" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" fxFlex="20%">
+            <mat-label>Multas/recargos</mat-label>
+            <input matInput type="number" formControlName="deudaMultasRecargos" placeholder="0.00" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" fxFlex="50%">
+            <mat-label>Observaciones de la deuda (opcional)</mat-label>
+            <input matInput formControlName="deudaObservaciones" placeholder="ej. debe desde marzo, acordó pagar en partes..." />
+          </mat-form-field>
+        </div>
         <mat-card-actions align="end">
           <button mat-raised-button color="primary" [disabled]="preregistroForm.invalid" (click)="onSavePreregistro()">
             <mat-icon>person_add</mat-icon> Agregar
@@ -121,18 +167,51 @@
       </form>
     </mat-expansion-panel>
 
-    <!-- Historial de pagos -->
-    <mat-expansion-panel *ngFor="let user of listWaterUser; trackBy: trackByUser">
+    <!-- Un acordeón por usuario de la casa: pagos, datos de uso, censo -->
+    <mat-expansion-panel *ngFor="let user of listWaterUser; trackBy: trackByUser; let i = index"
+      [ngClass]="i % 2 === 0 ? 'panel-claro' : 'panel-oscuro'">
       <mat-expansion-panel-header>
         <mat-panel-title>
           {{ user.person.nombre }} {{ user.person.nombre2 }}  {{ user.person.app }} {{ user.person.apm }}
         </mat-panel-title>
-        <mat-panel-description>
-          Historial de pagos - Usuario #{{ user.noUsuario }} - {{ user.observaciones }}
+        <mat-panel-description fxLayout="row" fxLayoutAlign="space-between center">
+          <span>Usuario #{{ user.noUsuario }} - {{ user.observaciones }}</span>
+          <button mat-icon-button color="warn" (click)="$event.stopPropagation(); onQuitarUsuario(user)" title="Quitar de la casa">
+            <mat-icon>link_off</mat-icon>
+          </button>
         </mat-panel-description>
       </mat-expansion-panel-header>
 
-      <app-user-receipt [usuario]="user"></app-user-receipt>
+      <mat-accordion>
+        <mat-expansion-panel class="panel-claro">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Detalle pagos</mat-panel-title>
+          </mat-expansion-panel-header>
+          <app-user-receipt [usuario]="user"></app-user-receipt>
+        </mat-expansion-panel>
+
+        <mat-expansion-panel class="panel-oscuro">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Usuario</mat-panel-title>
+          </mat-expansion-panel-header>
+          <app-user-uso [usuario]="user" (usoCambio)="onUsoCambio(user, $event)"></app-user-uso>
+        </mat-expansion-panel>
+
+        <mat-expansion-panel class="panel-claro">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Censo de personas</mat-panel-title>
+          </mat-expansion-panel-header>
+          <app-user-censo [usuario]="user" [censoHabilitado]="censoHabilitado(user)"></app-user-censo>
+        </mat-expansion-panel>
+
+        <mat-expansion-panel class="panel-oscuro">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Cargos / Multas</mat-panel-title>
+            <mat-panel-description>Cargos extra y multas aplicadas al usuario</mat-panel-description>
+          </mat-expansion-panel-header>
+          <app-user-charges [usuario]="user"></app-user-charges>
+        </mat-expansion-panel>
+      </mat-accordion>
     </mat-expansion-panel>
   </mat-accordion>
 </div>

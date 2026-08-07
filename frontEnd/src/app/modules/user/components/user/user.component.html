@@ -21,6 +21,17 @@
         </div>
         <div>
             <mat-form-field appearance="fill">
+                <mat-label>Sección</mat-label>
+                <mat-select [(ngModel)]="seccionIdFiltro" (selectionChange)="applySeccionFiltro($event.value)">
+                    <mat-option [value]="null">Todas</mat-option>
+                    <mat-option *ngFor="let sec of secciones" [value]="sec.catalogoOpcionesId">
+                        {{ sec.nombre }}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+        </div>
+        <div>
+            <mat-form-field appearance="fill">
                 <mat-label>Calle</mat-label>
                 <mat-select [(ngModel)]="calleIdFiltro" (selectionChange)="applyCalleCatalogoFiltro($event.value)">
                     <mat-option [value]="null">Todas</mat-option>

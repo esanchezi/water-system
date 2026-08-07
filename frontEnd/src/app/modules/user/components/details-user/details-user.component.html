@@ -120,7 +120,12 @@
                           <mat-label>N° Usuario</mat-label>
                           <input matInput placeholder="noUsuario" formControlName="noUsuario" required />
                         </mat-form-field>
-                  
+
+                        <mat-form-field appearance="outline" fxFlex="30%">
+                          <mat-label>Alias (opcional)</mat-label>
+                          <input matInput placeholder="ej. Compadre, El Güero..." formControlName="alias" />
+                        </mat-form-field>
+
                         <mat-form-field appearance="outline" fxFlex="30%">
                           <mat-label>Estatus</mat-label>
                           <mat-select formControlName="estatusPagoId">
@@ -140,8 +145,13 @@
                         </mat-form-field>
 
                         <mat-form-field appearance="outline" fxFlex="30%">
-                          <mat-label>N° Grupo</mat-label>
-                          <input matInput placeholder="N° Grupo" formControlName="grupoId" />
+                          <mat-label>Grupo</mat-label>
+                          <mat-select formControlName="grupoId">
+                            <mat-option [value]="null">Sin grupo</mat-option>
+                            <mat-option *ngFor="let g of grupos" [value]="g.grupoId">
+                              {{ g.nombre }}
+                            </mat-option>
+                          </mat-select>
                         </mat-form-field>
                       </div>
                   
@@ -150,7 +160,7 @@
                           <mat-label>Cuota</mat-label>
                           <mat-select formControlName="fkIdCuota">
                             <mat-option *ngFor="let fee of listFee" [value]="fee.cuotaId">
-                              {{ fee.userType?.nombre }} - {{ fee.uso?.nombre }}
+                              {{ fee.userType.nombre }} - {{ fee.uso.nombre }}
                               <ng-container *ngIf="montoVigente(fee) as m"> (${{ m }})</ng-container>
                             </mat-option>
                           </mat-select>
@@ -176,30 +186,75 @@
                       </div>
 
                       <div fxLayout="row" fxLayoutGap="32px" fxLayoutAlign="start center">
-                        <mat-checkbox color="primary" formControlName="habitaDomicilio">Habita domicilio</mat-checkbox>
                         <mat-checkbox color="primary" formControlName="tieneToma">Tiene toma</mat-checkbox>
-                        <mat-checkbox color="primary" formControlName="inmuebleRenta">Es renta</mat-checkbox>
-                        <mat-checkbox color="primary" formControlName="esNegocio">Es negocio (no habitacional)</mat-checkbox>
                       </div>
 
-                      <div *ngIf="detailsForm.value.esNegocio">
-                        <div fxLayout="row" fxLayoutAlign="start center">
-                          <mat-form-field appearance="outline" fxFlex="40%">
-                            <mat-label>Giro del negocio (opcional)</mat-label>
-                            <mat-select formControlName="giroNegocioId">
-                              <mat-option [value]="null">Sin especificar</mat-option>
-                              <mat-option *ngFor="let g of girosNegocio" [value]="g.catalogoOpcionesId">
-                                {{ g.nombre }}
-                              </mat-option>
-                            </mat-select>
-                          </mat-form-field>
-                        </div>
+                      <!-- 1. Estatus de la toma (arriba). 2. Si no está "Sin
+                           conexión", pasamos a clasificar habita/renta. -->
+                      <p *ngIf="tomaSinConexion" class="mat-hint">
+                        La toma está marcada como "Sin conexión" -- selecciona un estatus de toma distinto
+                        para clasificar si habita domicilio, es renta, doméstico o negocio.
+                      </p>
+
+                      <div *ngIf="!tomaSinConexion">
+                        <!-- 3. Habita domicilio / es renta -->
                         <div fxLayout="row" fxLayoutGap="32px" fxLayoutAlign="start center">
-                          <mat-checkbox color="primary" formControlName="tieneLocal">Tiene local (espacio físico dedicado)</mat-checkbox>
-                          <mat-checkbox color="primary" formControlName="localRentadoPorUsuario" *ngIf="detailsForm.value.tieneLocal">
-                            El local lo renta el mismo usuario
-                          </mat-checkbox>
+                          <mat-checkbox color="primary" formControlName="habitaDomicilio">Habita domicilio</mat-checkbox>
+                          <mat-checkbox color="primary" formControlName="inmuebleRenta">Es renta</mat-checkbox>
                         </div>
+
+                        <!-- 4. Checkbox independiente de negocio -- aplica salvo en la
+                             rama de renta-sin-habitar (ahí ya hay radio excluyente).
+                             Cubre: vive aquí y también tiene una tiendita (no
+                             excluyente con habitar), y también el caso de toma
+                             conectada sin habitar y sin ser renta pero que sí es
+                             negocio (ej. bodega/local propio, sin vivir ahí ni
+                             rentarlo a nadie). -->
+                        <div *ngIf="mostrarNegocioIndependiente" fxLayout="row" fxLayoutAlign="start center">
+                          <mat-checkbox color="primary" formControlName="esNegocio">Es un negocio</mat-checkbox>
+                        </div>
+
+                        <!-- 6. Si es renta (y no habita), sí se pregunta doméstico/negocio
+                             de forma excluyente -- una renta se ocupa de una forma u otra. -->
+                        <div *ngIf="mostrarUsoToggle">
+                          <p class="mat-hint">¿Es uso doméstico o negocio?</p>
+                          <mat-radio-group formControlName="esNegocio" fxLayout="row" fxLayoutGap="32px">
+                            <mat-radio-button color="primary" [value]="false">Doméstico</mat-radio-button>
+                            <mat-radio-button color="primary" [value]="true">Negocio</mat-radio-button>
+                          </mat-radio-group>
+                        </div>
+
+                        <p *ngIf="!detailsForm.value.habitaDomicilio && !detailsForm.value.inmuebleRenta && !esUsoNegocio" class="mat-hint">
+                          Marca "Habita domicilio", "Es renta", o "Es un negocio" para clasificar el uso.
+                        </p>
+
+                        <!-- 8. Si es negocio: "censo de negocio" -- giro y tamaño. -->
+                        <div *ngIf="esUsoNegocio">
+                          <div fxLayout="row" fxLayoutAlign="start center">
+                            <mat-form-field appearance="outline" fxFlex="40%">
+                              <mat-label>Giro del negocio (opcional)</mat-label>
+                              <mat-select formControlName="giroNegocioId">
+                                <mat-option [value]="null">Sin especificar</mat-option>
+                                <mat-option *ngFor="let g of girosNegocio" [value]="g.catalogoOpcionesId">
+                                  {{ g.nombre }}
+                                </mat-option>
+                              </mat-select>
+                            </mat-form-field>
+                          </div>
+                          <div fxLayout="row" fxLayoutGap="32px" fxLayoutAlign="start center">
+                            <mat-checkbox color="primary" formControlName="tieneLocal">Tiene local (espacio físico dedicado)</mat-checkbox>
+                            <mat-checkbox color="primary" formControlName="localRentadoPorUsuario" *ngIf="detailsForm.value.tieneLocal">
+                              El local lo renta el mismo usuario
+                            </mat-checkbox>
+                          </div>
+                        </div>
+
+                        <!-- 5/7. Si es doméstico (vive ahí, o es renta pero no negocio):
+                             el censo de personas aplica y se muestra en su propio
+                             acordeón "Censo de personas". -->
+                        <p *ngIf="esUsoDomestico" class="mat-hint">
+                          Uso doméstico -- el censo de personas está habilitado en el acordeón "Censo de personas".
+                        </p>
                       </div>
 
                       <div>
@@ -219,17 +274,30 @@
 
                 <mat-expansion-panel class="panel-claro" hideToggle>
                     <mat-expansion-panel-header>
+                        <mat-panel-title>Censo de personas</mat-panel-title>
+                        <mat-panel-description>Integrantes que habitan con este usuario (edad opcional)</mat-panel-description>
+                    </mat-expansion-panel-header>
+                    <app-user-censo [usuario]="usuario" [censoHabilitado]="esUsoDomestico"></app-user-censo>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel class="panel-oscuro" hideToggle>
+                    <mat-expansion-panel-header>
                         <mat-panel-title>Calculadora de cuota (sugerencia)</mat-panel-title>
                         <mat-panel-description>Solo propone una categoría, no cambia la cuota sola</mat-panel-description>
                     </mat-expansion-panel-header>
                     <form [formGroup]="detailsForm">
                         <div *ngIf="!detailsForm.value.esNegocio">
                             <p class="mat-hint">Uso doméstico</p>
-                            <div fxLayout="row" fxLayoutGap="32px" fxLayoutAlign="start center">
-                                <mat-checkbox color="primary" formControlName="familiaCompleta">Es familia completa</mat-checkbox>
-                                <mat-checkbox color="primary" formControlName="viudoPadreMadreSoltero" *ngIf="!detailsForm.value.familiaCompleta">
-                                    Es viudo(a) / padre o madre soltero con hijos
-                                </mat-checkbox>
+                            <div fxLayout="row" fxLayoutAlign="start center">
+                                <mat-form-field appearance="outline" fxFlex="50%">
+                                    <mat-label>Tipo de usuario</mat-label>
+                                    <mat-select formControlName="tipoUsuarioId">
+                                        <mat-option [value]="null">Sin especificar</mat-option>
+                                        <mat-option *ngFor="let t of tiposUsuario" [value]="t.catalogoOpcionesId">
+                                            {{ t.nombre }}
+                                        </mat-option>
+                                    </mat-select>
+                                </mat-form-field>
                             </div>
                         </div>
                         <div *ngIf="detailsForm.value.esNegocio">
@@ -260,7 +328,7 @@
                     </form>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel class="panel-oscuro" hideToggle>
+                <mat-expansion-panel class="panel-claro" hideToggle>
                     <mat-expansion-panel-header>
                       <mat-panel-title>Domicilio / Casa</mat-panel-title>
                       <mat-panel-description>
@@ -271,9 +339,19 @@
 
                     <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
                       <mat-form-field appearance="outline" fxFlex="30%">
+                        <mat-label>Sección</mat-label>
+                        <mat-select formControlName="domicilioSeccionId" (selectionChange)="onDomicilioSeccionChange($event.value)">
+                          <mat-option [value]="null">Todas</mat-option>
+                          <mat-option *ngFor="let s of secciones" [value]="s.catalogoOpcionesId">
+                            {{ s.nombre }}
+                          </mat-option>
+                        </mat-select>
+                      </mat-form-field>
+
+                      <mat-form-field appearance="outline" fxFlex="30%">
                         <mat-label>Calle</mat-label>
                         <mat-select formControlName="domicilioCalleId" (selectionChange)="onCalleChange($event.value)">
-                          <mat-option *ngFor="let cat of calles" [value]="cat.catalogoOpcionesId">
+                          <mat-option *ngFor="let cat of callesDeSeccionDomicilio" [value]="cat.catalogoOpcionesId">
                             {{ cat.nombre }}
                           </mat-option>
                         </mat-select>
@@ -337,7 +415,7 @@
                     </mat-card-actions>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel class="panel-claro" (opened)="getNotify()" hideToggle>
+                <mat-expansion-panel class="panel-oscuro" (opened)="getNotify()" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Avisos Usuario</mat-panel-title>
                         <mat-panel-description>Avisos realizados al usuario</mat-panel-description>
@@ -415,7 +493,7 @@
                     </form>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel class="panel-oscuro" (opened)="getCharges()" hideToggle>
+                <mat-expansion-panel class="panel-claro" (opened)="getCharges()" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Cargos / Multas</mat-panel-title>
                         <mat-panel-description>Cargos extra y multas aplicadas al usuario</mat-panel-description>
@@ -471,7 +549,7 @@
 
                     <!-- Cada cargo puede tener varios abonos (distintos folios); se listan aquí. -->
                     <div *ngFor="let cargo of dataSourceCharge.data" style="margin: 8px 0;">
-                        <span *ngIf="cargo.pagos?.length"><strong>{{cargo.concepto?.nombre}} — abonos:</strong>
+                        <span *ngIf="cargo.pagos?.length"><strong>{{cargo.concepto.nombre}} — abonos:</strong>
                             <span *ngFor="let p of cargo.pagos"> folio {{p.noFolio}}: {{p.montoAplicado | currency}};</span>
                         </span>
                     </div>
@@ -522,7 +600,7 @@
                                 <mat-label>Cargo</mat-label>
                                 <mat-select formControlName="aguaUsuarioCargoId" required>
                                     <mat-option *ngFor="let cargo of dataSourceCharge.data" [value]="cargo.aguaUsuarioCargoId" [disabled]="cargo.pagado">
-                                        {{ cargo.concepto?.nombre }} — saldo: {{ cargo.saldo | currency }}
+                                        {{ cargo.concepto.nombre }} — saldo: {{ cargo.saldo | currency }}
                                     </mat-option>
                                 </mat-select>
                             </mat-form-field>
@@ -545,7 +623,7 @@
                     </form>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel class="panel-claro" (opened)="getAgreements()" hideToggle>
+                <mat-expansion-panel class="panel-oscuro" (opened)="getAgreements()" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Convenios</mat-panel-title>
                         <mat-panel-description>Convenios de pago / condonaciones del usuario</mat-panel-description>
@@ -590,7 +668,7 @@
                     </mat-card-actions>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel class="panel-oscuro" (opened)="getAnnualPayments()" hideToggle>
+                <mat-expansion-panel class="panel-claro" (opened)="getAnnualPayments()" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Años pagados</mat-panel-title>
                         <mat-panel-description>Marca los años ya cubiertos en su totalidad</mat-panel-description>
@@ -651,86 +729,6 @@
                     </form>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel class="panel-claro" (opened)="getCenso()" hideToggle>
-                    <mat-expansion-panel-header>
-                        <mat-panel-title>Censo de personas</mat-panel-title>
-                        <mat-panel-description>Integrantes que habitan con este usuario (edad opcional)</mat-panel-description>
-                    </mat-expansion-panel-header>
-                    <table mat-table [dataSource]="dataSourceCenso" class="mat-cell">
-                        <ng-container matColumnDef="edadActual">
-                            <th mat-header-cell *matHeaderCellDef>Edad</th>
-                            <td mat-cell *matCellDef="let element">{{ element.edadActual ?? 'Sin clasificar' }}</td>
-                        </ng-container>
-                        <ng-container matColumnDef="observaciones">
-                            <th mat-header-cell *matHeaderCellDef>Observaciones</th>
-                            <td mat-cell *matCellDef="let element">{{ element.observaciones }}</td>
-                        </ng-container>
-                        <ng-container matColumnDef="acciones">
-                            <th mat-header-cell *matHeaderCellDef></th>
-                            <td mat-cell *matCellDef="let element">
-                                <button mat-icon-button color="primary"
-                                        (click)="onEditarCenso(element)" title="Editar edad/observaciones">
-                                    <mat-icon>edit</mat-icon>
-                                </button>
-                                <button mat-icon-button color="warn"
-                                        (click)="onDeactivateCenso(element)" title="Quitar del censo">
-                                    <mat-icon>delete</mat-icon>
-                                </button>
-                            </td>
-                        </ng-container>
-                        <tr mat-header-row *matHeaderRowDef="displayColumnsCenso"></tr>
-                        <tr mat-row *matRowDef="let row; columns:displayColumnsCenso"></tr>
-                    </table>
-
-                    <p *ngIf="dataSourceCenso.data.length === 0" style="margin: 8px 0; color: rgba(0,0,0,.6);">
-                        Aún no hay personas registradas en el censo de este usuario.
-                    </p>
-
-                    <h4>Agregar persona</h4>
-                    <form [formGroup]="censusForm">
-                        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
-                            <mat-form-field appearance="outline" fxFlex="20%">
-                                <mat-label>Edad (opcional)</mat-label>
-                                <input matInput type="number" min="0" placeholder="edad" formControlName="edad" />
-                            </mat-form-field>
-
-                            <mat-form-field appearance="outline" fxFlex="45%">
-                                <mat-label>Observaciones (opcional)</mat-label>
-                                <input matInput placeholder="ej. hijo, esposa, nombre..." formControlName="observaciones" />
-                            </mat-form-field>
-                        </div>
-                        <mat-card-actions align="end">
-                            <button mat-raised-button color="primary" (click)="onSaveCenso()">
-                                <mat-icon>person_add</mat-icon> Agregar al censo
-                            </button>
-                        </mat-card-actions>
-
-                        <mat-divider style="margin: 12px 0;"></mat-divider>
-
-                        <p class="mat-hint">
-                            Si no quieren dar las edades pero sabes cuántas personas son en total,
-                            agrégalas de una vez como "sin clasificar" -- después se pueden editar
-                            una por una si se obtiene el dato.
-                        </p>
-                        <div fxLayout="row" fxLayoutGap="24px" fxLayoutAlign="start center">
-                            <mat-form-field appearance="outline" fxFlex="20%">
-                                <mat-label>Cuántas personas sin edad</mat-label>
-                                <input matInput type="number" min="1" formControlName="cantidadSinEdad" />
-                            </mat-form-field>
-                            <button mat-stroked-button color="primary" (click)="onAgregarVariasSinEdad()">
-                                <mat-icon>group_add</mat-icon> Agregar sin edad
-                            </button>
-                        </div>
-                    </form>
-                </mat-expansion-panel>
-
-                <mat-expansion-panel class="panel-oscuro" hideToggle>
-                    <mat-expansion-panel-header>
-                        <mat-panel-title>Censo</mat-panel-title>
-                        <mat-panel-description>Censo usuario</mat-panel-description>
-                    </mat-expansion-panel-header>
-                    <p>Detalle censo.</p>
-                </mat-expansion-panel>
             </mat-accordion>
         </div>
     </form>

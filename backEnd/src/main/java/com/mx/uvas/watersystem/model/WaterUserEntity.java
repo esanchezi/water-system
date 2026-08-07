@@ -42,11 +42,13 @@ public class WaterUserEntity implements Serializable {
     // WaterUserService/frontend: nunca cambia la cuota sola, solo propone
     // una categoría en base a estas respuestas -- la decisión final la
     // toma la persona capturando).
-    private Boolean familiaCompleta;           // dominio doméstico
-    private Boolean viudoPadreMadreSoltero;    // dominio doméstico, si no es familia completa
     private Boolean esTiendaAbarrotes;         // dominio negocio
     private Boolean negocioAtendidoPorUsuario; // dominio negocio
     private Boolean negocioGrande;             // dominio negocio
+    // Apodo/alias por el que se conoce al usuario -- hay usuarios que es
+    // más fácil ubicar por alias que por su nombre completo. Opcional,
+    // se incluye en las búsquedas junto con el nombre.
+    private String alias;
     private String email;
     private String observaciones;
     private Integer estatus;
@@ -114,5 +116,14 @@ public class WaterUserEntity implements Serializable {
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "giro_negocio_id", nullable = true)
     private CatalogOptionsEntity giroNegocio;
+
+    // Tipo de usuario -- catálogo TIPO_USUARIO (familia, viuda/o, casa
+    // deshabitada, toma sin conectar, etc.). Reemplaza los antiguos
+    // booleans familiaCompleta/viudoPadreMadreSoltero: el catálogo ya
+    // cubre esos casos y varios más sin necesitar código nuevo cada vez
+    // que se agrega una clasificación.
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "tipo_usuario_id", nullable = true)
+    private CatalogOptionsEntity tipoUsuario;
 
 }

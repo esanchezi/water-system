@@ -37,4 +37,15 @@ public class CatalogOptionsEntity implements Serializable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "catalogo_id")
     private CatalogEntity catalog;
+
+    // Zona a la que pertenece esta opción -- pensado para agrupar varias
+    // calles bajo una misma zona (ej. "La Barca" = Azucena, Jazmín,
+    // Orquídea...). Es una referencia a otra fila de esta misma tabla
+    // (en la práctica, una opción del catálogo SECCIONES_COLONIA que ya
+    // existía -- se reutiliza en vez de crear un catálogo de zonas nuevo),
+    // por eso es auto-referenciada y opcional: no todas las opciones de
+    // todos los catálogos necesitan una zona.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "zona_id", nullable = true)
+    private CatalogOptionsEntity zona;
 }

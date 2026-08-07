@@ -171,6 +171,9 @@ public class CatalogService implements ICatalogService {
                 return ResponseHandler.handleNotFoundException(response, NOT_FOUND + " [ID: " + catalogoId + "]");
             }
             CatalogOptionsEntity option = catalogMapper.optionDtoToEntity(dto, optional.get());
+            if (dto.getZonaId() != null) {
+                catalogOptionsRepository.findById(dto.getZonaId()).ifPresent(option::setZona);
+            }
             catalogOptionsRepository.save(option);
             CatalogEntity reloaded = catalogRepository.findById(catalogoId).get();
             response.setData(List.of(catalogMapper.entityToDto(reloaded)));
@@ -193,6 +196,11 @@ public class CatalogService implements ICatalogService {
             CatalogOptionsEntity option = optional.get();
             option.setNombre(dto.getNombre());
             option.setDescripcion(dto.getDescripcion());
+            if (dto.getZonaId() != null) {
+                catalogOptionsRepository.findById(dto.getZonaId()).ifPresent(option::setZona);
+            } else {
+                option.setZona(null);
+            }
             option.setUserIdUpdate(1); // TODO: Keycloak
             option.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
             catalogOptionsRepository.save(option);

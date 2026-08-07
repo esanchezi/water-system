@@ -21,7 +21,8 @@
       <p class="hint" *ngIf="grupos.length === 0">No hay gastos pendientes capturados este mes.</p>
 
       <mat-accordion multi="true">
-        <mat-expansion-panel *ngFor="let concepto of grupos">
+        <mat-expansion-panel *ngFor="let concepto of grupos; let i = index"
+          [ngClass]="i % 2 === 0 ? 'panel-claro' : 'panel-oscuro'">
           <mat-expansion-panel-header>
             <mat-panel-title>
               <mat-checkbox
@@ -37,7 +38,8 @@
           </mat-expansion-panel-header>
 
           <mat-accordion multi="true">
-            <mat-expansion-panel *ngFor="let persona of concepto.personas">
+            <mat-expansion-panel *ngFor="let persona of concepto.personas; let j = index"
+              [ngClass]="j % 2 === 0 ? 'panel-claro' : 'panel-oscuro'">
               <mat-expansion-panel-header>
                 <mat-panel-title>
                   <mat-checkbox

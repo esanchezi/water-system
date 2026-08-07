@@ -6,6 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { CatalogService } from '../../../shared/services/catalog.service';
 import { CatalogModel, CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model';
 import { CatalogOptionFormComponent } from '../../components/catalog-option-form/catalog-option-form.component';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-catalog-detail',
@@ -20,6 +21,9 @@ export class CatalogDetailComponent implements OnInit {
 
   catalog!: CatalogModel;
 
+  // El catálogo "Calle" (id 15) es el único con columna de Zona por ahora
+  // (ver catalog-option-form: es donde se puede asignar).
+  readonly CATALOGO_CALLE_ID = 15;
   displayColumns: string[] = ['catalogoOpcionesId', 'nombre', 'descripcion', 'estatus', 'actions'];
   dataSource = new MatTableDataSource<CatalogOptionModel>();
 
@@ -29,6 +33,9 @@ export class CatalogDetailComponent implements OnInit {
     const raw = this.route.snapshot.queryParams['element'];
     if (raw) {
       this.catalog = JSON.parse(raw);
+      if (this.catalog.catalogoId === this.CATALOGO_CALLE_ID) {
+        this.displayColumns = ['catalogoOpcionesId', 'nombre', 'zonaNombre', 'descripcion', 'estatus', 'actions'];
+      }
       this.loadOptions();
     }
   }
@@ -69,10 +76,19 @@ export class CatalogDetailComponent implements OnInit {
   }
 
   deactivateOption(option: CatalogOptionModel): void {
-    if (!confirm(`¿Desactivar la opción "${option.nombre}"?`)) return;
-    this.catalogService.deactivateOption(this.catalog.catalogoId, option.catalogoOpcionesId).subscribe({
-      next: () => this.loadOptions(),
-      error: (e) => console.error(e)
+    Swal.fire({
+      title: 'Desactivar opción',
+      text: `¿Desactivar la opción "${option.nombre}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Desactivar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.catalogService.deactivateOption(this.catalog.catalogoId, option.catalogoOpcionesId).subscribe({
+        next: () => this.loadOptions(),
+        error: (e) => console.error(e)
+      });
     });
   }
 }

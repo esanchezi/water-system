@@ -1,112 +1,186 @@
 <div>
   <mat-card>
-    <mat-card-title>Deudores por casa</mat-card-title>
+    <mat-card-title>Deudores</mat-card-title>
     <mat-card-subtitle>
-      Cuota anual no marcada como pagada + cargos/multas con saldo pendiente
+      Deudores reales (usuarios) y preregistro con deuda aproximada, separados por sección
     </mat-card-subtitle>
 
     <mat-card-content>
-      <div style="display:flex; align-items:center; gap:16px; margin-bottom: 8px;">
-        <mat-form-field appearance="outline" style="width: 160px;">
-          <mat-label>Año</mat-label>
-          <mat-select [(ngModel)]="anio" (selectionChange)="load()">
-            <mat-option *ngFor="let a of anios" [value]="a">{{ a }}</mat-option>
-          </mat-select>
-        </mat-form-field>
+      <mat-accordion>
+        <mat-expansion-panel class="panel-claro" [expanded]="true">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Deudores por casa (usuarios)</mat-panel-title>
+            <mat-panel-description>
+              Cuota anual no marcada como pagada + cargos/multas con saldo pendiente
+            </mat-panel-description>
+          </mat-expansion-panel-header>
 
-        <mat-form-field appearance="outline" style="width: 220px;">
-          <mat-label>Calle</mat-label>
-          <input matInput [value]="calleFiltro" (keyup)="applyCalleFilter($event)" placeholder="Filtrar por calle">
-        </mat-form-field>
+          <div style="display:flex; align-items:center; gap:16px; margin-bottom: 8px;">
+            <mat-form-field appearance="outline" style="width: 160px;">
+              <mat-label>Año</mat-label>
+              <mat-select [(ngModel)]="anio" (selectionChange)="load()">
+                <mat-option *ngFor="let a of anios" [value]="a">{{ a }}</mat-option>
+              </mat-select>
+            </mat-form-field>
 
-        <mat-form-field appearance="outline" style="width: 240px;">
-          <mat-label>Estatus comité</mat-label>
-          <mat-select [(ngModel)]="estatusComiteFiltro" (selectionChange)="applyEstatusComiteFilter()">
-            <mat-option value="">Todos</mat-option>
-            <mat-option *ngFor="let e of estatusComiteOpciones" [value]="e">{{ e }}</mat-option>
-          </mat-select>
-        </mat-form-field>
+            <mat-form-field appearance="outline" style="width: 220px;">
+              <mat-label>Calle</mat-label>
+              <input matInput [value]="calleFiltro" (keyup)="applyCalleFilter($event)" placeholder="Filtrar por calle">
+            </mat-form-field>
 
-        <span *ngIf="!cargando">{{ dataSource.filteredData.length }} usuario(s) con deuda</span>
-      </div>
+            <mat-form-field appearance="outline" style="width: 160px;">
+              <mat-label>N° de casa</mat-label>
+              <input matInput [value]="casaFiltro" (keyup)="applyCasaFilter($event)" placeholder="Filtrar por casa">
+            </mat-form-field>
 
-      <table mat-table [dataSource]="dataSource" class="mat-cell">
+            <mat-form-field appearance="outline" style="width: 240px;">
+              <mat-label>Estatus comité</mat-label>
+              <mat-select [(ngModel)]="estatusComiteFiltro" (selectionChange)="applyEstatusComiteFilter()">
+                <mat-option value="">Todos</mat-option>
+                <mat-option *ngFor="let e of estatusComiteOpciones" [value]="e">{{ e }}</mat-option>
+              </mat-select>
+            </mat-form-field>
 
-        <ng-container matColumnDef="calleNombre">
-          <th mat-header-cell *matHeaderCellDef> Calle</th>
-          <td mat-cell *matCellDef="let d">{{ d.calleNombre || '-' }}</td>
-          <td mat-footer-cell *matFooterCellDef></td>
+            <span *ngIf="!cargando">{{ dataSource.filteredData.length }} usuario(s) con deuda</span>
+          </div>
+
+          <table mat-table [dataSource]="dataSource" class="mat-cell">
+
+            <ng-container matColumnDef="calleNombre">
+              <th mat-header-cell *matHeaderCellDef> Calle</th>
+              <td mat-cell *matCellDef="let d">{{ d.calleNombre || '-' }}</td>
+              <td mat-footer-cell *matFooterCellDef></td>
+            </ng-container>
+
+            <ng-container matColumnDef="casaNo">
+              <th mat-header-cell *matHeaderCellDef> N° Casa</th>
+              <td mat-cell *matCellDef="let d">{{ d.casaNo ?? '-' }}</td>
+              <td mat-footer-cell *matFooterCellDef></td>
+            </ng-container>
+
+            <ng-container matColumnDef="noUsuario">
+              <th mat-header-cell *matHeaderCellDef> N° Usuario</th>
+              <td mat-cell *matCellDef="let d">
+                <a class="link-usuario" (click)="verDetalleUsuario(d)" matTooltip="Ver detalle del usuario">{{ d.noUsuario }}</a>
+              </td>
+              <td mat-footer-cell *matFooterCellDef></td>
+            </ng-container>
+
+            <ng-container matColumnDef="nombreCompleto">
+              <th mat-header-cell *matHeaderCellDef> Usuario</th>
+              <td mat-cell *matCellDef="let d">{{ d.nombreCompleto }}</td>
+              <td mat-footer-cell *matFooterCellDef></td>
+            </ng-container>
+
+            <ng-container matColumnDef="estatusComiteNombre">
+              <th mat-header-cell *matHeaderCellDef> Estatus comité</th>
+              <td mat-cell *matCellDef="let d">{{ d.estatusComiteNombre || '-' }}</td>
+              <td mat-footer-cell *matFooterCellDef><strong>Totales</strong></td>
+            </ng-container>
+
+            <ng-container matColumnDef="montoCuotaAnio">
+              <th mat-header-cell *matHeaderCellDef> Cuota {{ anio }}</th>
+              <td mat-cell *matCellDef="let d">${{ d.montoCuotaAnio | number:'1.2-2' }}</td>
+              <td mat-footer-cell *matFooterCellDef><strong>${{ totalCuotaAnio | number:'1.2-2' }}</strong></td>
+            </ng-container>
+
+            <ng-container matColumnDef="montoCuotaPagado">
+              <th mat-header-cell *matHeaderCellDef> Cuota {{ anio }} pagado</th>
+              <td mat-cell *matCellDef="let d">${{ d.montoCuotaPagado | number:'1.2-2' }}</td>
+              <td mat-footer-cell *matFooterCellDef><strong>${{ totalCuotaPagado | number:'1.2-2' }}</strong></td>
+            </ng-container>
+
+            <ng-container matColumnDef="montoCuotaPendiente">
+              <th mat-header-cell *matHeaderCellDef> Cuota {{ anio }} pendiente</th>
+              <td mat-cell *matCellDef="let d">
+                <span *ngIf="d.cuotaPendiente">${{ d.montoCuotaPendiente | number:'1.2-2' }}</span>
+                <span *ngIf="!d.cuotaPendiente">-</span>
+              </td>
+              <td mat-footer-cell *matFooterCellDef><strong>${{ totalCuota | number:'1.2-2' }}</strong></td>
+            </ng-container>
+
+            <ng-container matColumnDef="montoCargosPendiente">
+              <th mat-header-cell *matHeaderCellDef> Cargos/multas pendientes (solo año actual)</th>
+              <td mat-cell *matCellDef="let d">${{ d.montoCargosPendiente | number:'1.2-2' }}</td>
+              <td mat-footer-cell *matFooterCellDef><strong>${{ totalCargos | number:'1.2-2' }}</strong></td>
+            </ng-container>
+
+            <ng-container matColumnDef="montoTotalPendiente">
+              <th mat-header-cell *matHeaderCellDef> Total</th>
+              <td mat-cell *matCellDef="let d"><strong>${{ d.montoTotalPendiente | number:'1.2-2' }}</strong></td>
+              <td mat-footer-cell *matFooterCellDef><strong>${{ totalGeneral | number:'1.2-2' }}</strong></td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayColumns"></tr>
+            <tr mat-footer-row *matFooterRowDef="displayColumns"></tr>
+          </table>
+
+          <p *ngIf="!cargando && dataSource.data.length === 0" style="margin-top: 16px;">
+            No hay deudores registrados para {{ anio }}.
+          </p>
+
+          <mat-paginator [pageSizeOptions]="[20,50,100]" showFirstLastButtons></mat-paginator>
+        </mat-expansion-panel>
+
+        <!-- Gente en preregistro (todavía no es usuario formal) con una deuda
+             aproximada capturada -- para considerarla junto con los deudores
+             reales, aunque no tenga el mismo desglose por año. -->
+        <mat-expansion-panel class="panel-oscuro" (opened)="getPreregistroConDeuda()">
+      <mat-expansion-panel-header>
+        <mat-panel-title>Preregistro con deuda aproximada</mat-panel-title>
+        <mat-panel-description>
+          Gente que aún no es usuario formal, pero ya se sabe que debe algo (estimado manual)
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+
+      <p *ngIf="cargandoPreregistro">Cargando...</p>
+
+      <table mat-table [dataSource]="listPreregistroDeuda" class="mat-cell" *ngIf="!cargandoPreregistro">
+        <ng-container matColumnDef="ubicacion">
+          <th mat-header-cell *matHeaderCellDef>Ubicación</th>
+          <td mat-cell *matCellDef="let p">{{ p.calleNombre || '-' }} {{ p.casaNo ? '#' + p.casaNo : '' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="nombre">
+          <th mat-header-cell *matHeaderCellDef>Nombre</th>
+          <td mat-cell *matCellDef="let p">{{ p.nombre }} — {{ p.telefono || 'sin teléfono' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="estatus">
+          <th mat-header-cell *matHeaderCellDef>Estatus</th>
+          <td mat-cell *matCellDef="let p">{{ p.estatus === 1 ? 'Pendiente' : 'Descartado' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="aportaciones">
+          <th mat-header-cell *matHeaderCellDef>Aportaciones</th>
+          <td mat-cell *matCellDef="let p">{{ p.deudaAportaciones || 0 | currency }}</td>
+        </ng-container>
+        <ng-container matColumnDef="multas">
+          <th mat-header-cell *matHeaderCellDef>Multas/recargos</th>
+          <td mat-cell *matCellDef="let p">{{ p.deudaMultasRecargos || 0 | currency }}</td>
+        </ng-container>
+        <ng-container matColumnDef="total">
+          <th mat-header-cell *matHeaderCellDef>Total aprox.</th>
+          <td mat-cell *matCellDef="let p"><strong>{{ totalDeudaPreregistro(p) | currency }}</strong></td>
+        </ng-container>
+        <ng-container matColumnDef="observaciones">
+          <th mat-header-cell *matHeaderCellDef>Observaciones</th>
+          <td mat-cell *matCellDef="let p">{{ p.deudaObservaciones || '-' }}</td>
         </ng-container>
 
-        <ng-container matColumnDef="casaNo">
-          <th mat-header-cell *matHeaderCellDef> N° Casa</th>
-          <td mat-cell *matCellDef="let d">{{ d.casaNo ?? '-' }}</td>
-          <td mat-footer-cell *matFooterCellDef></td>
-        </ng-container>
-
-        <ng-container matColumnDef="noUsuario">
-          <th mat-header-cell *matHeaderCellDef> N° Usuario</th>
-          <td mat-cell *matCellDef="let d">
-            <a class="link-usuario" (click)="verDetalleUsuario(d)" matTooltip="Ver detalle del usuario">{{ d.noUsuario }}</a>
-          </td>
-          <td mat-footer-cell *matFooterCellDef></td>
-        </ng-container>
-
-        <ng-container matColumnDef="nombreCompleto">
-          <th mat-header-cell *matHeaderCellDef> Usuario</th>
-          <td mat-cell *matCellDef="let d">{{ d.nombreCompleto }}</td>
-          <td mat-footer-cell *matFooterCellDef></td>
-        </ng-container>
-
-        <ng-container matColumnDef="estatusComiteNombre">
-          <th mat-header-cell *matHeaderCellDef> Estatus comité</th>
-          <td mat-cell *matCellDef="let d">{{ d.estatusComiteNombre || '-' }}</td>
-          <td mat-footer-cell *matFooterCellDef><strong>Totales</strong></td>
-        </ng-container>
-
-        <ng-container matColumnDef="montoCuotaAnio">
-          <th mat-header-cell *matHeaderCellDef> Cuota {{ anio }}</th>
-          <td mat-cell *matCellDef="let d">${{ d.montoCuotaAnio | number:'1.2-2' }}</td>
-          <td mat-footer-cell *matFooterCellDef><strong>${{ totalCuotaAnio | number:'1.2-2' }}</strong></td>
-        </ng-container>
-
-        <ng-container matColumnDef="montoCuotaPagado">
-          <th mat-header-cell *matHeaderCellDef> Cuota {{ anio }} pagado</th>
-          <td mat-cell *matCellDef="let d">${{ d.montoCuotaPagado | number:'1.2-2' }}</td>
-          <td mat-footer-cell *matFooterCellDef><strong>${{ totalCuotaPagado | number:'1.2-2' }}</strong></td>
-        </ng-container>
-
-        <ng-container matColumnDef="montoCuotaPendiente">
-          <th mat-header-cell *matHeaderCellDef> Cuota {{ anio }} pendiente</th>
-          <td mat-cell *matCellDef="let d">
-            <span *ngIf="d.cuotaPendiente">${{ d.montoCuotaPendiente | number:'1.2-2' }}</span>
-            <span *ngIf="!d.cuotaPendiente">-</span>
-          </td>
-          <td mat-footer-cell *matFooterCellDef><strong>${{ totalCuota | number:'1.2-2' }}</strong></td>
-        </ng-container>
-
-        <ng-container matColumnDef="montoCargosPendiente">
-          <th mat-header-cell *matHeaderCellDef> Cargos/multas pendientes (solo año actual)</th>
-          <td mat-cell *matCellDef="let d">${{ d.montoCargosPendiente | number:'1.2-2' }}</td>
-          <td mat-footer-cell *matFooterCellDef><strong>${{ totalCargos | number:'1.2-2' }}</strong></td>
-        </ng-container>
-
-        <ng-container matColumnDef="montoTotalPendiente">
-          <th mat-header-cell *matHeaderCellDef> Total</th>
-          <td mat-cell *matCellDef="let d"><strong>${{ d.montoTotalPendiente | number:'1.2-2' }}</strong></td>
-          <td mat-footer-cell *matFooterCellDef><strong>${{ totalGeneral | number:'1.2-2' }}</strong></td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="displayColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayColumns"></tr>
-        <tr mat-footer-row *matFooterRowDef="displayColumns"></tr>
+        <tr mat-header-row *matHeaderRowDef="['ubicacion','nombre','estatus','aportaciones','multas','total','observaciones']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['ubicacion','nombre','estatus','aportaciones','multas','total','observaciones']"></tr>
       </table>
 
-      <p *ngIf="!cargando && dataSource.data.length === 0" style="margin-top: 16px;">
-        No hay deudores registrados para {{ anio }}.
+      <p *ngIf="!cargandoPreregistro && listPreregistroDeuda.length === 0" class="mat-hint">
+        No hay nadie en preregistro con deuda aproximada capturada.
       </p>
 
-      <mat-paginator [pageSizeOptions]="[20,50,100]" showFirstLastButtons></mat-paginator>
+      <p *ngIf="!cargandoPreregistro && listPreregistroDeuda.length > 0" class="mat-hint" style="margin-top: 8px;">
+        <strong>Totales -- aportaciones: {{ totalPreregistroAportaciones | currency }},
+        multas/recargos: {{ totalPreregistroMultas | currency }},
+        general: {{ totalPreregistroGeneral | currency }}</strong>
+      </p>
+        </mat-expansion-panel>
+      </mat-accordion>
     </mat-card-content>
   </mat-card>
 </div>

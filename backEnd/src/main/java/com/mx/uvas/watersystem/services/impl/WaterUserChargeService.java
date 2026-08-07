@@ -51,6 +51,11 @@ public class WaterUserChargeService implements IWaterUserChargeService {
     }
 
     @Override
+    public ResponseEntity<WaterUserChargeRestResponse> findByGrupoId(Integer grupoId) {
+        return handleFindAll(waterUserChargeRepository.findByGrupoId(grupoId));
+    }
+
+    @Override
     public ResponseEntity<WaterUserChargeRestResponse> findPendientesByNoUser(Integer noUser) {
         List<WaterUserChargeEntity> pendientes = waterUserChargeRepository.findByNoUser(noUser).stream()
                 .filter(cargo -> !cargo.isPagado())

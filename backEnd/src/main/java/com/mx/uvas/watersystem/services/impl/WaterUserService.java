@@ -6,6 +6,7 @@ import com.mx.uvas.watersystem.helpers.WaterUserHelper;
 import com.mx.uvas.watersystem.mapping.WaterUserMapper;
 import com.mx.uvas.watersystem.model.CatalogOptionsEntity;
 import com.mx.uvas.watersystem.model.FeeEntity;
+import com.mx.uvas.watersystem.model.WaterGroupEntity;
 import com.mx.uvas.watersystem.model.WaterHouseEntity;
 import com.mx.uvas.watersystem.repositories.*;
 import com.mx.uvas.watersystem.model.WaterUserEntity;
@@ -14,6 +15,7 @@ import com.mx.uvas.watersystem.response.WaterUserDetailsRestResponse;
 import com.mx.uvas.watersystem.response.WaterUserRestResponse;
 import com.mx.uvas.watersystem.services.IWaterUserService;
 import com.mx.uvas.watersystem.utils.Constants;
+import com.mx.uvas.watersystem.utils.CurrentUserService;
 import com.mx.uvas.watersystem.utils.ResponseHandler;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +42,7 @@ public class WaterUserService implements IWaterUserService {
     private final PersonHelper personHelper;
     private final WaterUserHelper waterUserHelper;
     private final WaterUserMapper waterUserMapper;
+    private final CurrentUserService currentUserService;
 
     private static final String USUARIOS_FOUND_MESSAGE = "Usuarios encontrados";
     private static final String USUARIOS_NOT_FOUND_MESSAGE = "Usuarios no encontrados";
@@ -132,14 +135,13 @@ public class WaterUserService implements IWaterUserService {
         user.setEsNegocio(dto.getEsNegocio());
         user.setTieneLocal(dto.getTieneLocal());
         user.setLocalRentadoPorUsuario(dto.getLocalRentadoPorUsuario());
-        user.setFamiliaCompleta(dto.getFamiliaCompleta());
-        user.setViudoPadreMadreSoltero(dto.getViudoPadreMadreSoltero());
         user.setEsTiendaAbarrotes(dto.getEsTiendaAbarrotes());
         user.setNegocioAtendidoPorUsuario(dto.getNegocioAtendidoPorUsuario());
         user.setNegocioGrande(dto.getNegocioGrande());
        // user.setEmail(dto.getEmail());
+        user.setAlias(dto.getAlias());
         user.setObservaciones(dto.getObservaciones());
-        user.setUserIdUpdate(1);
+        user.setUserIdUpdate(currentUserService.getCurrentUserId());
         user.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
 
         // Actualizar catálogos si están presentes
@@ -179,6 +181,13 @@ public class WaterUserService implements IWaterUserService {
             user.setGiroNegocio(null);
         }
 
+        // Tipo de usuario (catálogo TIPO_USUARIO)
+        if (dto.getTipoUsuarioId() != null) {
+            user.setTipoUsuario(catalogOptionsRepository.findById(dto.getTipoUsuarioId()).orElse(null));
+        } else {
+            user.setTipoUsuario(null);
+        }
+
         waterUserRepository.save(user);
 
         return dto;
@@ -201,7 +210,95 @@ public class WaterUserService implements IWaterUserService {
 
         WaterUserEntity user = userOpt.get();
         user.setWaterHouse(houseOpt.get());
-        user.setUserIdUpdate(1);
+        user.setUserIdUpdate(currentUserService.getCurrentUserId());
+        user.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+        waterUserRepository.save(user);
+
+        return handleFindSingle(user);
+    }
+
+    @Override
+    @Transactional
+    public ResponseEntity<WaterUserRestResponse> unassignHouse(Integer aguaUsuarioId) {
+        WaterUserRestResponse response = new WaterUserRestResponse();
+
+        Optional<WaterUserEntity> userOpt = waterUserRepository.findById(aguaUsuarioId);
+        if (userOpt.isEmpty()) {
+            return ResponseHandler.handleNotFoundException(response, USUARIOS_NOT_FOUND_MESSAGE);
+        }
+
+        WaterUserEntity user = userOpt.get();
+        user.setWaterHouse(null);
+        user.setUserIdUpdate(currentUserService.getCurrentUserId());
+        user.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+        waterUserRepository.save(user);
+
+        return handleFindSingle(user);
+    }
+
+    // Actualiza SOLO los campos de clasificación de "uso" (estatus de la
+    // toma, habita/renta, negocio/giro/local) -- deliberadamente no toca
+    // noUsuario/alias/cuota/persona/etc. para que se pueda usar de forma
+    // segura desde contextos (ej. ficha de casa) que no tienen cargado el
+    // resto de los datos del usuario.
+    @Override
+    @Transactional
+    public ResponseEntity<WaterUserRestResponse> updateUso(Integer aguaUsuarioId, WaterUserUsoDto dto) {
+        WaterUserRestResponse response = new WaterUserRestResponse();
+
+        Optional<WaterUserEntity> userOpt = waterUserRepository.findById(aguaUsuarioId);
+        if (userOpt.isEmpty()) {
+            return ResponseHandler.handleNotFoundException(response, USUARIOS_NOT_FOUND_MESSAGE);
+        }
+
+        WaterUserEntity user = userOpt.get();
+        user.setTieneToma(dto.getTieneToma());
+        user.setHabitaDomicilio(dto.getHabitaDomicilio());
+        user.setInmuebleRenta(dto.getInmuebleRenta());
+        user.setEsNegocio(dto.getEsNegocio());
+        user.setTieneLocal(dto.getTieneLocal());
+        user.setLocalRentadoPorUsuario(dto.getLocalRentadoPorUsuario());
+
+        user.setEstatusToma(dto.getEstatusTomaId() != null
+                ? catalogOptionsRepository.findById(dto.getEstatusTomaId()).orElse(null)
+                : null);
+        user.setGiroNegocio(dto.getGiroNegocioId() != null
+                ? catalogOptionsRepository.findById(dto.getGiroNegocioId()).orElse(null)
+                : null);
+
+        user.setUserIdUpdate(currentUserService.getCurrentUserId());
+        user.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+        waterUserRepository.save(user);
+
+        return handleFindSingle(user);
+    }
+
+    // Asigna (o quita, con grupoId nulo) el grupo de un usuario ya existente
+    // -- endpoint chico a propósito, igual que assignHouse/unassignHouse,
+    // para poder usarse desde la ficha del grupo sin tener que recargar el
+    // resto de los datos del usuario.
+    @Override
+    @Transactional
+    public ResponseEntity<WaterUserRestResponse> assignGroup(Integer aguaUsuarioId, Integer grupoId) {
+        WaterUserRestResponse response = new WaterUserRestResponse();
+
+        Optional<WaterUserEntity> userOpt = waterUserRepository.findById(aguaUsuarioId);
+        if (userOpt.isEmpty()) {
+            return ResponseHandler.handleNotFoundException(response, USUARIOS_NOT_FOUND_MESSAGE);
+        }
+
+        WaterGroupEntity grupo = null;
+        if (grupoId != null) {
+            Optional<WaterGroupEntity> grupoOpt = waterGroupRepository.findById(grupoId);
+            if (grupoOpt.isEmpty()) {
+                return ResponseHandler.handleNotFoundException(response, "Grupo no encontrado con id: " + grupoId);
+            }
+            grupo = grupoOpt.get();
+        }
+
+        WaterUserEntity user = userOpt.get();
+        user.setWaterGroup(grupo);
+        user.setUserIdUpdate(currentUserService.getCurrentUserId());
         user.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
         waterUserRepository.save(user);
 
@@ -272,6 +369,10 @@ public class WaterUserService implements IWaterUserService {
                 ? catalogOptionsRepository.findById(request.getGiroNegocioId()).orElse(null)
                 : null;
 
+        CatalogOptionsEntity tipoUsuario = request.getTipoUsuarioId() != null
+                ? catalogOptionsRepository.findById(request.getTipoUsuarioId()).orElse(null)
+                : null;
+
         return WaterUserEntity.builder()
                 .person(personHelper.createPerson(request.getPerson()))
                 .address(waterUserHelper.createAdress(request.getAdress()))
@@ -285,15 +386,15 @@ public class WaterUserService implements IWaterUserService {
                 .giroNegocio(giroNegocio)
                 .tieneLocal(request.getTieneLocal())
                 .localRentadoPorUsuario(request.getLocalRentadoPorUsuario())
-                .familiaCompleta(request.getFamiliaCompleta())
-                .viudoPadreMadreSoltero(request.getViudoPadreMadreSoltero())
+                .tipoUsuario(tipoUsuario)
                 .esTiendaAbarrotes(request.getEsTiendaAbarrotes())
                 .negocioAtendidoPorUsuario(request.getNegocioAtendidoPorUsuario())
                 .negocioGrande(request.getNegocioGrande())
+                .alias(request.getAlias())
                 .email(request.getEmail())
                 .observaciones(request.getObservaciones())
                 .estatus(1)
-                .userIdAdd(1)
+                .userIdAdd(currentUserService.getCurrentUserId())
                 .dateAdd(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))
                 .build();
     }

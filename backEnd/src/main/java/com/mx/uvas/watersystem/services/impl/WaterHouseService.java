@@ -48,6 +48,26 @@ public class WaterHouseService extends BaseService<WaterHouseEntity, WaterHouseD
     }
 
     @Override
+    public ResponseEntity<WaterHouseRestResponse> findById(Integer casaId) {
+        WaterHouseRestResponse response = new WaterHouseRestResponse();
+        try {
+            Optional<WaterHouseEntity> optional = waterHouseRepository.findById(casaId);
+
+            if (optional.isEmpty()) {
+                return ResponseHandler.handleNotFoundException(response, "Casa de agua no encontrada con id: " + casaId);
+            }
+
+            WaterHouseDto dto = waterHouseMapper.entityToDto(optional.get());
+            response.setData(List.of(dto));
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, USUARIOS_FOUND_MESSAGE);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, ERROR_SEARCHING_USUARIOS_MESSAGE, e);
+        }
+    }
+
+    @Override
     public ResponseEntity<WaterHouseRestResponse> createWaterHouse(WaterHouseDto dto) {
         WaterHouseRestResponse response = new WaterHouseRestResponse();
         try {

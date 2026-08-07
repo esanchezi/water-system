@@ -4,10 +4,20 @@
     <input matInput formControlName="casaId" placeholder="Id casa" required />
   </mat-form-field>
 
+  <mat-form-field>
+    <mat-label>Sección</mat-label>
+    <mat-select formControlName="seccionId" (selectionChange)="onSeccionChange($event.value)">
+      <mat-option [value]="null">-- Selecciona --</mat-option>
+      <mat-option *ngFor="let s of secciones" [value]="s.catalogoOpcionesId">
+        {{ s.nombre }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
   <mat-form-field class="full-width">
     <mat-label>Calle</mat-label>
     <mat-select formControlName="calleId">
-      <mat-option *ngFor="let cat of calles$ | async" [value]="cat.catalogoOpcionesId">
+      <mat-option *ngFor="let cat of callesDeSeccion" [value]="cat.catalogoOpcionesId">
         {{ cat.nombre }}
       </mat-option>
     </mat-select>
@@ -37,6 +47,7 @@
     <textarea matInput rows="3" formControlName="observaciones" placeholder="Observaciones"></textarea>
   </mat-form-field>
 
-  <button mat-raised-button color="primary" (click)="save()">Guardar cambios</button>
-  
+  <mat-card-actions align="end">
+    <button mat-raised-button color="primary" (click)="save()">Guardar cambios</button>
+  </mat-card-actions>
 </form>

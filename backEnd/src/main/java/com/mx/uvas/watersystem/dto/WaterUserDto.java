@@ -23,11 +23,12 @@ public class WaterUserDto implements Serializable {
     private String giroNegocioNombre;
     private Boolean tieneLocal;
     private Boolean localRentadoPorUsuario;
-    private Boolean familiaCompleta;
-    private Boolean viudoPadreMadreSoltero;
+    private Integer tipoUsuarioId;
+    private String tipoUsuarioNombre;
     private Boolean esTiendaAbarrotes;
     private Boolean negocioAtendidoPorUsuario;
     private Boolean negocioGrande;
+    private String alias;
     private String email;
     private String observaciones;
     private FeeDto fee;

@@ -33,4 +33,27 @@ export class PreregistroUsuarioService {
     const params = motivo ? `?motivo=${encodeURIComponent(motivo)}` : '';
     return this.http.put(`${BASE}/${preregistroId}/descartar${params}`, {});
   }
+
+  // Preregistros de todas las casas con deuda aproximada capturada -- para
+  // el módulo de deudores.
+  getConDeuda(): Observable<any> {
+    return this.http.get(`${BASE}/conDeuda`);
+  }
+
+  // Listado global (todas las casas) -- módulo de preregistro.
+  getAll(): Observable<any> {
+    return this.http.get(`${BASE}`);
+  }
+
+  // Preregistros ya vinculados a un grupo (ficha de grupo).
+  getByGrupoId(grupoId: number): Observable<any> {
+    return this.http.get(`${BASE}/grupo/${grupoId}`);
+  }
+
+  // Asigna (o quita, pasando null) el grupo al que probablemente se va a
+  // unir esta persona cuando se convierta en usuario formal.
+  asignarGrupo(preregistroId: number, grupoId: number | null): Observable<any> {
+    const params = grupoId != null ? `?grupoId=${grupoId}` : '';
+    return this.http.put(`${BASE}/${preregistroId}/grupo${params}`, {});
+  }
 }

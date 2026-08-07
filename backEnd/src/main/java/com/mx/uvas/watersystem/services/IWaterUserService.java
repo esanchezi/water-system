@@ -2,6 +2,7 @@ package com.mx.uvas.watersystem.services;
 
 import com.mx.uvas.watersystem.dto.AguaUsuarioSearchDTO;
 import com.mx.uvas.watersystem.dto.WaterUserDto;
+import com.mx.uvas.watersystem.dto.WaterUserUsoDto;
 import com.mx.uvas.watersystem.response.WaterUserBasicRestResponse;
 import com.mx.uvas.watersystem.response.WaterUserDetailsRestResponse;
 import com.mx.uvas.watersystem.response.WaterUserRestResponse;
@@ -32,4 +33,11 @@ public interface IWaterUserService {
     List<AguaUsuarioSearchDTO> searchUsers(String term);
 
     ResponseEntity<WaterUserRestResponse> assignHouse(Integer aguaUsuarioId, Integer casaId);
+
+    ResponseEntity<WaterUserRestResponse> unassignHouse(Integer aguaUsuarioId);
+
+    ResponseEntity<WaterUserRestResponse> updateUso(Integer aguaUsuarioId, WaterUserUsoDto dto);
+
+    // grupoId nulo desvincula al usuario de cualquier grupo.
+    ResponseEntity<WaterUserRestResponse> assignGroup(Integer aguaUsuarioId, Integer grupoId);
 }

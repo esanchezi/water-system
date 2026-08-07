@@ -17,6 +17,17 @@
                 placeholder="Descripción de la opción"></textarea>
     </mat-form-field>
 
+    <mat-form-field appearance="outline" class="full-width" *ngIf="mostrarZona">
+      <mat-label>Zona / Sección (opcional)</mat-label>
+      <mat-select formControlName="zonaId">
+        <mat-option [value]="null">Sin zona asignada</mat-option>
+        <mat-option *ngFor="let z of zonas" [value]="z.catalogoOpcionesId">{{ z.nombre }}</mat-option>
+      </mat-select>
+      <mat-hint *ngIf="!zonas.length">
+        No hay opciones creadas todavía en el catálogo "Secciones / Colonia" -- créalas ahí primero.
+      </mat-hint>
+    </mat-form-field>
+
   </form>
 </mat-dialog-content>
 

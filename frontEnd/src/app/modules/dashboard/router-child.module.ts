@@ -29,6 +29,7 @@ import { EgresoGastosComponent } from '../egreso/pages/egreso-gastos/egreso-gast
 import { EgresoValesComponent } from '../egreso/pages/egreso-vales/egreso-vales.component';
 import { ResumenAnualListComponent } from '../resumen-anual/pages/resumen-anual-list/resumen-anual-list.component';
 import { CensoResumenComponent } from '../censo/pages/censo-resumen/censo-resumen.component';
+import { PreregistroListComponent } from '../preregistro/pages/preregistro-list/preregistro-list.component';
 
 export const childRoutes: Routes = [
     { path: '', component: HomeComponent },
@@ -60,6 +61,7 @@ export const childRoutes: Routes = [
     { path: 'egresoVales', component: EgresoValesComponent },
     { path: 'resumenAnual', component: ResumenAnualListComponent },
     { path: 'censoResumen', component: CensoResumenComponent },
+    { path: 'preregistroList', component: PreregistroListComponent },
 ];
 
 @NgModule({

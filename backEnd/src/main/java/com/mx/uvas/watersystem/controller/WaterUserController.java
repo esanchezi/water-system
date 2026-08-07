@@ -2,6 +2,7 @@ package com.mx.uvas.watersystem.controller;
 
 import com.mx.uvas.watersystem.dto.AguaUsuarioSearchDTO;
 import com.mx.uvas.watersystem.dto.WaterUserDto;
+import com.mx.uvas.watersystem.dto.WaterUserUsoDto;
 import com.mx.uvas.watersystem.response.WaterUserBasicRestResponse;
 import com.mx.uvas.watersystem.response.WaterUserDetailsRestResponse;
 import com.mx.uvas.watersystem.response.WaterUserRestResponse;
@@ -82,6 +83,27 @@ public class WaterUserController {
     @PutMapping("/{aguaUsuarioId}/house/{casaId}")
     public ResponseEntity<WaterUserRestResponse> assignHouse(@PathVariable Integer aguaUsuarioId, @PathVariable Integer casaId) {
         return waterUserService.assignHouse(aguaUsuarioId, casaId);
+    }
+
+    @Operation(summary = "Quitar la casa asignada a un usuario (sin borrar al usuario)")
+    @DeleteMapping("/{aguaUsuarioId}/house")
+    public ResponseEntity<WaterUserRestResponse> unassignHouse(@PathVariable Integer aguaUsuarioId) {
+        return waterUserService.unassignHouse(aguaUsuarioId);
+    }
+
+    @Operation(summary = "Actualizar solo la clasificación de uso (toma, habita/renta, negocio)")
+    @PutMapping("/{aguaUsuarioId}/uso")
+    public ResponseEntity<WaterUserRestResponse> updateUso(@PathVariable Integer aguaUsuarioId, @Valid @RequestBody WaterUserUsoDto dto) {
+        return waterUserService.updateUso(aguaUsuarioId, dto);
+    }
+
+    @Operation(summary = "Asignar (o quitar, sin mandar grupoId) el grupo de un usuario existente")
+    @PutMapping("/{aguaUsuarioId}/group")
+    public ResponseEntity<WaterUserRestResponse> assignGroup(
+            @PathVariable Integer aguaUsuarioId,
+            @RequestParam(required = false) Integer grupoId
+    ) {
+        return waterUserService.assignGroup(aguaUsuarioId, grupoId);
     }
 
 }

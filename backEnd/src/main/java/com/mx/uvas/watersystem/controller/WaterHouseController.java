@@ -23,6 +23,11 @@ public class WaterHouseController {
         return waterHouseService.findAll();
     }
 
+    @GetMapping("/{casaId}")
+    public ResponseEntity<WaterHouseRestResponse> getById(@PathVariable Integer casaId) {
+        return waterHouseService.findById(casaId);
+    }
+
     @PostMapping(path = "/")
     public ResponseEntity<WaterHouseRestResponse> create(@RequestBody WaterHouseDto dto) {
         return waterHouseService.createWaterHouse(dto);

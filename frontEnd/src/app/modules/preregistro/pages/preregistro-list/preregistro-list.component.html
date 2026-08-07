@@ -1,0 +1,116 @@
+<div>
+  <mat-card>
+    <mat-card-title>Preregistro</mat-card-title>
+    <mat-card-subtitle>
+      Gente que vive en alguna casa pero aún no es un usuario de agua formal (todas las casas)
+    </mat-card-subtitle>
+
+    <mat-card-content>
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom: 8px; flex-wrap: wrap;">
+        <mat-form-field appearance="outline" style="width: 260px;">
+          <mat-label>Buscar</mat-label>
+          <input matInput (keyup)="applyNombreFilter($event)" placeholder="Nombre, teléfono o calle">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" style="width: 200px;">
+          <mat-label>Estatus</mat-label>
+          <mat-select [(ngModel)]="filtros.estatus" (selectionChange)="applyFilters()">
+            <mat-option value="">Todos</mat-option>
+            <mat-option [value]="PENDIENTE">Pendiente</mat-option>
+            <mat-option [value]="CONVERTIDO">Convertido</mat-option>
+            <mat-option [value]="DESCARTADO">Descartado</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-checkbox [(ngModel)]="filtros.soloNegocio" (change)="applyFilters()">Solo negocios</mat-checkbox>
+
+        <span *ngIf="!cargando">{{ dataSource.filteredData.length }} registro(s)</span>
+      </div>
+
+      <p *ngIf="cargando">Cargando...</p>
+
+      <table mat-table [dataSource]="dataSource" class="mat-cell" *ngIf="!cargando">
+
+        <ng-container matColumnDef="casa">
+          <th mat-header-cell *matHeaderCellDef>Casa</th>
+          <td mat-cell *matCellDef="let p">
+            <button mat-button color="primary" *ngIf="p.casaId" (click)="verCasa(p)" [disabled]="cargandoCasaId === p.casaId">
+              <mat-icon *ngIf="cargandoCasaId !== p.casaId">home</mat-icon>
+              <mat-spinner *ngIf="cargandoCasaId === p.casaId" diameter="16"></mat-spinner>
+              {{ p.calleNombre || '-' }} {{ p.casaNo ? '#' + p.casaNo : '' }}
+            </button>
+            <span *ngIf="!p.casaId">-</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="nombre">
+          <th mat-header-cell *matHeaderCellDef>Nombre</th>
+          <td mat-cell *matCellDef="let p">
+            {{ p.nombre }} — {{ p.telefono || 'sin teléfono' }}
+            <div *ngIf="p.observaciones" class="mat-hint">{{ p.observaciones }}</div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="estatus">
+          <th mat-header-cell *matHeaderCellDef>Estatus</th>
+          <td mat-cell *matCellDef="let p">
+            {{ estatusNombre(p.estatus) }}
+            <div *ngIf="p.aguaUsuarioIdConvertido" class="mat-hint">Usuario N° {{ p.aguaUsuarioIdConvertido }}</div>
+            <div *ngIf="p.motivoPendiente" class="mat-hint"><em>{{ p.motivoPendiente }}</em></div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="negocio">
+          <th mat-header-cell *matHeaderCellDef>Negocio</th>
+          <td mat-cell *matCellDef="let p">
+            <span *ngIf="p.esNegocio">{{ p.giroNegocioNombre || 'Sí' }}</span>
+            <span *ngIf="!p.esNegocio">-</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="deuda">
+          <th mat-header-cell *matHeaderCellDef>Deuda aprox.</th>
+          <td mat-cell *matCellDef="let p">
+            <span *ngIf="totalDeuda(p) > 0">{{ totalDeuda(p) | currency }}</span>
+            <span *ngIf="totalDeuda(p) === 0">-</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="grupo">
+          <th mat-header-cell *matHeaderCellDef>Grupo</th>
+          <td mat-cell *matCellDef="let p">
+            <mat-form-field appearance="outline" style="width: 180px;">
+              <mat-select [value]="p.grupoId || null" (selectionChange)="onAsignarGrupo(p, $event.value)">
+                <mat-option [value]="null">Sin grupo</mat-option>
+                <mat-option *ngFor="let g of grupos" [value]="g.grupoId">{{ g.nombre }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="acciones">
+          <th mat-header-cell *matHeaderCellDef>Acciones</th>
+          <td mat-cell *matCellDef="let p">
+            <div *ngIf="p.estatus === PENDIENTE">
+              <button mat-icon-button color="primary" (click)="onConvertirAUsuario(p)" title="Convertir a usuario (abre el alta prellenada)">
+                <mat-icon>how_to_reg</mat-icon>
+              </button>
+              <button mat-icon-button color="warn" (click)="onMarcarDescartado(p)" title="Descartar">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            </div>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayColumns"></tr>
+      </table>
+
+      <p *ngIf="!cargando && dataSource.data.length === 0" style="margin-top: 16px;">
+        No hay nadie en preregistro todavía.
+      </p>
+
+      <mat-paginator [pageSizeOptions]="[20,50,100]" showFirstLastButtons></mat-paginator>
+    </mat-card-content>
+  </mat-card>
+</div>

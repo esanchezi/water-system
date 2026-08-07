@@ -31,6 +31,10 @@ public class CatalogMapper {
         if (entity.getCatalog() != null) {
             dto.setCatalogoId(entity.getCatalog().getCatalogoId());
         }
+        if (entity.getZona() != null) {
+            dto.setZonaId(entity.getZona().getCatalogoOpcionesId());
+            dto.setZonaNombre(entity.getZona().getNombre());
+        }
         return dto;
     }
 

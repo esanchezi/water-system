@@ -10,6 +10,10 @@ import java.util.List;
 public class WaterUserChargeDto implements Serializable {
     private Integer aguaUsuarioCargoId;
     private Integer noUsuario;
+    // Solo se necesita cuando el listado junta cargos de varios usuarios a
+    // la vez (ej. lista de multas de un grupo completo) -- en la pantalla
+    // de un solo usuario ya se sabe de quién son.
+    private String nombreUsuario;
     private Integer conceptoId;
     private CatalogOptionsDto concepto;
     private String descripcion;

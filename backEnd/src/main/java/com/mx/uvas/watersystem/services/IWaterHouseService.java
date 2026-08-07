@@ -12,6 +12,8 @@ public interface IWaterHouseService {
 
     ResponseEntity<WaterHouseRestResponse> findAll();
 
+    ResponseEntity<WaterHouseRestResponse> findById(Integer casaId);
+
     ResponseEntity<WaterHouseRestResponse> createWaterHouse(WaterHouseDto dto);
     ResponseEntity<WaterHouseRestResponse> updateWaterHouse(Integer casaId, WaterHouseDto dto);
 

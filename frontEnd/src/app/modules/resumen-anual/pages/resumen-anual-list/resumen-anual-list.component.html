@@ -6,7 +6,8 @@
       <p class="hint" *ngIf="!cargando && filas.length === 0">No hay datos para mostrar.</p>
 
       <mat-accordion multi="true">
-        <mat-expansion-panel *ngFor="let fila of filas">
+        <mat-expansion-panel *ngFor="let fila of filas; let i = index"
+          [ngClass]="i % 2 === 0 ? 'panel-claro' : 'panel-oscuro'">
           <mat-expansion-panel-header>
             <mat-panel-title><strong>{{ fila.anio }}</strong></mat-panel-title>
             <mat-panel-description>Saldo caja: ${{ fila.saldoCaja | number:'1.2-2' }}</mat-panel-description>

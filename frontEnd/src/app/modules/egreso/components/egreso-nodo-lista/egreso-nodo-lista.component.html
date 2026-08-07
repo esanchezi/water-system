@@ -1,5 +1,6 @@
 <mat-accordion multi="true">
-  <mat-expansion-panel *ngFor="let nodo of nodos">
+  <mat-expansion-panel *ngFor="let nodo of nodos; let i = index"
+    [ngClass]="i % 2 === 0 ? 'panel-claro' : 'panel-oscuro'">
     <mat-expansion-panel-header>
       <mat-panel-title>{{ nodo.label }}</mat-panel-title>
       <mat-panel-description>Total: ${{ nodo.total | number:'1.2-2' }}</mat-panel-description>

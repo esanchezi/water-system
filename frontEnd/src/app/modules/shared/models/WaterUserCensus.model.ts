@@ -27,4 +27,11 @@ export interface WaterUserCensusResumenModel {
   totalPersonas: number;
   porZona: RangoEdadModel[];
   sinZonaAsignada: number;
+  totalNegocios: number;
+  porGiro: RangoEdadModel[];
+  sinGiroAsignado: number;
+  // Desglose de totalNegocios: cuántos ya son usuario formal vs cuántos
+  // siguen solo en preregistro (nunca se van a convertir en usuario).
+  negociosConUsuario: number;
+  negociosSinUsuario: number;
 }

@@ -1,8 +1,8 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
-import { map } from 'rxjs/operators';
 import { WaterHouseModel } from 'src/app/modules/shared/models/WaterUser.model';
+import { CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model';
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { HouseService } from 'src/app/modules/shared/services/house.service';
 
@@ -21,10 +21,12 @@ export class HouseNewComponent implements OnInit {
   waterHouse!: WaterHouseModel;
   form!: FormGroup;
 
-  // Catálogo de calles (id 15), en orden alfabético
-  calles$ = this.catalogService.getOptions(15).pipe(
-    map(opts => [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)))
-  );
+  // Catálogo id 15 = Calle. Se carga completo una sola vez y luego se
+  // filtra en el cliente según la Sección elegida (cada calle puede tener
+  // una sección asignada desde Catálogos -- ver zonaId en CatalogOptionModel).
+  secciones: CatalogOptionModel[] = [];
+  private todasLasCalles: CatalogOptionModel[] = [];
+  callesDeSeccion: CatalogOptionModel[] = [];
 
   readonly lados = [
     { value: 'D', label: 'Derecho' },
@@ -39,7 +41,8 @@ export class HouseNewComponent implements OnInit {
   ngOnInit(): void {
     this.form = this.fb.group({
       casaId:        [null],
-      calleId:       [null, Validators.required],
+      seccionId:     [null, Validators.required],
+      calleId:       [{ value: null, disabled: true }, Validators.required],
       casaNo:        [null, Validators.required],
       nombre:        [''],
       lado:          [''],
@@ -48,6 +51,34 @@ export class HouseNewComponent implements OnInit {
       lng:           [this.center.lng]
     });
     this.usarUbicacionActual();
+    this.cargarSeccionesYCalles();
+  }
+
+  private cargarSeccionesYCalles(): void {
+    this.catalogService.getOptionsByClave('SECCIONES_COLONIA').subscribe({
+      next: (opts) => this.secciones = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptions(15).subscribe({
+      next: (opts) => this.todasLasCalles = opts,
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  // Primero se elige la Sección; la Calle solo se habilita y se llena
+  // hasta entonces, filtrada a las calles que ya tienen esa sección
+  // asignada (desde Catálogos -- Calle -> Zona/Sección).
+  onSeccionChange(seccionId: number | null): void {
+    this.form.patchValue({ calleId: null });
+    if (!seccionId) {
+      this.callesDeSeccion = [];
+      this.form.get('calleId')?.disable();
+      return;
+    }
+    this.callesDeSeccion = this.todasLasCalles
+      .filter(c => c.zonaId === seccionId)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    this.form.get('calleId')?.enable();
   }
 
   // Una casa nueva nunca tiene ubicación guardada todavía, así que en vez de
@@ -85,7 +116,10 @@ export class HouseNewComponent implements OnInit {
 
   save(): void {
     if (this.form.invalid) return;
-    this.houseService.addHouse(this.form.value).subscribe({
+    // seccionId es solo un filtro en pantalla para llegar a la calle
+    // correcta -- agua_casa no guarda sección, así que no se manda.
+    const { seccionId, ...payload } = this.form.getRawValue();
+    this.houseService.addHouse(payload).subscribe({
       next: () => this.dialogRef.close(true),
       error: (e: any) => console.error('Error al crear casa', e)
     });

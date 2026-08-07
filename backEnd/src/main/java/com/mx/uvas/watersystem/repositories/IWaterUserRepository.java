@@ -40,18 +40,19 @@ public interface IWaterUserRepository extends JpaRepository<WaterUserEntity,Inte
     List<WaterUserBasicDto> getListUsers();
 
     @Query("SELECT new com.mx.uvas.watersystem.dto.WaterUserDetailsDto(" +
-            "wu.aguaUsuarioId, wu.noUsuario, wu.habitaDomicilio, wu.tieneToma, wu.inmuebleRenta, wu.fee.cuotaId, " +
+            "wu.aguaUsuarioId, wu.noUsuario, wu.alias, wu.habitaDomicilio, wu.tieneToma, wu.inmuebleRenta, wu.fee.cuotaId, " +
             "wu.frecuenciaPago.catalogoOpcionesId, wu.estatusPago.catalogoOpcionesId,wu.estatusComite.catalogoOpcionesId," +
             "wu.estatusToma.catalogoOpcionesId," +
             "p.personaId, p.nombre, COALESCE(p.nombre2,''), p.app, COALESCE(p.apm,''), " +
             "a.direccionId,a.catSeccion.catalogoOpcionesId, a.calle, a.numero, a.referencia, a.entrecalle1, a.entrecalle2, a.catSeccion.nombre, " +
             "h.nombre,h.casaId, wu.esNegocio, gn.catalogoOpcionesId, gn.nombre, wu.tieneLocal, wu.localRentadoPorUsuario, " +
-            "wu.familiaCompleta, wu.viudoPadreMadreSoltero, wu.esTiendaAbarrotes, wu.negocioAtendidoPorUsuario, wu.negocioGrande) " +
+            "tu.catalogoOpcionesId, tu.nombre, wu.esTiendaAbarrotes, wu.negocioAtendidoPorUsuario, wu.negocioGrande) " +
             "FROM WaterUserEntity wu " +
             "JOIN wu.person p " +
             "JOIN wu.address a " +
             "LEFT JOIN wu.waterHouse h " +
             "LEFT JOIN wu.giroNegocio gn " +
+            "LEFT JOIN wu.tipoUsuario tu " +
             "WHERE wu.aguaUsuarioId = :aguaUsuarioId")
     WaterUserDetailsDto getUserDetails(@Param("aguaUsuarioId") Integer aguaUsuarioId);
 
@@ -60,7 +61,7 @@ public interface IWaterUserRepository extends JpaRepository<WaterUserEntity,Inte
     @Query("SELECT wu " +
             "FROM WaterUserEntity wu " +
             "JOIN  wu.person p " +
-            "WHERE wu.estatus = 1 AND (p.nombre LIKE %:noUser% or p.nombre2 LIKE %:noUser% or p.app LIKE %:noUser% or p.apm LIKE %:noUser%) " +
+            "WHERE wu.estatus = 1 AND (p.nombre LIKE %:noUser% or p.nombre2 LIKE %:noUser% or p.app LIKE %:noUser% or p.apm LIKE %:noUser% or wu.alias LIKE %:noUser%) " +
             "ORDER BY p.nombre")
     List<WaterUserEntity> findByNombre(String noUser);
 
@@ -86,6 +87,16 @@ public interface IWaterUserRepository extends JpaRepository<WaterUserEntity,Inte
             "WHERE wu.estatus = 1")
     List<WaterUserEntity> findAllActiveWithHouse();
 
+    // Usuarios activos marcados como negocio, con su giro precargado --
+    // para el resumen de "cuántos negocios se tienen" en el módulo de censo.
+    @Query("SELECT wu FROM WaterUserEntity wu " +
+            "LEFT JOIN FETCH wu.giroNegocio " +
+            "WHERE wu.estatus = 1 AND wu.esNegocio = true")
+    List<WaterUserEntity> findAllNegociosActivos();
+
+    // Búsqueda rápida (autocompletado) por N° de usuario, nombre/apellidos
+    // o alias -- hay usuarios que se ubican más fácil por su alias que por
+    // su nombre completo, por eso se incluye aquí también.
     @Query(value = """
         SELECT
             au.agua_usuario_id AS aguaUsuarioId,
@@ -94,12 +105,20 @@ public interface IWaterUserRepository extends JpaRepository<WaterUserEntity,Inte
                 p.nombre,' ',
                 COALESCE(p.nombre2,''),' ',
                 COALESCE(p.app,''),' ',
-                COALESCE(p.apm,'')
+                COALESCE(p.apm,''),
+                CASE WHEN au.alias IS NOT NULL AND au.alias <> '' THEN CONCAT(' (', au.alias, ')') ELSE '' END
             ) AS nombreCompleto
         FROM agua_usuario au
         INNER JOIN persona p ON p.persona_id = au.persona_id
-        WHERE au.no_usuario LIKE %:term%
-        AND au.estatus = 1
+        WHERE au.estatus = 1
+        AND (
+            au.no_usuario LIKE %:term%
+            OR p.nombre LIKE %:term%
+            OR p.nombre2 LIKE %:term%
+            OR p.app LIKE %:term%
+            OR p.apm LIKE %:term%
+            OR au.alias LIKE %:term%
+        )
         LIMIT 10
     """, nativeQuery = true)
     List<AguaUsuarioSearchDTO> searchByNoUsuario(@Param("term") String term);

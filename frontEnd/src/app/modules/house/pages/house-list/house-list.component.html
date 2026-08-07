@@ -3,10 +3,21 @@
   <mat-card-header>
     <div>
       <mat-form-field appearance="fill">
-        <mat-label>Calle</mat-label>
-        <mat-select (selectionChange)="applyCalleFilter($event.value)">
+        <mat-label>Sección</mat-label>
+        <mat-select [value]="seccionSeleccionada" (selectionChange)="applySeccionFilter($event.value)">
           <mat-option [value]="null">Todas</mat-option>
-          <mat-option *ngFor="let cat of calles$ | async" [value]="cat.catalogoOpcionesId">
+          <mat-option *ngFor="let s of secciones" [value]="s.catalogoOpcionesId">
+            {{ s.nombre }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field appearance="fill">
+        <mat-label>Calle</mat-label>
+        <mat-select [value]="calleSeleccionada" (selectionChange)="applyCalleFilter($event.value)">
+          <mat-option [value]="null">Todas</mat-option>
+          <mat-option *ngFor="let cat of callesDeSeccion" [value]="cat.catalogoOpcionesId">
             {{ cat.nombre }}
           </mat-option>
         </mat-select>

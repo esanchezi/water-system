@@ -9,12 +9,25 @@
     </mat-form-field>
 
     <mat-form-field>
+      <mat-label>Sección</mat-label>
+      <mat-select formControlName="seccionId" (selectionChange)="onSeccionChange($event.value)">
+        <mat-option [value]="null">-- Selecciona --</mat-option>
+        <mat-option *ngFor="let s of secciones" [value]="s.catalogoOpcionesId">
+          {{ s.nombre }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field>
       <mat-label>Calle</mat-label>
       <mat-select formControlName="calleId">
-        <mat-option *ngFor="let cat of calles$ | async" [value]="cat.catalogoOpcionesId">
+        <mat-option *ngFor="let cat of callesDeSeccion" [value]="cat.catalogoOpcionesId">
           {{ cat.nombre }}
         </mat-option>
       </mat-select>
+      <mat-hint *ngIf="form.value.seccionId && !callesDeSeccion.length">
+        Esta sección todavía no tiene calles asignadas (asígnalas desde Catálogos -- Calle).
+      </mat-hint>
     </mat-form-field>
 
     <mat-form-field>

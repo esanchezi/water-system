@@ -17,6 +17,10 @@ export class GroupService {
     return this.http.get(endpoint);
   }
 
+  getWaterGroupById(grupoId: number): Observable<any> {
+    return this.http.get(`${this.baseUrl}/${grupoId}`);
+  }
+
   addGroup(house: Partial<WaterGroupModel>): Observable<WaterGroupModel> {
     return this.http.post<WaterGroupModel>(`${this.baseUrl}/`, house);
   }

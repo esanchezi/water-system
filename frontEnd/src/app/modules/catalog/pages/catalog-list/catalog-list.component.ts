@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import { CatalogService } from '../../../shared/services/catalog.service';
 import { CatalogModel } from 'src/app/modules/shared/models/Catalog.model';
 import { CatalogFormComponent } from '../../components/catalog-form/catalog-form.component';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-catalog-list',
@@ -68,10 +69,19 @@ export class CatalogListComponent implements OnInit {
   }
 
   deactivate(catalog: CatalogModel): void {
-    if (!confirm(`¿Desactivar el catálogo "${catalog.nombre}"?`)) return;
-    this.catalogService.deactivate(catalog.catalogoId).subscribe({
-      next: () => this.load(),
-      error: (e: any) => console.error(e)
+    Swal.fire({
+      title: 'Desactivar catálogo',
+      text: `¿Desactivar el catálogo "${catalog.nombre}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Desactivar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.catalogService.deactivate(catalog.catalogoId).subscribe({
+        next: () => this.load(),
+        error: (e: any) => console.error(e)
+      });
     });
   }
 }

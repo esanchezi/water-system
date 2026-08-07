@@ -1,7 +1,111 @@
 <div>
 
+  <mat-card style="margin-bottom: 16px;">
+    <mat-card-content>
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap: wrap;">
+        <mat-form-field appearance="outline" style="width: 320px;">
+          <mat-label>Agregar usuario existente al grupo</mat-label>
+          <input matInput
+                 placeholder="N° de usuario, nombre o alias"
+                 [formControl]="userSearchCtrl"
+                 [matAutocomplete]="userAuto" />
+          <mat-autocomplete #userAuto="matAutocomplete" [displayWith]="displayUser" (optionSelected)="onUserSelected($event)">
+            <mat-option *ngFor="let user of userSearchResults" [value]="user">
+              N° {{ user.noUsuario }} - {{ user.nombreCompleto }}
+            </mat-option>
+          </mat-autocomplete>
+        </mat-form-field>
+        <span *ngIf="agregandoUsuario">Agregando...</span>
+
+        <mat-form-field appearance="outline" style="width: 320px;">
+          <mat-label>Vincular preregistro a este grupo</mat-label>
+          <input matInput
+                 placeholder="Nombre de la persona en preregistro"
+                 [formControl]="preregistroSearchCtrl"
+                 [matAutocomplete]="preregistroAuto" />
+          <mat-autocomplete #preregistroAuto="matAutocomplete" [displayWith]="displayPreregistro" (optionSelected)="onPreregistroSelected($event)">
+            <mat-option *ngFor="let p of preregistroSearchResults" [value]="p">
+              {{ p.nombre }} ({{ p.calleNombre || 'sin calle' }} {{ p.casaNo ? '#' + p.casaNo : '' }})
+            </mat-option>
+          </mat-autocomplete>
+        </mat-form-field>
+        <span *ngIf="agregandoPreregistroBusqueda">Vinculando...</span>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
   <mat-accordion>
-    <mat-expansion-panel *ngFor="let user of listWaterUser; trackBy: trackByUser">
+    <!-- Multas (y demás cargos) de todos los usuarios del grupo juntos -->
+    <mat-expansion-panel class="panel-claro" (opened)="getMultasGrupo()">
+      <mat-expansion-panel-header>
+        <mat-panel-title>Multas del grupo</mat-panel-title>
+        <mat-panel-description>
+          Cargos de los usuarios de este grupo + deuda aproximada de preregistro vinculado
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+
+      <p *ngIf="cargandoMultas || cargandoPreregistro">Cargando...</p>
+
+      <table mat-table [dataSource]="filasMultasYPreregistro" class="mat-cell" *ngIf="!cargandoMultas && !cargandoPreregistro">
+        <ng-container matColumnDef="usuario">
+          <th mat-header-cell *matHeaderCellDef>Usuario / Preregistro</th>
+          <td mat-cell *matCellDef="let c">{{ c.usuarioLabel }}</td>
+        </ng-container>
+        <ng-container matColumnDef="concepto">
+          <th mat-header-cell *matHeaderCellDef>Concepto</th>
+          <td mat-cell *matCellDef="let c">{{ c.concepto }}</td>
+        </ng-container>
+        <ng-container matColumnDef="fecha">
+          <th mat-header-cell *matHeaderCellDef>Fecha</th>
+          <td mat-cell *matCellDef="let c">{{ c.fecha }}</td>
+        </ng-container>
+        <ng-container matColumnDef="monto">
+          <th mat-header-cell *matHeaderCellDef>Monto</th>
+          <td mat-cell *matCellDef="let c">{{ c.monto | currency }}</td>
+        </ng-container>
+        <ng-container matColumnDef="saldo">
+          <th mat-header-cell *matHeaderCellDef>Saldo</th>
+          <td mat-cell *matCellDef="let c"><strong>{{ c.saldo | currency }}</strong></td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="['usuario','concepto','fecha','monto','saldo']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['usuario','concepto','fecha','monto','saldo']"></tr>
+      </table>
+
+      <p *ngIf="!cargandoMultas && !cargandoPreregistro && filasMultasYPreregistro.length === 0" class="mat-hint">
+        No hay cargos ni deuda de preregistro registrados para este grupo.
+      </p>
+      <p *ngIf="!cargandoMultas && !cargandoPreregistro && filasMultasYPreregistro.length > 0" class="mat-hint" style="margin-top: 8px;">
+        <strong>Total (usuarios + preregistro): {{ totalGeneralGrupo | currency }}</strong>
+      </p>
+    </mat-expansion-panel>
+
+    <!-- Gente en preregistro que probablemente se va a unir a este grupo -->
+    <mat-expansion-panel class="panel-oscuro" (opened)="getPreregistroGrupo()">
+      <mat-expansion-panel-header>
+        <mat-panel-title>Preregistro vinculado</mat-panel-title>
+        <mat-panel-description>
+          Gente que probablemente se va a unir a este grupo cuando sea usuario formal
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+
+      <p *ngIf="cargandoPreregistro">Cargando...</p>
+
+      <div *ngFor="let p of listPreregistroGrupo" class="preregistro-item">
+        <strong>{{ p.nombre }}</strong> — {{ p.telefono || 'sin teléfono' }}
+        ({{ p.calleNombre || 'sin calle' }} {{ p.casaNo ? '#' + p.casaNo : '' }})
+        <span class="mat-hint">
+          {{ p.estatus === 1 ? 'Pendiente' : (p.estatus === 2 ? 'Convertido' : 'Descartado') }}
+        </span>
+      </div>
+
+      <p *ngIf="!cargandoPreregistro && listPreregistroGrupo.length === 0" class="mat-hint">
+        No hay nadie en preregistro vinculado a este grupo todavía.
+      </p>
+    </mat-expansion-panel>
+
+    <mat-expansion-panel *ngFor="let user of listWaterUser; trackBy: trackByUser; let i = index"
+      [ngClass]="i % 2 === 0 ? 'panel-claro' : 'panel-oscuro'">
       <mat-expansion-panel-header>
         <mat-panel-title>
           {{ user.person.nombre }} {{ user.person.nombre2 }}  {{ user.person.app }} {{ user.person.apm }}

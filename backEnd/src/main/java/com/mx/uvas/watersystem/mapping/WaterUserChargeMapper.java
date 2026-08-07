@@ -30,6 +30,13 @@ public class WaterUserChargeMapper {
 
         if (entity.getWaterUser() != null) {
             response.setNoUsuario(entity.getWaterUser().getNoUsuario());
+            if (entity.getWaterUser().getPerson() != null) {
+                var p = entity.getWaterUser().getPerson();
+                String nombreCompleto = java.util.stream.Stream.of(p.getNombre(), p.getNombre2(), p.getApp(), p.getApm())
+                        .filter(s -> s != null && !s.isBlank())
+                        .collect(java.util.stream.Collectors.joining(" "));
+                response.setNombreUsuario(nombreCompleto);
+            }
         }
 
         if (entity.getConcepto() != null) {

@@ -4,6 +4,7 @@ import com.mx.uvas.watersystem.dto.WaterUserChargeDto;
 import com.mx.uvas.watersystem.dto.WaterUserChargePaymentDto;
 import com.mx.uvas.watersystem.response.WaterUserChargeRestResponse;
 import com.mx.uvas.watersystem.services.IWaterUserChargeService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +24,12 @@ public class WaterUserChargeController {
     @GetMapping("/{noUser}/pendientes")
     public ResponseEntity<WaterUserChargeRestResponse> searchPendientesByUser(@PathVariable Integer noUser) {
         return waterUserChargeService.findPendientesByNoUser(noUser);
+    }
+
+    @Operation(summary = "Lista todos los cargos (multas, recargos, etc.) de todos los usuarios de un grupo")
+    @GetMapping("/grupo/{grupoId}")
+    public ResponseEntity<WaterUserChargeRestResponse> searchByGrupo(@PathVariable Integer grupoId) {
+        return waterUserChargeService.findByGrupoId(grupoId);
     }
 
     @PostMapping("/")

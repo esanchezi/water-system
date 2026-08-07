@@ -11,7 +11,7 @@
             {{ user.person.nombre }} {{ user.person.nombre2 }} {{ user.person.app }} {{ user.person.apm }}
             </mat-panel-title>
             <mat-panel-description>
-            Usuario #{{ user.noUsuario }} - {{ user.observaciones }}
+            Usuario #<a (click)="$event.stopPropagation(); irADetalleUsuario(user)" style="text-decoration: underline; cursor: pointer;" title="Ver ficha completa del usuario">{{ user.noUsuario }}</a> - {{ user.observaciones }}
             </mat-panel-description>
         </mat-expansion-panel-header>
         <app-user-receipt [usuario]="user"></app-user-receipt>

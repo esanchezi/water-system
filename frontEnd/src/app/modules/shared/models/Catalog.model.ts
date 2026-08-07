@@ -13,6 +13,10 @@ export interface CatalogOptionModel {
   nombre: string;
   descripcion: string;
   estatus: number;
+  // Zona a la que pertenece esta opción (uso pensado para el catálogo
+  // Calle: varias calles agrupadas bajo una misma zona). Opcional.
+  zonaId?: number | null;
+  zonaNombre?: string | null;
 }
 
 export interface CatalogRestResponse {

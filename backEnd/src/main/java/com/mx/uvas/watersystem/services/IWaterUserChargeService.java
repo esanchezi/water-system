@@ -16,4 +16,8 @@ public interface IWaterUserChargeService {
     // Registra un abono (parcial o total) de un cargo, ligado a un recibo.
     ResponseEntity<WaterUserChargeRestResponse> addPayment(Integer aguaUsuarioCargoId, WaterUserChargePaymentDto request);
 
+    // Todos los cargos (multas, recargos, etc.) de todos los usuarios de un
+    // grupo -- para verlos juntos sin entrar usuario por usuario.
+    ResponseEntity<WaterUserChargeRestResponse> findByGrupoId(Integer grupoId);
+
 }

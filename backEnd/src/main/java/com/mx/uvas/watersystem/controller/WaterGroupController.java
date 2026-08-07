@@ -17,6 +17,11 @@ public class WaterGroupController {
         return waterGroupService.findAll();
     }
 
+    @GetMapping("/{grupoId}")
+    public ResponseEntity<WaterGroupRestResponse> getById(@PathVariable Integer grupoId) {
+        return waterGroupService.findById(grupoId);
+    }
+
     @PostMapping(path = "/")
     public ResponseEntity<WaterGroupRestResponse> create(@RequestBody WaterGroupDto dto) {
         return waterGroupService.createWaterGroup(dto);

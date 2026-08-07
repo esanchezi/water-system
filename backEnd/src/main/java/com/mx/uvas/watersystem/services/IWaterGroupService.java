@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 public interface IWaterGroupService {
     ResponseEntity<WaterGroupRestResponse> findAll();
 
+    ResponseEntity<WaterGroupRestResponse> findById(Integer grupoId);
+
     ResponseEntity<WaterGroupRestResponse> createWaterGroup(WaterGroupDto dto);
 
 }

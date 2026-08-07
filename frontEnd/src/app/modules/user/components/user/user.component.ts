@@ -34,9 +34,15 @@ export class UserComponent implements OnInit{
   calleIdFiltro: number | null = null;
   calleNombreFiltro: string = '';
   casaNoFiltro: string = '';
+  seccionIdFiltro: number | null = null;
 
-  // Catálogo de calles (id 15), en orden alfabético, para el filtro por calle
+  // Catálogo de secciones (SECCIONES_COLONIA) y de calles (id 15), en orden
+  // alfabético, para la cascada de filtros Sección -> Calle (mismo patrón
+  // que house-list/house-new).
+  secciones: CatalogOptionModel[] = [];
+  private todasLasCalles: CatalogOptionModel[] = [];
   calles: CatalogOptionModel[] = [];
+  private zonaPorCalleId = new Map<number, number>();
   //isAdmin:any;
 
   @ViewChild(MatPaginator)
@@ -66,20 +72,37 @@ export class UserComponent implements OnInit{
         casaNo.includes(searchTerms.casaNo) ||
         numeroTexto.includes(searchTerms.casaNo);
 
+      // Sección se filtra a través de la calle asignada en el catálogo
+      // (calleId -> zonaId). Si el usuario no tiene casa/calle de catálogo
+      // asignada, no puede quedar dentro de una sección específica.
+      const matchSeccion = !searchTerms.seccionId ||
+        String(this.zonaPorCalleId.get(data.calleId as number)) === searchTerms.seccionId;
+
       return nombre.includes(searchTerms.nombre) &&
             apellido.includes(searchTerms.apellido) &&
             noUser.includes(searchTerms.noUser) &&
             matchCalle &&
-            matchCasa;
+            matchCasa &&
+            matchSeccion;
     };
 
-    this.loadCalles();
+    this.loadSeccionesYCalles();
     this.getUsers();
   }
 
-  private loadCalles(): void {
+  private loadSeccionesYCalles(): void {
+    this.catalogService.getOptionsByClave('SECCIONES_COLONIA').subscribe({
+      next: (opts) => this.secciones = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      error: (e: any) => console.error(e)
+    });
     this.catalogService.getOptions(15).subscribe({
-      next: (opts) => this.calles = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      next: (opts) => {
+        this.todasLasCalles = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre));
+        this.calles = this.todasLasCalles;
+        this.zonaPorCalleId = new Map(
+          opts.filter(c => c.zonaId != null).map(c => [c.catalogoOpcionesId, c.zonaId as number])
+        );
+      },
       error: (e: any) => console.error(e)
     });
   }
@@ -128,8 +151,22 @@ export class UserComponent implements OnInit{
       noUser: this.noUserFiltro.trim(),
       calleId: this.calleIdFiltro != null ? String(this.calleIdFiltro) : '',
       calleNombre: this.calleNombreFiltro.trim().toLowerCase(),
-      casaNo: this.casaNoFiltro.trim()
+      casaNo: this.casaNoFiltro.trim(),
+      seccionId: this.seccionIdFiltro != null ? String(this.seccionIdFiltro) : ''
     });
+  }
+
+  // Al elegir Sección se filtra el dropdown de Calle a solo las de esa
+  // sección (y se limpia la calle elegida previamente), igual que en
+  // house-list.
+  applySeccionFiltro(seccionId: number | null): void {
+    this.seccionIdFiltro = seccionId;
+    this.calleIdFiltro = null;
+    this.calleNombreFiltro = '';
+    this.calles = seccionId != null
+      ? this.todasLasCalles.filter(c => c.zonaId === seccionId)
+      : this.todasLasCalles;
+    this.aplicarFiltro();
   }
 
   applyCalleCatalogoFiltro(calleId: number | null): void {

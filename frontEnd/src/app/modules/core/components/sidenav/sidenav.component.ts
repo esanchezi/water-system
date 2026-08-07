@@ -23,6 +23,7 @@ export class SidenavComponent implements OnInit {
     { name: 'Valvulas',   route: 'waterValves',  icon: 'location_on' },
     { name: 'Casas',      route: 'houseList',    icon: 'house' },
     { name: 'Grupos',     route: 'groupList',    icon: 'groups' },
+    { name: 'Preregistro', route: 'preregistroList', icon: 'how_to_reg' },
     { name: 'Personas',   route: 'personList',   icon: 'person' },
     { name: 'Usuarios',   route: 'user',         icon: 'manage_accounts' },
     { name: 'Pagos',      route: 'receipt',      icon: 'paid' },

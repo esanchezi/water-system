@@ -24,6 +24,15 @@ export class CatalogOptionFormComponent implements OnInit {
   isEdit = false;
   saving = false;
 
+  // El catálogo "Calle" (id 15, mismo id que ya se usa en toda la app --
+  // ver house-new/details-user) es el único donde por ahora tiene sentido
+  // asignar una zona (varias calles agrupadas bajo una misma zona, ej.
+  // "La Barca"). Si más adelante otro catálogo necesita zonas, se puede
+  // ampliar esta condición.
+  readonly CATALOGO_CALLE_ID = 15;
+  mostrarZona = false;
+  zonas: CatalogOptionModel[] = [];
+
   constructor(@Inject(MAT_DIALOG_DATA) public data: OptionDialogData) {}
 
   ngOnInit(): void {
@@ -31,7 +40,18 @@ export class CatalogOptionFormComponent implements OnInit {
     this.form = this.fb.group({
       nombre:      [this.data.option?.nombre ?? '', [Validators.required, Validators.maxLength(255)]],
       descripcion: [this.data.option?.descripcion ?? '', Validators.maxLength(255)],
+      zonaId:      [this.data.option?.zonaId ?? null],
     });
+
+    this.mostrarZona = this.data.catalogoId === this.CATALOGO_CALLE_ID;
+    if (this.mostrarZona) {
+      // Reutiliza el catálogo SECCIONES_COLONIA que ya existía (evita tener
+      // dos catálogos distintos para el mismo concepto de "zona").
+      this.catalogService.getOptionsByClave('SECCIONES_COLONIA').subscribe({
+        next: (opts) => this.zonas = opts,
+        error: () => this.zonas = []
+      });
+    }
   }
 
   save(): void {

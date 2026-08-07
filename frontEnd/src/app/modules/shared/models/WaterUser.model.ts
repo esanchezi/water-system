@@ -23,11 +23,12 @@ export interface WaterUserModel{
     giroNegocioNombre?: string;
     tieneLocal?: boolean;
     localRentadoPorUsuario?: boolean;
-    familiaCompleta?: boolean;
-    viudoPadreMadreSoltero?: boolean;
+    tipoUsuarioId?: number;
+    tipoUsuarioNombre?: string;
     esTiendaAbarrotes?: boolean;
     negocioAtendidoPorUsuario?: boolean;
     negocioGrande?: boolean;
+    alias?: string;
     email: string;
     observaciones: string;
     casaNo: number;
@@ -55,6 +56,7 @@ export interface WaterUserModel{
 
   export interface WaterUserDetailModel{
     noUsuario: number;
+    alias?: string;
     usuarioId: number;
     aguaUsuarioId: number;
     personaId: number;
@@ -75,8 +77,8 @@ export interface WaterUserModel{
     giroNegocioNombre?: string;
     tieneLocal?: boolean;
     localRentadoPorUsuario?: boolean;
-    familiaCompleta?: boolean;
-    viudoPadreMadreSoltero?: boolean;
+    tipoUsuarioId?: number;
+    tipoUsuarioNombre?: string;
     esTiendaAbarrotes?: boolean;
     negocioAtendidoPorUsuario?: boolean;
     negocioGrande?: boolean;

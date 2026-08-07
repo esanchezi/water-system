@@ -15,7 +15,8 @@
           "options": {
             "allowedCommonJsDependencies": [
               "base64-js",
-              "js-sha256"
+              "js-sha256",
+              "sweetalert2"
            ],
             "outputPath": "dist/front-los-lopez",
             "index": "src/index.html",

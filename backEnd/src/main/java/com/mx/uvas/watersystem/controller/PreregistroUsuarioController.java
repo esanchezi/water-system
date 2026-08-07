@@ -22,6 +22,31 @@ public class PreregistroUsuarioController {
         return preregistroUsuarioService.findByCasaId(casaId);
     }
 
+    @Operation(summary = "Lista todos los preregistros (de todas las casas)")
+    @GetMapping("")
+    public ResponseEntity<PreregistroUsuarioRestResponse> findAllConDetalle() {
+        return preregistroUsuarioService.findAllConDetalle();
+    }
+
+    @Operation(summary = "Lista los preregistros vinculados a un grupo")
+    @GetMapping("/grupo/{grupoId}")
+    public ResponseEntity<PreregistroUsuarioRestResponse> findByGrupoId(@PathVariable Integer grupoId) {
+        return preregistroUsuarioService.findByGrupoId(grupoId);
+    }
+
+    @Operation(summary = "Asigna o quita (sin grupoId) el grupo de un preregistro")
+    @PutMapping("/{preregistroId}/grupo")
+    public ResponseEntity<PreregistroUsuarioRestResponse> asignarGrupo(@PathVariable Integer preregistroId,
+                                                                          @RequestParam(required = false) Integer grupoId) {
+        return preregistroUsuarioService.asignarGrupo(preregistroId, grupoId);
+    }
+
+    @Operation(summary = "Lista los preregistros (de todas las casas) con deuda aproximada capturada")
+    @GetMapping("/conDeuda")
+    public ResponseEntity<PreregistroUsuarioRestResponse> findConDeuda() {
+        return preregistroUsuarioService.findConDeuda();
+    }
+
     @Operation(summary = "Agrega una persona en preregistro a una casa")
     @PostMapping("/{casaId}")
     public ResponseEntity<PreregistroUsuarioRestResponse> create(@PathVariable Integer casaId,

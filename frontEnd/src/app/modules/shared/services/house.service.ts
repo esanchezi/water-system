@@ -14,6 +14,10 @@ export class HouseService {
     return this.http.get(`${this.baseUrl}/`);
   }
 
+  getWaterHouseById(casaId: number): Observable<any> {
+    return this.http.get(`${this.baseUrl}/${casaId}`);
+  }
+
   addHouse(house: Partial<WaterHouseModel>): Observable<WaterHouseModel> {
     return this.http.post<WaterHouseModel>(`${this.baseUrl}/`, house);
   }

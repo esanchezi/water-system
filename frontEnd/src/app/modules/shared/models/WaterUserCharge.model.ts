@@ -12,6 +12,9 @@ export interface WaterUserChargePaymentModel {
 export interface WaterUserChargeModel {
   aguaUsuarioCargoId: number;
   noUsuario: number;
+  // Solo viene lleno en listados que juntan cargos de varios usuarios a la
+  // vez (ej. lista de multas de un grupo completo).
+  nombreUsuario?: string;
   conceptoId: number;
   concepto: CatalogOptionModel;
   descripcion: string;

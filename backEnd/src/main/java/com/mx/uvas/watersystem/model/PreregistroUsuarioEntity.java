@@ -70,4 +70,36 @@ public class PreregistroUsuarioEntity implements Serializable {
     @JoinColumn(name = "casa_id")
     private WaterHouseEntity waterHouse;
 
+    // Caso: un negocio que nunca va a tener su propio usuario de agua (ej.
+    // una tiendita atendida por el mismo usuario que ya vive en la casa) --
+    // igual se quiere contar en el censo de negocios, sin necesidad de
+    // convertirlo en un WaterUserEntity aparte.
+    private Boolean esNegocio;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "giro_negocio_id", nullable = true)
+    private CatalogOptionsEntity giroNegocio;
+
+    // Catálogo MOTIVO_NOUSUARIO -- por qué esta persona/negocio no se
+    // considera (o no se va a convertir en) un usuario de agua formal.
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "motivo_no_usuario_id", nullable = true)
+    private CatalogOptionsEntity motivoNoUsuario;
+
+    // Deuda aproximada -- solo es una estimación anotada a mano mientras la
+    // persona no es usuario formal (no hay cargos reales que sumar todavía).
+    // Se desglosa en aportaciones vs multas/recargos porque suelen tener
+    // reglas distintas de condonación.
+    private java.math.BigDecimal deudaAportaciones;
+    private java.math.BigDecimal deudaMultasRecargos;
+    private String deudaObservaciones;
+
+    // Grupo al que probablemente se va a unir esta persona cuando se
+    // convierta en usuario formal (ej. ya se sabe que va a compartir cuenta
+    // con la familia de la casa de al lado) -- opcional, se puede asignar o
+    // cambiar en cualquier momento mientras sigue en preregistro.
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "grupo_id", nullable = true)
+    private WaterGroupEntity waterGroup;
+
 }

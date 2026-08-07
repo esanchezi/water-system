@@ -54,6 +54,12 @@ public class WaterUserMapper {
             response.setGiroNegocioNombre(entity.getGiroNegocio().getNombre());
         }
 
+        // Tipo de usuario (catálogo TIPO_USUARIO)
+        if (entity.getTipoUsuario() != null) {
+            response.setTipoUsuarioId(entity.getTipoUsuario().getCatalogoOpcionesId());
+            response.setTipoUsuarioNombre(entity.getTipoUsuario().getNombre());
+        }
+
         // Persona
         if (entity.getPerson() != null) {
             PersonDto person = new PersonDto();

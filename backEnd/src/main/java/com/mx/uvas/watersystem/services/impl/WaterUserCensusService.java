@@ -3,14 +3,18 @@ package com.mx.uvas.watersystem.services.impl;
 import com.mx.uvas.watersystem.dto.RangoEdadDto;
 import com.mx.uvas.watersystem.dto.WaterUserCensusDto;
 import com.mx.uvas.watersystem.dto.WaterUserCensusResumenDto;
+import com.mx.uvas.watersystem.model.CatalogOptionsEntity;
+import com.mx.uvas.watersystem.model.PreregistroUsuarioEntity;
 import com.mx.uvas.watersystem.model.WaterUserCensusEntity;
 import com.mx.uvas.watersystem.model.WaterUserEntity;
+import com.mx.uvas.watersystem.repositories.IPreregistroUsuarioRepository;
 import com.mx.uvas.watersystem.repositories.IWaterUserCensusRepository;
 import com.mx.uvas.watersystem.repositories.IWaterUserRepository;
 import com.mx.uvas.watersystem.response.WaterUserCensusResumenRestResponse;
 import com.mx.uvas.watersystem.response.WaterUserCensusRestResponse;
 import com.mx.uvas.watersystem.services.IWaterUserCensusService;
 import com.mx.uvas.watersystem.utils.Constants;
+import com.mx.uvas.watersystem.utils.CurrentUserService;
 import com.mx.uvas.watersystem.utils.ResponseHandler;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +37,8 @@ public class WaterUserCensusService implements IWaterUserCensusService {
 
     private final IWaterUserCensusRepository waterUserCensusRepository;
     private final IWaterUserRepository waterUserRepository;
+    private final IPreregistroUsuarioRepository preregistroUsuarioRepository;
+    private final CurrentUserService currentUserService;
 
     private static final String NOT_FOUND_MESSAGE = "Registro no encontrado";
     private static final String USER_NOT_FOUND_MESSAGE = "Usuario no encontrado";
@@ -83,7 +89,7 @@ public class WaterUserCensusService implements IWaterUserCensusService {
                     .anioRegistro(dto.getEdad() != null ? Year.now().getValue() : null)
                     .observaciones(dto.getObservaciones())
                     .estatus(1)
-                    .userIdAdd(1)
+                    .userIdAdd(currentUserService.getCurrentUserId())
                     .dateAdd(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))
                     .build();
 
@@ -106,6 +112,7 @@ public class WaterUserCensusService implements IWaterUserCensusService {
             }
 
             WaterUserCensusEntity entity = optional.get();
+
             // Si cambió la edad capturada, reiniciamos el año de registro a
             // hoy para que el cálculo de "edad actual" siga siendo correcto
             // en el futuro sin necesidad de un proceso manual anual.
@@ -113,7 +120,7 @@ public class WaterUserCensusService implements IWaterUserCensusService {
             entity.setEdad(dto.getEdad());
             entity.setAnioRegistro(dto.getEdad() != null ? (cambioEdad ? Year.now().getValue() : entity.getAnioRegistro()) : null);
             entity.setObservaciones(dto.getObservaciones());
-            entity.setUserIdUpdate(1);
+            entity.setUserIdUpdate(currentUserService.getCurrentUserId());
             entity.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
             waterUserCensusRepository.save(entity);
 
@@ -135,7 +142,7 @@ public class WaterUserCensusService implements IWaterUserCensusService {
 
             WaterUserCensusEntity entity = optional.get();
             entity.setEstatus(0);
-            entity.setUserIdUpdate(1);
+            entity.setUserIdUpdate(currentUserService.getCurrentUserId());
             entity.setDateUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
             waterUserCensusRepository.save(entity);
 
@@ -200,12 +207,46 @@ public class WaterUserCensusService implements IWaterUserCensusService {
             // Orden descendente por cantidad -- las zonas con más personas primero.
             porZona.sort((a, b) -> b.getCantidad().compareTo(a.getCantidad()));
 
+            // Negocios -- no viene de la ficha del censo, se calcula directo
+            // de la clasificación de uso (esNegocio + giroNegocio) de cada
+            // usuario. Así se puede saber cuántos negocios hay sin necesitar
+            // capturar nada extra. También se suman los negocios anotados en
+            // preregistro que nunca van a tener su propio usuario (ej.
+            // tiendita atendida por el usuario del domicilio) -- se excluyen
+            // los ya convertidos ahí para no contarlos dos veces.
+            List<WaterUserEntity> negocios = waterUserRepository.findAllNegociosActivos();
+            List<PreregistroUsuarioEntity> negociosPreregistro = preregistroUsuarioRepository.findAllNegociosNoConvertidos();
+            java.util.Map<String, Integer> conteoPorGiro = new java.util.LinkedHashMap<>();
+            int sinGiro = 0;
+            for (WaterUserEntity negocio : negocios) {
+                if (negocio.getGiroNegocio() != null) {
+                    conteoPorGiro.merge(negocio.getGiroNegocio().getNombre(), 1, Integer::sum);
+                } else {
+                    sinGiro++;
+                }
+            }
+            for (PreregistroUsuarioEntity negocio : negociosPreregistro) {
+                if (negocio.getGiroNegocio() != null) {
+                    conteoPorGiro.merge(negocio.getGiroNegocio().getNombre(), 1, Integer::sum);
+                } else {
+                    sinGiro++;
+                }
+            }
+            List<RangoEdadDto> porGiro = new ArrayList<>();
+            conteoPorGiro.forEach((nombreGiro, cantidad) -> porGiro.add(new RangoEdadDto(nombreGiro, cantidad)));
+            porGiro.sort((a, b) -> b.getCantidad().compareTo(a.getCantidad()));
+
             WaterUserCensusResumenDto dto = new WaterUserCensusResumenDto();
             dto.setRangos(rangos);
             dto.setSinClasificar(sinClasificar);
             dto.setTotalPersonas(activos.size());
             dto.setPorZona(porZona);
             dto.setSinZonaAsignada(sinZona);
+            dto.setTotalNegocios(negocios.size() + negociosPreregistro.size());
+            dto.setPorGiro(porGiro);
+            dto.setSinGiroAsignado(sinGiro);
+            dto.setNegociosConUsuario(negocios.size());
+            dto.setNegociosSinUsuario(negociosPreregistro.size());
 
             response.setData(List.of(dto));
             response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, "Resumen calculado");
@@ -215,15 +256,21 @@ public class WaterUserCensusService implements IWaterUserCensusService {
         }
     }
 
-    // Devuelve el nombre de la calle de la casa del usuario dueño de este
-    // registro de censo, o null si el usuario no tiene casa asignada o la
-    // casa no tiene calle capturada.
+    // Devuelve la zona del usuario dueño de este registro de censo, o null
+    // si no se puede determinar. Si la calle de su casa ya tiene una zona
+    // asignada (catálogo Calle -> Sección/Colonia, ej. "La Barca" agrupa
+    // Azucena, Jazmín, Orquídea...) se usa esa zona; si la calle todavía no
+    // tiene zona asignada, se usa el nombre de la calle como antes
+    // (compatible con lo que ya se tenía capturado mientras se van
+    // asignando zonas).
     private String obtenerZona(WaterUserCensusEntity persona) {
         if (persona.getWaterUser() == null) return null;
         WaterUserEntity usuario = persona.getWaterUser();
         if (usuario.getWaterHouse() == null) return null;
-        if (usuario.getWaterHouse().getCatCalle() == null) return null;
-        return usuario.getWaterHouse().getCatCalle().getNombre();
+        CatalogOptionsEntity calle = usuario.getWaterHouse().getCatCalle();
+        if (calle == null) return null;
+        if (calle.getZona() != null) return calle.getZona().getNombre();
+        return calle.getNombre();
     }
 
     private WaterUserCensusDto entityToDto(WaterUserCensusEntity entity) {

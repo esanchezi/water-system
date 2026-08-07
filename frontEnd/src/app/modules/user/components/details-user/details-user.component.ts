@@ -4,7 +4,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable } from 'rxjs';
 import { WaterAgreementModel } from 'src/app/modules/shared/models/WaterAgreement.model';
 import { AgreementService } from 'src/app/modules/shared/services/agreement.service';
 import { NewConvenioComponent } from 'src/app/modules/convenio/components/new-convenio/new-convenio.component';
@@ -13,11 +13,10 @@ import { CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model'
 import { FeeModel } from 'src/app/modules/shared/models/Fee.model';
 import { PersonModel } from 'src/app/modules/shared/models/Person.model';
 import { WaterReceiptModel } from 'src/app/modules/shared/models/WaterReceipt.model';
-import { WaterHouseModel, WaterUserDetailModel, WaterUserModel } from 'src/app/modules/shared/models/WaterUser.model';
+import { WaterGroupModel, WaterHouseModel, WaterUserDetailModel, WaterUserModel } from 'src/app/modules/shared/models/WaterUser.model';
 import { WaterUserNotifyModel } from 'src/app/modules/shared/models/WaterUserNotify.model';
 import { WaterUserChargeModel } from 'src/app/modules/shared/models/WaterUserCharge.model';
 import { WaterUserAnnualPaymentModel } from 'src/app/modules/shared/models/WaterUserAnnualPayment.model';
-import { WaterUserCensusModel } from 'src/app/modules/shared/models/WaterUserCensus.model';
 import { AssemblyService } from 'src/app/modules/shared/services/assembly.service';
 import { CatalogService } from 'src/app/modules/shared/services/catalog.service';
 import { FeeService } from 'src/app/modules/shared/services/fee.service';
@@ -27,8 +26,8 @@ import { UserNoticeService } from 'src/app/modules/shared/services/user.notice.s
 import { UserChargeService } from 'src/app/modules/shared/services/user-charge.service';
 import { UserService } from 'src/app/modules/shared/services/user.service';
 import { HouseService } from 'src/app/modules/shared/services/house.service';
+import { GroupService } from 'src/app/modules/shared/services/group.service';
 import { WaterUserAnnualPaymentService } from 'src/app/modules/shared/services/water-user-annual-payment.service';
-import { WaterUserCensusService } from 'src/app/modules/shared/services/water-user-census.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -51,8 +50,8 @@ export class DetailsUserComponent implements OnInit {
   private readonly personService    = inject(PersonService);
   private readonly userService      = inject(UserService);
   private readonly houseService     = inject(HouseService);
+  private readonly groupService     = inject(GroupService);
   private readonly annualPaymentService = inject(WaterUserAnnualPaymentService);
-  private readonly censusService    = inject(WaterUserCensusService);
   private readonly dialog           = inject(MatDialog);
 
   public detailsForm: FormGroup = this.fb.group({});
@@ -60,7 +59,6 @@ export class DetailsUserComponent implements OnInit {
   public chargeForm:  FormGroup = this.fb.group({});
   public paymentForm: FormGroup = this.fb.group({});
   public annualPaymentForm: FormGroup = this.fb.group({});
-  public censusForm: FormGroup = this.fb.group({});
 
   displayColumns:         string[] = ['noFolio','fecha','concepto','total','conceptoPayment','montoRecibido','montoAplicado','anio'];
   displayColumnsNotify:   string[] = ['tipo','aviso','comentario','estatus','responsable'];
@@ -68,7 +66,6 @@ export class DetailsUserComponent implements OnInit {
   displayColumnsCharge:   string[] = ['concepto','descripcion','monto','fechaStr','montoPagado','montoCondonado','saldo','estatusPago'];
   displayColumnsAgreement: string[] = ['noFolio','fechaStr','motivo','adeudo','fechaCompromisoPagoStr','montoCondonadoTotal','estatusConvenio'];
   displayColumnsAnnualPayment: string[] = ['anio','fechaValidacion','observaciones','estatus','acciones'];
-  displayColumnsCenso: string[] = ['edadActual','observaciones','acciones'];
 
   // Totales de la tabla de Cargos / Multas (fila de pie de tabla)
   totalMonto      = 0;
@@ -82,7 +79,6 @@ export class DetailsUserComponent implements OnInit {
   dataSourceCharge   = new MatTableDataSource<WaterUserChargeModel>();
   dataSourceAgreement = new MatTableDataSource<WaterAgreementModel>();
   dataSourceAnnualPayment = new MatTableDataSource<WaterUserAnnualPaymentModel>();
-  dataSourceCenso = new MatTableDataSource<WaterUserCensusModel>();
 
   usuario!: WaterUserModel;
   user!:    WaterUserDetailModel;
@@ -106,15 +102,22 @@ export class DetailsUserComponent implements OnInit {
   tiposAviso:      CatalogOptionModel[] = [];
   responsablesPendiente: CatalogOptionModel[] = [];
   calles:          CatalogOptionModel[] = [];
-  // Giro del negocio -- catálogo opcional (clave GIRO_NEGOCIO), se crea
-  // desde el módulo de Catálogos. Si no existe todavía, esta lista sale
-  // vacía y el select simplemente no muestra opciones.
+  // Giro del negocio -- catálogo NEGOCIO (id 7 en catalogo_maestro), se
+  // administra desde el módulo de Catálogos.
   girosNegocio:    CatalogOptionModel[] = [];
+  // Tipo de usuario -- catálogo TIPO_USUARIO (id 6): familia, viuda/o,
+  // casa deshabitada, toma sin conectar, etc. Reemplaza los antiguos
+  // checkboxes familiaCompleta/viudoPadreMadreSoltero.
+  tiposUsuario:    CatalogOptionModel[] = [];
+  // Lista de grupos (comité/zona) para el selector -- antes era un input de
+  // texto libre con el id, ahora se elige de la lista real.
+  grupos:          WaterGroupModel[] = [];
 
-  // Domicilio / Casa: cascada Calle -> Casa + mapa + vecinos de la misma casa
+  // Domicilio / Casa: cascada Sección -> Calle -> Casa + mapa + vecinos
   allHouses:        WaterHouseModel[] = [];
   casasDeCalle:     WaterHouseModel[] = [];
   casaSeleccionada: WaterHouseModel | null = null;
+  callesDeSeccionDomicilio: CatalogOptionModel[] = [];
 
   readonly DEFAULT_COORDS: google.maps.LatLngLiteral = { lat: 21.04386, lng: -101.56864 };
   mapCenter: google.maps.LatLngLiteral = this.DEFAULT_COORDS;
@@ -135,17 +138,20 @@ export class DetailsUserComponent implements OnInit {
       habitaDomicilio:    ['', Validators.required],
       tieneToma:          ['', Validators.required],
       inmuebleRenta:      ['', Validators.required],
-      esNegocio:          [false],
+      // Sin default: null significa "todavía no se elige", para no
+      // confundir "sin contestar" con "confirmado doméstico".
+      esNegocio:          [null],
       giroNegocioId:      [''],
       tieneLocal:         [false],
       localRentadoPorUsuario: [false],
-      familiaCompleta:    [true],
-      viudoPadreMadreSoltero: [false],
+      tipoUsuarioId:      [''],
       esTiendaAbarrotes:  [false],
       negocioAtendidoPorUsuario: [false],
       negocioGrande:      [false],
+      alias:              [''],
       observaciones:      [''],
       casaNo:             [''],
+      domicilioSeccionId: [''],
       domicilioCalleId:   [''],
       grupoId:            [''],
       email:              [''],
@@ -189,16 +195,8 @@ export class DetailsUserComponent implements OnInit {
       observaciones:  ['']
     });
 
-    // La edad es opcional a propósito -- si no se da, la persona igual
-    // cuenta en el censo, solo que aparece como "sin clasificar" en el
-    // resumen por edades.
-    this.censusForm = this.fb.group({
-      edad:          [''],
-      observaciones: [''],
-      cantidadSinEdad: [1]
-    });
-
     this.loadCatalogs();
+    this.loadGrupos();
     this.getAmounts();
     this.loadHouses();
 
@@ -208,6 +206,20 @@ export class DetailsUserComponent implements OnInit {
         this.user    = JSON.parse(params['element']);
       }
       this.getUserDetails();
+    });
+  }
+
+  private loadGrupos(): void {
+    this.groupService.getListWaterGroup().subscribe({
+      next: (resp: any) => {
+        // OJO: waterGroup usa BaseRestResponse (metadata como objeto), no
+        // como lista -- distinto del resto de los endpoints de este
+        // proyecto que usan RestResponse (metadata como arreglo).
+        if (resp.metadata?.code === '00') {
+          this.grupos = resp.data || [];
+        }
+      },
+      error: (e: any) => console.error('Error al cargar grupos', e)
     });
   }
 
@@ -249,11 +261,18 @@ export class DetailsUserComponent implements OnInit {
       error: (e: any) => console.error(e)
     });
     this.catalogService.getOptions(15).subscribe({
-      next: (opts) => this.calles = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      next: (opts) => {
+        this.calles = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre));
+        this.callesDeSeccionDomicilio = this.calles;
+      },
       error: (e: any) => console.error(e)
     });
-    this.catalogService.getOptionsByClave('GIRO_NEGOCIO').subscribe({
+    this.catalogService.getOptionsByClave('NEGOCIO').subscribe({
       next: (opts) => this.girosNegocio = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.catalogService.getOptionsByClave('TIPO_USUARIO').subscribe({
+      next: (opts) => this.tiposUsuario = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre)),
       error: (e: any) => console.error(e)
     });
   }
@@ -270,21 +289,38 @@ export class DetailsUserComponent implements OnInit {
     });
   }
 
-  // Reconstruye la cascada Calle -> Casa a partir de la casa ya asignada al
-  // usuario (u.casaId). Se llama tanto al terminar de cargar las casas como
-  // al terminar de cargar el detalle del usuario, ya que pueden resolver en
-  // cualquier orden.
+  // Reconstruye la cascada Sección -> Calle -> Casa a partir de la casa ya
+  // asignada al usuario (u.casaId). Se llama tanto al terminar de cargar
+  // las casas como al terminar de cargar el detalle del usuario, ya que
+  // pueden resolver en cualquier orden.
   private syncDomicilio(): void {
     if (!this.allHouses.length || !this.user?.casaId) return;
     const house = this.allHouses.find(h => h.casaId === this.user.casaId);
     if (!house) return;
 
+    const calleDeLaCasa = this.calles.find(c => c.catalogoOpcionesId === house.calleId);
+    const seccionId = calleDeLaCasa?.zonaId ?? null;
+    this.callesDeSeccionDomicilio = seccionId != null
+      ? this.calles.filter(c => c.zonaId === seccionId)
+      : this.calles;
+
     this.casasDeCalle = this.allHouses.filter(h => h.calleId === house.calleId);
     this.detailsForm.patchValue({
+      domicilioSeccionId: seccionId,
       domicilioCalleId: house.calleId,
       casaNo: house.casaId
     }, { emitEvent: false });
     this.selectCasa(house);
+  }
+
+  // Primero se elige la Sección; la Calle se filtra a las que ya tienen
+  // esa sección asignada (mismo patrón que en Nueva Casa).
+  onDomicilioSeccionChange(seccionId: number | null): void {
+    this.callesDeSeccionDomicilio = seccionId != null
+      ? this.calles.filter(c => c.zonaId === seccionId)
+      : this.calles;
+    this.detailsForm.patchValue({ domicilioCalleId: null });
+    this.onCalleChange(null);
   }
 
   onCalleChange(calleId: number | null): void {
@@ -593,6 +629,62 @@ export class DetailsUserComponent implements OnInit {
     });
   }
 
+  // Árbol de clasificación de uso (ver detalles-user.component.html):
+  // 1. Estatus de la toma -- si "Sin conexión", no se pregunta nada más.
+  // 2/3. Si está conectada, se pregunta habita domicilio / es renta.
+  // 4. Si habita domicilio -> uso doméstico automático (censo de personas
+  //    habilitado), Y además se puede marcar aparte si ahí mismo también
+  //    opera un negocio (ej. usuario que vive en su casa y atiende una
+  //    tienda de abarrotes ahí -- no son mutuamente excluyentes).
+  // 6. Si es renta (y no habita) -> sí se pregunta doméstico/negocio, ahí
+  //    sí son mutuamente excluyentes (una renta se ocupa de una forma u otra).
+  // 5/7. Doméstico -> habilita censo de personas.
+  // 8. Negocio -> habilita "censo de negocio" (giro + tamaño), sea por la
+  //    rama de renta o por el negocio adicional en la casa propia.
+  get tomaSinConexion(): boolean {
+    const id = Number(this.detailsForm?.value?.fkEstatusTomaId);
+    if (!id) return false;
+    const nombre = (this.estatusToma.find(e => e.catalogoOpcionesId === id)?.nombre || '').trim().toLowerCase();
+    return nombre === 'sin conexión' || nombre === 'sin conexion';
+  }
+
+  // Elección doméstico/negocio mutuamente excluyente -- solo aplica en la
+  // rama de renta (ahí sí es una cosa u otra, no ambas).
+  get mostrarUsoToggle(): boolean {
+    const f = this.detailsForm?.value;
+    return !!f?.inmuebleRenta && !f?.habitaDomicilio;
+  }
+
+  // Checkbox independiente de "es negocio" -- se muestra en cualquier caso
+  // que NO sea la rama de renta-sin-habitar (ahí ya hay un radio
+  // doméstico/negocio excluyente más abajo). Cubre: vive aquí y también
+  // tiene una tiendita, Y el caso de toma conectada sin habitar y sin ser
+  // renta pero que sí es un negocio (ej. bodega/local que el mismo dueño
+  // usa, sin vivir ahí ni rentarlo a nadie).
+  get mostrarNegocioIndependiente(): boolean {
+    const f = this.detailsForm?.value;
+    if (!f || this.tomaSinConexion) return false;
+    return !(f.inmuebleRenta && !f.habitaDomicilio);
+  }
+
+  // esNegocio puede ser null ("todavía no se elige") en la rama de renta --
+  // solo cuenta como doméstico o negocio cuando se elige explícitamente,
+  // para no dar por hecho una respuesta que nadie confirmó.
+  get esUsoDomestico(): boolean {
+    const f = this.detailsForm?.value;
+    if (!f) return false;
+    if (f.habitaDomicilio) return true;
+    if (f.inmuebleRenta) return f.esNegocio === false;
+    return false;
+  }
+
+  // Negocio: no depende de habitaDomicilio/inmuebleRenta -- basta con que
+  // esté marcado explícitamente, ya sea junto con habitar el domicilio, en
+  // la rama de renta (vía el radio), o solo, sin habitar ni ser renta.
+  get esUsoNegocio(): boolean {
+    return this.detailsForm?.value?.esNegocio === true;
+  }
+
   // Calculadora de cuota SUGERIDA -- nunca cambia this.cuotaId sola, solo
   // propone una categoría para que la persona capturando la confirme
   // seleccionando manualmente la Cuota correspondiente arriba. El árbol
@@ -603,11 +695,16 @@ export class DetailsUserComponent implements OnInit {
     const f = this.detailsForm?.value;
     if (!f) return '';
 
-    if (!f.esNegocio) {
-      // Uso doméstico
-      if (f.familiaCompleta) return 'Cuota completa';
-      if (f.viudoPadreMadreSoltero) return 'Media cuota';
-      return 'No requiere cuota propia: agregar como integrante de una familia ya registrada en este domicilio';
+    if (!this.esUsoNegocio) {
+      // Uso doméstico -- sugerencia según el tipo de usuario seleccionado
+      // (catálogo TIPO_USUARIO). Solo cubre los nombres de opción más
+      // comunes hoy; para el resto (casa deshabitada, toma sin conectar,
+      // jardín, animales, etc.) no propone nada -- se decide manualmente.
+      const tipo = (this.tiposUsuario.find(t => t.catalogoOpcionesId === Number(f.tipoUsuarioId))?.nombre || '').trim().toLowerCase();
+      if (tipo === 'familia') return 'Cuota completa';
+      if (tipo === 'viuda / viudo' || tipo === 'madre/padre soltero' || tipo === '3ra edad') return 'Media cuota';
+      if (tipo.startsWith('usuario solo comparte toma')) return 'No requiere cuota propia: agregar como integrante de una familia ya registrada en este domicilio';
+      return 'Selecciona el tipo de usuario para ver la sugerencia (o decide manualmente si no aplica ninguno de los casos comunes)';
     }
 
     // Negocio
@@ -615,116 +712,6 @@ export class DetailsUserComponent implements OnInit {
     if (f.negocioAtendidoPorUsuario) return 'Un cuarto de cuota';
     if (f.negocioGrande) return 'A decisión del comité / asamblea';
     return 'Media cuota';
-  }
-
-  getCenso(): void {
-    this.censusService.getByAguaUsuarioId(this.user.aguaUsuarioId).subscribe({
-      next: (resp: any) => this.processCensoResponse(resp),
-      error: (e: any) => console.error(e)
-    });
-  }
-
-  private processCensoResponse(resp: any): void {
-    if (resp.metadata[0].code !== '00') return;
-    const dataCenso: WaterUserCensusModel[] = resp.data;
-    this.dataSourceCenso = new MatTableDataSource<WaterUserCensusModel>(dataCenso);
-  }
-
-  onSaveCenso(): void {
-    const form = this.censusForm.value;
-    const data = {
-      edad:          form.edad !== '' && form.edad !== null ? Number(form.edad) : null,
-      observaciones: form.observaciones
-    };
-    this.censusService.create(this.user.aguaUsuarioId, data).subscribe({
-      next: () => {
-        this.censusForm.reset();
-        this.getCenso();
-      },
-      error: (e: any) => {
-        console.error(e);
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo agregar la persona al censo.', confirmButtonText: 'Cerrar' });
-      }
-    });
-  }
-
-  // Cuando la familia no quiere dar edades individuales pero sí sabemos
-  // cuántas personas son en total, esto evita capturar una por una: agrega
-  // de golpe N personas "sin clasificar" (edad null), cada una editable
-  // después si algún día se obtiene el dato.
-  onAgregarVariasSinEdad(): void {
-    const cantidad = Number(this.censusForm.value.cantidadSinEdad);
-    if (!cantidad || cantidad < 1) return;
-
-    const llamadas = Array.from({ length: cantidad }, () =>
-      this.censusService.create(this.user.aguaUsuarioId, { edad: null, observaciones: '' })
-    );
-
-    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-    forkJoin(llamadas).subscribe({
-      next: () => {
-        this.censusForm.patchValue({ cantidadSinEdad: 1 });
-        this.getCenso();
-        Swal.fire({ icon: 'success', title: `${cantidad} persona(s) agregada(s) sin edad`, confirmButtonText: 'Aceptar' });
-      },
-      error: (e: any) => {
-        console.error(e);
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron agregar las personas.', confirmButtonText: 'Cerrar' });
-      }
-    });
-  }
-
-  // Permite corregir después la edad (o quitarla) y las observaciones de
-  // una persona ya capturada en el censo -- útil cuando se agregó "sin
-  // clasificar" y más adelante sí se obtiene el dato real.
-  onEditarCenso(item: WaterUserCensusModel): void {
-    Swal.fire({
-      title: 'Editar persona del censo',
-      html:
-        `<input id="swal-edad" type="number" min="0" class="swal2-input" placeholder="Edad (opcional)" value="${item.edad ?? ''}">` +
-        `<input id="swal-observaciones" type="text" class="swal2-input" placeholder="Observaciones" value="${item.observaciones ?? ''}">`,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: 'Guardar',
-      cancelButtonText: 'Cancelar',
-      preConfirm: () => {
-        const edadInput = (document.getElementById('swal-edad') as HTMLInputElement)?.value;
-        const observaciones = (document.getElementById('swal-observaciones') as HTMLInputElement)?.value || '';
-        return {
-          edad: edadInput !== '' ? Number(edadInput) : null,
-          observaciones
-        };
-      }
-    }).then((result) => {
-      if (!result.isConfirmed || !result.value) return;
-      this.censusService.update(item.censoId, result.value).subscribe({
-        next: () => this.getCenso(),
-        error: (e: any) => {
-          console.error(e);
-          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar el registro.', confirmButtonText: 'Cerrar' });
-        }
-      });
-    });
-  }
-
-  onDeactivateCenso(item: WaterUserCensusModel): void {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Quitar del censo',
-      text: '¿Confirmas quitar a esta persona del censo (ej. ya no vive en el domicilio)?',
-      showCancelButton: true,
-      confirmButtonText: 'Quitar',
-      cancelButtonText: 'Cancelar'
-    }).then((result) => {
-      if (!result.isConfirmed) return;
-      this.censusService.deactivate(item.censoId).subscribe({
-        next: () => this.getCenso(),
-        error: (e: any) => {
-          console.error(e);
-          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo quitar el registro.', confirmButtonText: 'Cerrar' });
-        }
-      });
-    });
   }
 
   openNewConvenioDialog(): void {
@@ -780,11 +767,11 @@ export class DetailsUserComponent implements OnInit {
       giroNegocioId:   form.giroNegocioId || null,
       tieneLocal:      form.tieneLocal,
       localRentadoPorUsuario: form.localRentadoPorUsuario,
-      familiaCompleta: form.familiaCompleta,
-      viudoPadreMadreSoltero: form.viudoPadreMadreSoltero,
+      tipoUsuarioId:   form.tipoUsuarioId || null,
       esTiendaAbarrotes: form.esTiendaAbarrotes,
       negocioAtendidoPorUsuario: form.negocioAtendidoPorUsuario,
       negocioGrande:   form.negocioGrande,
+      alias:           form.alias,
       observaciones:   form.observaciones,
       cuotaId:         form.fkIdCuota,
       estatusPagoId:   form.estatusPagoId,
@@ -822,17 +809,17 @@ export class DetailsUserComponent implements OnInit {
           habitaDomicilio:    u.habitaDomicilio,
           tieneToma:          u.tieneToma,
           inmuebleRenta:      u.inmuebleRenta,
-          esNegocio:          u.esNegocio || false,
+          esNegocio:          u.esNegocio ?? null,
           giroNegocioId:      u.giroNegocioId || null,
           tieneLocal:         u.tieneLocal || false,
           localRentadoPorUsuario: u.localRentadoPorUsuario || false,
-          familiaCompleta:    u.familiaCompleta ?? true,
-          viudoPadreMadreSoltero: u.viudoPadreMadreSoltero || false,
+          tipoUsuarioId:      u.tipoUsuarioId || null,
           esTiendaAbarrotes:  u.esTiendaAbarrotes || false,
           negocioAtendidoPorUsuario: u.negocioAtendidoPorUsuario || false,
           negocioGrande:      u.negocioGrande || false,
+          alias:              u.alias || '',
           casaNo:             u.casaId,
-          grupoId:            u.grupoId,
+          grupoId:            u.grupoId || null,
           nombre:             u.nombre,
           nombre2:            u.nombre2,
           app:                u.app,
