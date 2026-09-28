@@ -10,4 +10,9 @@ public interface IWaterUserNoticeService {
 
     ResponseEntity<WaterUserNoticeRestResponse> create(WaterUserNoticeDto request);
 
+    // Para marcar un aviso/nota como Atendido/Cerrado (o cualquier otro
+    // estatus del catálogo ESTATUS_AVISO) -- ver alerta de avisos
+    // pendientes al consultar la ficha del usuario.
+    ResponseEntity<WaterUserNoticeRestResponse> updateEstatus(Integer aguaUsuarioAvisoId, Integer avisoEstatusId);
+
 }

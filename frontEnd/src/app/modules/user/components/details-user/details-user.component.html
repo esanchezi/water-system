@@ -559,7 +559,7 @@
                         <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
                             <mat-form-field appearance="outline" fxFlex="30%">
                                 <mat-label>Concepto</mat-label>
-                                <mat-select formControlName="conceptoId" required>
+                                <mat-select formControlName="conceptoId" required (selectionChange)="onConceptoCargoChange($event.value)">
                                     <mat-option *ngFor="let cat of conceptosCargo" [value]="cat.catalogoOpcionesId">
                                         {{ cat.nombre }}
                                     </mat-option>
@@ -727,6 +727,74 @@
                             </button>
                         </mat-card-actions>
                     </form>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel class="panel-oscuro" (opened)="getHistorialRenuncia()" hideToggle>
+                    <mat-expansion-panel-header>
+                        <mat-panel-title>Renuncia temporal al servicio</mat-panel-title>
+                        <mat-panel-description>Art. 6 Bis -- suspende temporalmente el servicio a solicitud del usuario</mat-panel-description>
+                    </mat-expansion-panel-header>
+
+                    <div *ngIf="renunciaActiva" class="renuncia-activa-aviso">
+                        <mat-icon>info</mat-icon>
+                        <span>
+                            Este usuario está actualmente en renuncia temporal (folio {{renunciaActiva.folio}}, desde el
+                            {{renunciaActiva.fechaRenuncia | date:'dd/MM/yyyy'}}). No se le generarán cartas de adeudo ni corte
+                            mientras dure.
+                        </span>
+                    </div>
+
+                    <table mat-table [dataSource]="dataSourceRenuncia" class="mat-cell">
+                        <ng-container matColumnDef="folio">
+                            <th mat-header-cell *matHeaderCellDef>Folio</th>
+                            <td mat-cell *matCellDef="let element">{{element.folio}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="fechaRenuncia">
+                            <th mat-header-cell *matHeaderCellDef>Fecha de renuncia</th>
+                            <td mat-cell *matCellDef="let element">{{element.fechaRenuncia | date:'dd/MM/yyyy'}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="motivo">
+                            <th mat-header-cell *matHeaderCellDef>Motivo</th>
+                            <td mat-cell *matCellDef="let element">{{element.motivo}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="adeudoALaFecha">
+                            <th mat-header-cell *matHeaderCellDef>Adeudo a la fecha</th>
+                            <td mat-cell *matCellDef="let element">{{element.adeudoALaFecha | currency}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="estado">
+                            <th mat-header-cell *matHeaderCellDef>Estado</th>
+                            <td mat-cell *matCellDef="let element">
+                                {{element.reconectado ? 'Reconectado el ' + (element.fechaReconexion | date:'dd/MM/yyyy') : 'Activa'}}
+                            </td>
+                        </ng-container>
+                        <ng-container matColumnDef="acciones">
+                            <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                            <td mat-cell *matCellDef="let element">
+                                <button mat-icon-button color="primary" *ngIf="!element.reconectado" title="Registrar reconexión" (click)="onReconectar(element)">
+                                    <mat-icon>link</mat-icon>
+                                </button>
+                                <button mat-icon-button color="warn" *ngIf="!element.reconectado" title="Cancelar (registrada por error)" (click)="onCancelarRenuncia(element)">
+                                    <mat-icon>cancel</mat-icon>
+                                </button>
+                            </td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="displayColumnsRenuncia"></tr>
+                        <tr mat-row *matRowDef="let row; columns:displayColumnsRenuncia"></tr>
+                    </table>
+
+                    <mat-card-actions align="end">
+                        <button mat-raised-button color="primary" [disabled]="!!renunciaActiva" (click)="onSolicitarRenuncia()">
+                            <mat-icon>logout</mat-icon> Solicitar renuncia temporal
+                        </button>
+                    </mat-card-actions>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel class="panel-claro" hideToggle>
+                    <mat-expansion-panel-header>
+                        <mat-panel-title>Historial de revisiones</mat-panel-title>
+                        <mat-panel-description>Toma/medidor, padrón, evidencia fotográfica</mat-panel-description>
+                    </mat-expansion-panel-header>
+                    <app-user-revision [usuario]="usuario"></app-user-revision>
                 </mat-expansion-panel>
 
             </mat-accordion>

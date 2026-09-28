@@ -20,4 +20,9 @@ export class UserNoticeService {
     const endpoint = `${base_url}/`;
     return this.http.post(endpoint, body);
   }
+
+  updateEstatus(aguaUsuarioAvisoId: number, avisoEstatusId: number){
+    const endpoint = `${base_url}/${aguaUsuarioAvisoId}/estatus/${avisoEstatusId}`;
+    return this.http.put(endpoint, {});
+  }
 }

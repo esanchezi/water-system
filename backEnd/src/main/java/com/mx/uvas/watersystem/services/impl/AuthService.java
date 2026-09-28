@@ -32,7 +32,7 @@ public class AuthService {
 
         SistemaUsuarioEntity user = userOpt.get();
         String token = jwtService.generateToken(user.getUsername());
-        return ResponseEntity.ok(new LoginResponseDto(token, user.getUsername(), user.getNombre()));
+        return ResponseEntity.ok(new LoginResponseDto(token, user.getUsername(), user.getNombre(), user.getRol()));
     }
 
     @Transactional

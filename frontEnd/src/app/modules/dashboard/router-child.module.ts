@@ -30,6 +30,13 @@ import { EgresoValesComponent } from '../egreso/pages/egreso-vales/egreso-vales.
 import { ResumenAnualListComponent } from '../resumen-anual/pages/resumen-anual-list/resumen-anual-list.component';
 import { CensoResumenComponent } from '../censo/pages/censo-resumen/censo-resumen.component';
 import { PreregistroListComponent } from '../preregistro/pages/preregistro-list/preregistro-list.component';
+import { ConfiguracionComponent } from '../configuracion/pages/configuracion/configuracion.component';
+import { SistemaUsuarioListComponent } from '../sistema-usuario/pages/sistema-usuario-list/sistema-usuario-list.component';
+import { ReciboRevisionListComponent } from '../recibo-revision/pages/recibo-revision-list/recibo-revision-list.component';
+import { AvisoAdeudoListComponent } from '../aviso-adeudo/pages/aviso-adeudo-list/aviso-adeudo-list.component';
+import { AvisoBombaListComponent } from '../aviso-bomba/pages/aviso-bomba-list/aviso-bomba-list.component';
+import { AvisoPadronListComponent } from '../aviso-padron/pages/aviso-padron-list/aviso-padron-list.component';
+import { ValorGeneralListComponent } from '../valor-general/pages/valor-general-list/valor-general-list.component';
 
 export const childRoutes: Routes = [
     { path: '', component: HomeComponent },
@@ -62,6 +69,13 @@ export const childRoutes: Routes = [
     { path: 'resumenAnual', component: ResumenAnualListComponent },
     { path: 'censoResumen', component: CensoResumenComponent },
     { path: 'preregistroList', component: PreregistroListComponent },
+    { path: 'configuracion', component: ConfiguracionComponent },
+    { path: 'sistemaUsuarioList', component: SistemaUsuarioListComponent },
+    { path: 'reciboRevision', component: ReciboRevisionListComponent },
+    { path: 'avisoAdeudo', component: AvisoAdeudoListComponent },
+    { path: 'avisoBomba', component: AvisoBombaListComponent },
+    { path: 'avisoPadron', component: AvisoPadronListComponent },
+    { path: 'valorGeneral', component: ValorGeneralListComponent },
 ];
 
 @NgModule({

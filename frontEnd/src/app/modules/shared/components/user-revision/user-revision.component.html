@@ -1,0 +1,94 @@
+<p class="hint">
+  Historial de revisiones hechas a este usuario (toma/medidor, datos de padrón, o general). Sirve como
+  evidencia de cuándo se revisó y qué se encontró -- agrega fotos si quieres dejar respaldo visual.
+</p>
+
+<table class="tabla-revisiones" *ngIf="historial.length > 0">
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>Tipo</th>
+      <th>Resultado</th>
+      <th>Comentario</th>
+      <th>Fotos</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let r of historial">
+      <td>{{ r.fecha | date:'dd/MM/yyyy' }}</td>
+      <td>{{ tipoLabel(r.tipo) }}</td>
+      <td>
+        <span class="etiqueta" [class.etiqueta-bien]="r.resultado === 'BIEN'" [class.etiqueta-problema]="r.resultado === 'CON_PROBLEMA'">
+          {{ resultadoLabel(r.resultado) }}
+        </span>
+      </td>
+      <td>{{ r.comentario || '--' }}</td>
+      <td>
+        <div class="galeria-fotos">
+          <div class="miniatura-foto" *ngFor="let foto of fotosPorRevision[r.revisionId]">
+            <img *ngIf="fotoUrls[foto.fotoId]" [src]="fotoUrls[foto.fotoId]" [alt]="foto.nombreOriginal">
+            <button mat-icon-button color="warn" title="Eliminar foto" (click)="eliminarFoto(r.revisionId, foto)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </div>
+        <input #inputFoto type="file" accept="image/*" style="display:none" (change)="subirFoto(r.revisionId, $event)">
+        <button mat-icon-button color="primary" title="Agregar foto"
+                [disabled]="subiendoFotoPara === r.revisionId" (click)="inputFoto.click()">
+          <mat-icon>add_a_photo</mat-icon>
+        </button>
+      </td>
+      <td>
+        <button mat-icon-button color="warn" title="Eliminar revisión" (click)="eliminar(r)">
+          <mat-icon>delete_forever</mat-icon>
+        </button>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<p *ngIf="!cargando && historial.length === 0" style="margin: 8px 0; color: rgba(0,0,0,.6);">
+  Todavía no se ha registrado ninguna revisión a este usuario.
+</p>
+
+<mat-divider style="margin: 12px 0;"></mat-divider>
+
+<h4>Registrar revisión</h4>
+<form [formGroup]="revisionForm">
+  <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
+    <mat-form-field appearance="outline" fxFlex="20%">
+      <mat-label>Fecha</mat-label>
+      <input matInput type="date" formControlName="fecha" required />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" fxFlex="25%">
+      <mat-label>Tipo</mat-label>
+      <mat-select formControlName="tipo">
+        <mat-option *ngFor="let t of tiposRevision" [value]="t.value">{{ t.label }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" fxFlex="20%">
+      <mat-label>Resultado</mat-label>
+      <mat-select formControlName="resultado">
+        <mat-option *ngFor="let r of resultadosRevision" [value]="r.value">{{ r.label }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" fxFlex="30%">
+      <mat-label>Comentario (opcional)</mat-label>
+      <input matInput placeholder="qué se encontró, observaciones..." formControlName="comentario" />
+    </mat-form-field>
+  </div>
+
+  <p class="hint" *ngIf="revisionForm.get('resultado')?.value === 'CON_PROBLEMA'">
+    Después de guardar podrás agregar fotos de evidencia a esta revisión desde la tabla de arriba.
+  </p>
+
+  <mat-card-actions align="end">
+    <button mat-raised-button color="primary" (click)="registrar()">
+      <mat-icon>fact_check</mat-icon> Registrar revisión
+    </button>
+  </mat-card-actions>
+</form>

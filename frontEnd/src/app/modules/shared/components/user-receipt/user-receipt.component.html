@@ -21,6 +21,11 @@
                 <input matInput (keyup)="applyAnioFilter($event)" placeholder="Año">
             </mat-form-field>
         </div>
+        <div class="boton-agregar-recibo">
+            <button mat-raised-button color="primary" (click)="agregarRecibo()">
+                <mat-icon>add</mat-icon> Agregar recibo
+            </button>
+        </div>
     </mat-card-header>
 
   <table mat-table [dataSource]="dataSource" class="mat-cell">

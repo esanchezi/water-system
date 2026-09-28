@@ -8,9 +8,18 @@ import { UserReceiptComponent } from './components/user-receipt/user-receipt.com
 import { UserCensoComponent } from './components/user-censo/user-censo.component';
 import { UserUsoComponent } from './components/user-uso/user-uso.component';
 import { UserChargesComponent } from './components/user-charges/user-charges.component';
+import { AvisoAdeudoAtencionDialogComponent } from './components/aviso-adeudo-atencion-dialog/aviso-adeudo-atencion-dialog.component';
+import { UserRevisionComponent } from './components/user-revision/user-revision.component';
 
 @NgModule({
-  declarations: [UserReceiptComponent, UserCensoComponent, UserUsoComponent, UserChargesComponent],
+  declarations: [
+    UserReceiptComponent,
+    UserCensoComponent,
+    UserUsoComponent,
+    UserChargesComponent,
+    AvisoAdeudoAtencionDialogComponent,
+    UserRevisionComponent
+  ],
   imports: [
     CommonModule,
     MaterialModule,
@@ -19,6 +28,13 @@ import { UserChargesComponent } from './components/user-charges/user-charges.com
     MatTableModule,
     MatPaginatorModule
   ],
-  exports: [UserReceiptComponent, UserCensoComponent, UserUsoComponent, UserChargesComponent]
+  exports: [
+    UserReceiptComponent,
+    UserCensoComponent,
+    UserUsoComponent,
+    UserChargesComponent,
+    AvisoAdeudoAtencionDialogComponent,
+    UserRevisionComponent
+  ]
 })
 export class SharedModule { }

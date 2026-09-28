@@ -1,0 +1,49 @@
+<h2 mat-dialog-title>Marcar como atendida</h2>
+
+<mat-dialog-content>
+  <p class="hint" *ngIf="data.avisos.length === 1">
+    Folio {{ data.avisos[0].folioNotificacion }} -- {{ data.avisos[0].noUsuario }} - {{ data.avisos[0].nombreUsuarioTitular }}
+  </p>
+  <p class="hint" *ngIf="data.avisos.length > 1">
+    Se marcarán {{ data.avisos.length }} avisos como atendidos: folios {{ foliosTexto }}.
+  </p>
+
+  <div class="campos">
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>¿Cómo se resolvió?</mat-label>
+      <mat-select [(ngModel)]="resultadoAtencion">
+        <mat-option *ngFor="let r of resultados" [value]="r.valor">{{ r.etiqueta }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100" *ngIf="esConvenio">
+      <mat-label>Fecha comprometida de pago</mat-label>
+      <input matInput type="date" [(ngModel)]="fechaCompromiso" required>
+      <mat-hint>Mientras no venza, se pausa el Segundo aviso. Si incumple, vuelve a requerirse.</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Comentario (opcional)</mat-label>
+      <textarea matInput rows="2" [(ngModel)]="comentarioAtencion" placeholder="Detalle del caso, si hace falta aclarar algo"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Folio del recibo (opcional)</mat-label>
+      <input matInput type="number" [(ngModel)]="folioReciboVinculado" placeholder="Solo si ya se capturó el recibo en Pagos">
+      <mat-hint *ngIf="requiereFolioOpcionalHint">Si ya capturaste el recibo en Detalle de pagos, liga aquí su folio.</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Folio del convenio (opcional)</mat-label>
+      <input matInput type="number" [(ngModel)]="folioConvenioVinculado" placeholder="Solo si ya existe el convenio en el módulo Convenios">
+      <mat-hint>Independiente del recibo -- puedes ligar ambos si aplica (ej. el convenio cubre parte y hay un recibo por el resto).</mat-hint>
+    </mat-form-field>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="guardar()" [disabled]="!formularioValido">
+    Guardar
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,13 @@
+.alinear {
+  margin-left: 16px;
+}
+
+.hint {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.9em;
+}
+
+.actions {
+  margin-left: auto;
+  padding: 8px 16px;
+}

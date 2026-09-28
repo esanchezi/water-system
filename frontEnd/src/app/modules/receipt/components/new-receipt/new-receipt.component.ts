@@ -8,12 +8,23 @@ import { ReceiptService } from 'src/app/modules/shared/services/receipt.service'
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { UserService } from 'src/app/modules/shared/services/user.service';
 import { WaterUserAnnualPaymentService } from 'src/app/modules/shared/services/water-user-annual-payment.service';
+import { AvisoAdeudoService } from 'src/app/modules/shared/services/aviso-adeudo.service';
+import { AvisoAdeudoModel } from 'src/app/modules/shared/models/AvisoAdeudo.model';
+import Swal from 'sweetalert2';
 
 // Cuando se abre para EDITAR (data.receipt trae el recibo completo, tal cual
 // lo devuelve el backend con todas sus líneas de montoAplicado), el
 // formulario se prellena con todo y "Guardar" hace un PUT en vez de un POST.
+//
+// Cuando se abre desde la ficha de un usuario (ej. "Detalle pagos"), ya se
+// sabe quién es -- data.usuarioPreseleccionado trae { noUsuario,
+// nombreCompleto, aguaUsuarioId } y el campo de usuario se prellena y se
+// bloquea, para que solo haga falta capturar el folio y el resto del
+// recibo. aguaUsuarioId es opcional (para no romper llamadores viejos) pero
+// hace falta para poder consultar sus avisos de adeudo pendientes de cobro.
 export interface NewReceiptDialogData {
   receipt?: any;
+  usuarioPreseleccionado?: { noUsuario: number; nombreCompleto: string; aguaUsuarioId?: number };
 }
 
 @Component({
@@ -31,17 +42,31 @@ export class NewReceiptComponent implements OnInit {
   private readonly receiptService = inject(ReceiptService);
   private readonly usuarioService = inject(UserService);
   private readonly annualPaymentService = inject(WaterUserAnnualPaymentService);
+  private readonly avisoAdeudoService = inject(AvisoAdeudoService);
 
   conceptos: CatalogOptionModel[] = [];
   usuariosFiltrados: any[] = [];
   usuarioSeleccionado: any;
   years = [2021, 2022, 2023, 2024, 2025, 2026];
 
+  // Cartas de adeudo ya entregadas al usuario seleccionado que aún no se
+  // marcan como atendidas -- se muestran como checklist para poder
+  // vincularlas de una vez a este mismo recibo (ver onSave()/
+  // vincularAvisosSeleccionados()), sin tener que ir después a la ficha del
+  // usuario a marcarlas "atendida" con el folio a mano.
+  avisosPendientes: AvisoAdeudoModel[] = [];
+  avisosSeleccionados: Set<number> = new Set();
+
   // Años que el usuario seleccionado YA tiene marcados como pagados (de
   // cualquier recibo anterior) -- se muestran junto al checkbox de cada año
   // para poder validar de un vistazo antes de marcar otro, sin tener que
   // salirse del formulario a revisar el historial del usuario.
   aniosPagadosUsuario: Set<number> = new Set();
+
+  // Detalle del recibo más reciente del usuario seleccionado (folio, fecha,
+  // concepto, total) -- solo para consulta visual mientras se captura un
+  // recibo nuevo, no se usa para nada del guardado.
+  ultimoRecibo: any = null;
 
   // Si trae valor, "Guardar" edita ese recibo (PUT) en vez de crear uno
   // nuevo; también cambia el comportamiento de cierre del diálogo (editar
@@ -63,12 +88,22 @@ export class NewReceiptComponent implements OnInit {
     return this.editandoReciboId != null;
   }
 
+  // Cuando viene de la ficha de un usuario ya no tiene caso dejar el
+  // diálogo abierto para "seguir capturando" (siempre sería el mismo
+  // usuario) -- ver onSave().
+  get usuarioBloqueado(): boolean {
+    return !!this.data?.usuarioPreseleccionado;
+  }
+
   ngOnInit(): void {
     this.initForm();
     this.getCatalogs();
 
     if (this.data?.receipt) {
       this.cargarRecibo(this.data.receipt);
+    } else if (this.data?.usuarioPreseleccionado) {
+      this.preseleccionarUsuario(this.data.usuarioPreseleccionado);
+      this.addMonto();
     } else {
       this.addMonto();
     }
@@ -118,6 +153,68 @@ export class NewReceiptComponent implements OnInit {
     });
   }
 
+  // Ya se conoce al usuario (se abrió desde su ficha) -- se prellena el
+  // campo y se bloquea para que no se pueda cambiar por accidente, no hace
+  // falta usar el buscador.
+  private preseleccionarUsuario(usuario: { noUsuario: number; nombreCompleto: string; aguaUsuarioId?: number }): void {
+    this.usuarioSeleccionado = usuario;
+    this.cargarAniosPagados(usuario?.noUsuario);
+    this.cargarAvisosPendientes(usuario?.aguaUsuarioId);
+    this.cargarUltimoRecibo(usuario?.noUsuario);
+    this.receiptForm.patchValue({ noUsuario: usuario }, { emitEvent: false });
+    this.receiptForm.get('noUsuario')?.disable();
+  }
+
+  // Avisos de adeudo (Primer/Segundo) ya entregados a este usuario que
+  // siguen sin marcarse como atendidos -- normalmente porque aún no se
+  // capturaba el recibo que los liquida, que es justo lo que se está
+  // haciendo ahora mismo en este formulario.
+  private cargarAvisosPendientes(aguaUsuarioId?: number): void {
+    this.avisosPendientes = [];
+    this.avisosSeleccionados = new Set();
+    if (!aguaUsuarioId) return;
+
+    this.avisoAdeudoService.getPendientesDeAtencion(aguaUsuarioId).subscribe({
+      next: (resp: any) => {
+        // metadata viene como objeto plano ({code, message, detail}), no
+        // como arreglo -- ver BaseRestResponse.java. AvisoAdeudoRestResponse
+        // sigue ese mismo patrón (a diferencia de otros servicios de este
+        // módulo, como WaterUserAnnualPaymentService, cuyo backend sí
+        // envuelve metadata en un arreglo).
+        if (resp.metadata?.code !== '00') return;
+        this.avisosPendientes = resp.data || [];
+      },
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  toggleAviso(avisoAdeudoId: number): void {
+    if (this.avisosSeleccionados.has(avisoAdeudoId)) {
+      this.avisosSeleccionados.delete(avisoAdeudoId);
+    } else {
+      this.avisosSeleccionados.add(avisoAdeudoId);
+    }
+  }
+
+  // Tras guardar el recibo exitosamente, marca como atendido (PAGADO) cada
+  // aviso que se haya marcado en el checklist, vinculando el folio recién
+  // capturado -- reusa el mismo endpoint que ya usa la ficha de usuario
+  // para marcar atendida una carta, no se duplica lógica de validación.
+  private vincularAvisosSeleccionados(folioParaVincular?: number, avisosParaVincular?: Set<number>): void {
+    const folio = folioParaVincular ?? (Number(this.receiptForm.get('noFolio')?.value) || undefined);
+    const avisos = avisosParaVincular ?? this.avisosSeleccionados;
+    if (!avisos || avisos.size === 0) return;
+
+    avisos.forEach(avisoAdeudoId => {
+      this.avisoAdeudoService.marcarAtendida(avisoAdeudoId, {
+        resultadoAtencion: 'PAGADO',
+        folioReciboVinculado: folio
+      }).subscribe({
+        error: (e: any) => console.error('No se pudo vincular el aviso ' + avisoAdeudoId, e)
+      });
+    });
+  }
+
   private initUsuarioAutocomplete(): void {
     this.receiptForm.get('noUsuario')?.valueChanges
       .pipe(
@@ -142,6 +239,31 @@ export class NewReceiptComponent implements OnInit {
   onUsuarioSelected(user: any): void {
     this.usuarioSeleccionado = user;
     this.cargarAniosPagados(user?.noUsuario);
+    // user viene del autocomplete (AguaUsuarioSearchDTO), que ya trae
+    // aguaUsuarioId -- no hace falta una consulta aparte para tenerlo.
+    this.cargarAvisosPendientes(user?.aguaUsuarioId);
+    this.cargarUltimoRecibo(user?.noUsuario);
+  }
+
+  // Último recibo capturado a este usuario (folio, fecha, concepto, total)
+  // -- solo para consultarlo de un vistazo mientras se captura uno nuevo, ej.
+  // para comparar montos o evitar capturar el mismo concepto dos veces.
+  // Reusa findByNoUsuario, que ya viene ordenado más reciente primero.
+  private cargarUltimoRecibo(noUsuario: any): void {
+    this.ultimoRecibo = null;
+    if (!noUsuario) return;
+
+    this.receiptService.getReceiptByNoUser(noUsuario).subscribe({
+      next: (resp: any) => {
+        // WaterReceiptRestResponse extiende RestResponse (no BaseRestResponse)
+        // -- aquí metadata sí es un arreglo, como en WaterUserAnnualPaymentService.
+        if (resp.metadata?.[0]?.code !== '00') return;
+        this.ultimoRecibo = (resp.data || [])[0] || null;
+      },
+      // 404 = el usuario aún no tiene recibos -- no es un error real, solo
+      // significa que no hay nada que mostrar.
+      error: () => { this.ultimoRecibo = null; }
+    });
   }
 
   // Consulta qué años ya tiene pagados el usuario seleccionado, para
@@ -218,6 +340,55 @@ export class NewReceiptComponent implements OnInit {
   }
 
   onSave(): void {
+    // Al editar no aplica alertar por folio duplicado: es el mismo recibo
+    // que ya existe con ese folio, no uno nuevo.
+    if (this.esEdicion) {
+      this.guardarRecibo();
+      return;
+    }
+
+    const folio = Number(this.receiptForm.get('noFolio')?.value) || 0;
+    this.verificarFolioDuplicado(folio, () => this.guardarRecibo());
+  }
+
+  // Si el folio que se está por guardar ya existe en otro recibo, avisa
+  // antes de continuar -- pedido explícito de Ely para no duplicar folios
+  // por error. No bloquea el guardado (puede haber casos legítimos, ej.
+  // folios repetidos entre comités distintos), solo pide confirmar.
+  private verificarFolioDuplicado(folio: number, continuar: () => void): void {
+    if (!folio) { continuar(); return; }
+
+    this.receiptService.getReceiptByFolioExacto(folio).subscribe({
+      next: (resp: any) => {
+        if (resp.metadata?.[0]?.code !== '00') { continuar(); return; }
+        const existente = (resp.data || [])[0];
+        if (!existente) { continuar(); return; }
+
+        const persona = existente.waterUser?.person;
+        const nombre = [persona?.nombre, persona?.nombre2, persona?.app, persona?.apm].filter(Boolean).join(' ');
+        Swal.fire({
+          icon: 'warning',
+          title: `El folio ${folio} ya fue capturado`,
+          html: `Corresponde a ${existente.waterUser?.noUsuario ?? '--'}`
+            + (nombre ? ` - ${nombre}` : '')
+            + `, fecha ${existente.fecha ? String(existente.fecha).slice(0, 10) : '--'}, `
+            + `total $${existente.total ?? '--'}.<br><br>¿Deseas guardarlo de todas formas?`,
+          showCancelButton: true,
+          confirmButtonText: 'Guardar de todas formas',
+          cancelButtonText: 'Cancelar',
+          confirmButtonColor: '#d33'
+        }).then(result => {
+          if (result.isConfirmed) continuar();
+        });
+      },
+      // 404 = no existe ningún recibo con ese folio todavía -- es el caso
+      // normal, no bloquea el guardado. Un error de red tampoco debe
+      // impedir capturar el recibo.
+      error: () => continuar()
+    });
+  }
+
+  private guardarRecibo(): void {
     const data = this.prepareUserData();
 
     // Editar un recibo ya existente es una acción puntual: se guarda y se
@@ -225,13 +396,34 @@ export class NewReceiptComponent implements OnInit {
     // abierto para seguir con el siguiente).
     if (this.esEdicion) {
       this.receiptService.updateReceipt(this.editandoReciboId!, data).subscribe({
-        next: () => this.dialogRef.close(1),
+        next: () => {
+          this.vincularAvisosSeleccionados();
+          this.dialogRef.close(1);
+        },
         error: () => this.dialogRef.close(2)
       });
       return;
     }
 
-    this.saveReceiptData(data);
+    if (this.usuarioBloqueado) {
+      // Un recibo a la vez para este usuario -- se guarda y se cierra,
+      // a diferencia del flujo general de "Pagos" que se queda abierto
+      // para capturar varios recibos de usuarios distintos seguidos.
+      this.receiptService.saveReceipt(data).subscribe({
+        next: () => {
+          this.vincularAvisosSeleccionados();
+          this.dialogRef.close(1);
+        },
+        error: () => this.dialogRef.close(2)
+      });
+      return;
+    }
+
+    // Se toma una foto de qué avisos quedaron marcados ANTES de limpiar el
+    // formulario para el siguiente recibo (más abajo) -- si se leyera
+    // this.avisosSeleccionados directo dentro del next() de guardado, para
+    // cuando la respuesta llegue ya se habría vaciado.
+    this.saveReceiptData(data, Number(this.receiptForm.get('noFolio')?.value) || undefined, new Set(this.avisosSeleccionados));
 
     const newFolio = Number(this.receiptForm.get('noFolio')?.value) || 0;
     this.receiptForm.get('noFolio')?.setValue(newFolio + 1);
@@ -241,6 +433,9 @@ export class NewReceiptComponent implements OnInit {
     // pero el usuario SIEMPRE cambia de un recibo a otro.
     this.receiptForm.get('noUsuario')?.setValue('');
     this.usuarioSeleccionado = null;
+    this.avisosPendientes = [];
+    this.avisosSeleccionados = new Set();
+    this.ultimoRecibo = null;
   }
 
   onCancel(): void {
@@ -298,10 +493,13 @@ export class NewReceiptComponent implements OnInit {
     };
   }
 
-  private saveReceiptData(data: any): void {
+  private saveReceiptData(data: any, folioParaVincular?: number, avisosParaVincular?: Set<number>): void {
     this.receiptService.saveReceipt(data)
       .subscribe({
-        next: () => console.info('Guardado exitoso'),
+        next: () => {
+          console.info('Guardado exitoso');
+          this.vincularAvisosSeleccionados(folioParaVincular, avisosParaVincular);
+        },
         error: () => console.error('Error al guardar'),
         complete: () => console.info('Proceso completado')
       });

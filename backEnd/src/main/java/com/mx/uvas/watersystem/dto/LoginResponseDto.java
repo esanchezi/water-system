@@ -9,4 +9,7 @@ public class LoginResponseDto {
     private String token;
     private String username;
     private String nombre;
+    // ADMIN / USUARIO1 -- el front lo usa para mostrar/ocultar secciones
+    // del menú (ver SistemaUsuarioEntity.rol para el detalle).
+    private String rol;
 }

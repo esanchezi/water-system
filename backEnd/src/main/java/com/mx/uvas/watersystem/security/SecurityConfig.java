@@ -50,6 +50,13 @@ public class SecurityConfig {
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(false);
+        // Headers propios que el frontend necesita LEER desde JS (no solo
+        // recibir) -- por default el navegador solo expone un puñado de
+        // headers "seguros" a fetch/XHR aunque el response los traiga.
+        // Usados por AvisoAdeudoController al regresar el PDF de las cartas
+        // de adeudo (usuarios omitidos por ya no tener adeudo, o el motivo
+        // de un error, ya que el cuerpo de esa respuesta es el PDF, no JSON).
+        configuration.setExposedHeaders(List.of("X-Usuarios-Omitidos", "X-Error-Message", "Content-Disposition"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

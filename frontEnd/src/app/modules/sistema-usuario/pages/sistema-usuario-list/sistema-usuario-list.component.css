@@ -1,0 +1,35 @@
+.tarjeta-ancha {
+  margin: 16px;
+  padding: 16px;
+}
+
+.alinear {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 16px;
+}
+
+.hint {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.9em;
+}
+
+.tabla-cuentas {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-cuentas th,
+.tabla-cuentas td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}

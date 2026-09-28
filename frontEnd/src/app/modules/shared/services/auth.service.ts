@@ -7,11 +7,13 @@ const BASE = `${environment.apiUrl}/auth`;
 const TOKEN_KEY = 'watersystem_token';
 const USERNAME_KEY = 'watersystem_username';
 const NOMBRE_KEY = 'watersystem_nombre';
+const ROL_KEY = 'watersystem_rol';
 
 interface LoginResponse {
   token: string;
   username: string;
   nombre: string;
+  rol: string;
 }
 
 @Injectable({
@@ -27,6 +29,7 @@ export class AuthService {
         localStorage.setItem(TOKEN_KEY, resp.token);
         localStorage.setItem(USERNAME_KEY, resp.username);
         localStorage.setItem(NOMBRE_KEY, resp.nombre || '');
+        localStorage.setItem(ROL_KEY, resp.rol || '');
       })
     );
   }
@@ -39,6 +42,7 @@ export class AuthService {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USERNAME_KEY);
     localStorage.removeItem(NOMBRE_KEY);
+    localStorage.removeItem(ROL_KEY);
   }
 
   getToken(): string | null {
@@ -51,6 +55,17 @@ export class AuthService {
 
   getNombre(): string | null {
     return localStorage.getItem(NOMBRE_KEY);
+  }
+
+  // Cuentas de antes de que existiera este campo (o cualquier caso raro
+  // sin rol guardado) se tratan como ADMIN, para no dejar a nadie fuera
+  // de secciones a las que ya tenía acceso.
+  getRole(): string {
+    return localStorage.getItem(ROL_KEY) || 'ADMIN';
+  }
+
+  isAdmin(): boolean {
+    return this.getRole() === 'ADMIN';
   }
 
   // Antes solo revisaba que hubiera un token guardado, sin ver si ya

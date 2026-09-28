@@ -1,0 +1,39 @@
+<mat-dialog-content>
+  <form [formGroup]="form">
+    <mat-card>
+      <mat-card-title>Registrar reconexión</mat-card-title>
+      <mat-card-content>
+        <p>
+          Folio {{ data.renuncia.folio }} -- renuncia del {{ data.renuncia.fechaRenuncia | date:'dd/MM/yyyy' }}.
+          Conforme al Art. 32, la reconexión requiere autorización de la asamblea.
+        </p>
+
+        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
+          <mat-form-field appearance="outline" fxFlex="45%">
+            <mat-label>Fecha de solicitud de reconexión</mat-label>
+            <input matInput type="date" formControlName="fechaSolicitudReconexion" required />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" fxFlex="45%">
+            <mat-label>Fecha de asamblea que autorizó</mat-label>
+            <input matInput type="date" formControlName="fechaAsamblea" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Condiciones de reconexión</mat-label>
+            <textarea matInput rows="3" placeholder="condiciones que autorizó la asamblea" formControlName="condicionesReconexion"></textarea>
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-button color="primary" [disabled]="form.invalid || guardando" (click)="onGuardar()">
+    <mat-icon>link</mat-icon> Registrar reconexión
+  </button>
+  <button mat-button color="primary" [disabled]="guardando" (click)="onCancel()">
+    <mat-icon>cancel</mat-icon> Cancelar
+  </button>
+</mat-dialog-actions>

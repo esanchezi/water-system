@@ -24,7 +24,14 @@ export class AuthInterceptor implements HttpInterceptor {
 
     return next.handle(authReq).pipe(
       catchError((error) => {
-        if (error?.status === 401 && !isAuthCall) {
+        // El backend no tiene un AuthenticationEntryPoint propio, así que
+        // cuando el token está vencido/inválido responde 403 (no 401) --
+        // por eso también hay que revisar 403 aquí. En esta app ninguna
+        // ruta usa permisos por rol (no hay @PreAuthorize en ningún lado),
+        // así que un 403 en /api/v1/** siempre significa "no autenticado",
+        // nunca "autenticado pero sin permiso" -- es seguro tratarlo igual
+        // que un 401.
+        if ((error?.status === 401 || error?.status === 403) && !isAuthCall) {
           this.authService.logout();
           this.router.navigate(['/login']);
         }

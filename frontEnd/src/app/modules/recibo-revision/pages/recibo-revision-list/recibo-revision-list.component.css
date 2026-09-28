@@ -1,0 +1,97 @@
+.tarjeta-subir {
+  margin: 16px;
+  padding: 16px;
+}
+
+.hint {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.9em;
+}
+
+.fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.campo-corto {
+  width: 120px;
+}
+
+.campo-monto {
+  width: 220px;
+}
+
+.campo-obs {
+  flex: 1;
+  min-width: 200px;
+}
+
+.lista-fotos {
+  margin: 0 16px 16px 16px;
+}
+
+.fecha-foto {
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 0.85em;
+}
+
+.contenedor-foto {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.foto-grande {
+  max-width: 100%;
+  max-height: 480px;
+  object-fit: contain;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.lista-revisiones {
+  margin-top: 12px;
+}
+
+.tarjeta-revision {
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.chip-resultado {
+  display: inline-block;
+  color: white;
+  font-size: 0.8em;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+
+.comparacion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.comparacion .columna {
+  flex: 1;
+  min-width: 220px;
+}
+
+.comparacion p {
+  margin: 2px 0;
+}
+
+.acciones-revision {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+}

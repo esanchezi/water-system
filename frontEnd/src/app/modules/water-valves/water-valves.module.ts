@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WaterValvesComponent } from './components/water-valves/water-valves.component';
 import { GoogleMapsModule } from '@angular/google-maps';
+import { MaterialModule } from '../core/material.module';
 
 @NgModule({
   declarations: [
@@ -11,7 +12,8 @@ import { GoogleMapsModule } from '@angular/google-maps';
   imports: [
     CommonModule,
     FormsModule,
-    GoogleMapsModule
+    GoogleMapsModule,
+    MaterialModule
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   exports: [

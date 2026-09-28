@@ -41,6 +41,14 @@ export class ReceiptService {
     return this.http.get(endpoint);
   }
 
+  // Búsqueda exacta por folio (no ambigua con número de usuario, a
+  // diferencia de getReceiptByNoFolioOrNoUser) -- usada para alertar si un
+  // folio ya fue capturado antes de guardar un recibo nuevo.
+  getReceiptByFolioExacto(folio:any){
+    const endpoint = `${base_url}/porFolio/${folio}`;
+    return this.http.get(endpoint);
+  }
+
   exportReportReceipt(){
     const endpoint = `${base_url}/report`;
     return this.http.get(endpoint,{

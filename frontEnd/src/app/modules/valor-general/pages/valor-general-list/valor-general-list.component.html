@@ -1,0 +1,58 @@
+<mat-card>
+  <h2 class="alinear">Valores generales</h2>
+  <p class="hint alinear">
+    Montos parametrizables por año -- multa por falta de pago, corte/reconexión, aviso, interés moratorio
+    por día, multa de válvulas (referencia). Se pueden cambiar aquí sin depender de una actualización del sistema.
+  </p>
+  <mat-card-header>
+    <div class="actions">
+      <button mat-raised-button color="primary" (click)="openCreate()">
+        <mat-icon>add</mat-icon> Nuevo valor
+      </button>
+    </div>
+  </mat-card-header>
+
+  <mat-card-content>
+    <table mat-table [dataSource]="dataSource" class="mat-cell">
+
+      <ng-container matColumnDef="nombre">
+        <th mat-header-cell *matHeaderCellDef> Concepto</th>
+        <td mat-cell *matCellDef="let element">{{ element.nombre }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="vigencia">
+        <th mat-header-cell *matHeaderCellDef> Año</th>
+        <td mat-cell *matCellDef="let element">{{ element.vigencia }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="monto">
+        <th mat-header-cell *matHeaderCellDef> Monto</th>
+        <td mat-cell *matCellDef="let element">{{ element.monto | currency }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="observaciones">
+        <th mat-header-cell *matHeaderCellDef> Observaciones</th>
+        <td mat-cell *matCellDef="let element">{{ element.observaciones }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef> Acciones</th>
+        <td mat-cell *matCellDef="let element">
+          <button mat-icon-button color="accent" (click)="openEdit(element)" title="Editar">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" (click)="deactivate(element)" title="Dar de baja">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayColumns"></tr>
+    </table>
+
+    <p class="hint" *ngIf="dataSource.data.length === 0">Todavía no hay valores generales capturados.</p>
+
+    <mat-paginator [pageSizeOptions]="[10, 20, 50]" showFirstLastButtons></mat-paginator>
+  </mat-card-content>
+</mat-card>

@@ -39,6 +39,9 @@ public class WaterUserNoticeService implements IWaterUserNoticeService {
     private static final String ERROR_SEARCHING_AVISOS_MESSAGE = "Error al consultar avisos por ID";
     private static final String AVISO_CREATED_MESSAGE = "Aviso registrado correctamente";
     private static final String ERROR_CREATING_AVISO_MESSAGE = "Error al registrar el aviso";
+    private static final String AVISO_UPDATED_MESSAGE = "Estatus del aviso actualizado correctamente";
+    private static final String ERROR_UPDATING_AVISO_MESSAGE = "Error al actualizar el estatus del aviso";
+    private static final String AVISO_NOT_FOUND_MESSAGE = "No se encontró el aviso indicado";
 
     @Override
     public ResponseEntity<WaterUserNoticeRestResponse> findByNoUser(Integer noUser) {
@@ -70,6 +73,28 @@ public class WaterUserNoticeService implements IWaterUserNoticeService {
             return ResponseHandler.handleNotFoundException(response, e.getMessage());
         } catch (Exception e) {
             return ResponseHandler.handleInternalServerError(response, ERROR_CREATING_AVISO_MESSAGE, e);
+        }
+    }
+
+    @Override
+    public ResponseEntity<WaterUserNoticeRestResponse> updateEstatus(Integer aguaUsuarioAvisoId, Integer avisoEstatusId) {
+        WaterUserNoticeRestResponse response = new WaterUserNoticeRestResponse();
+        try {
+            WaterUserNoticeEntity aviso = waterUserNoticeRepository.findById(aguaUsuarioAvisoId)
+                    .orElseThrow(() -> new NoSuchElementException(AVISO_NOT_FOUND_MESSAGE));
+            CatalogOptionsEntity estatusAviso = waterHelper.getCatalogOptionOrThrow(avisoEstatusId);
+
+            aviso.setEstatusAviso(estatusAviso);
+            aviso.setDateUpdate(java.time.LocalDateTime.now());
+            waterUserNoticeRepository.save(aviso);
+
+            response.setData(List.of(waterUserNoticeMapper.entityToDto(aviso)));
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, AVISO_UPDATED_MESSAGE);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (NoSuchElementException e) {
+            return ResponseHandler.handleNotFoundException(response, e.getMessage());
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, ERROR_UPDATING_AVISO_MESSAGE, e);
         }
     }
 

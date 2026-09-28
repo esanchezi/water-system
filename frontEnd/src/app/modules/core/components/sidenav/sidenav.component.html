@@ -4,7 +4,7 @@
       <mat-icon>menu</mat-icon>
     </button>
     <img src="assets/img/logo.png" alt="Logo" class="app-logo" />
-    <h1 class="app-name">Sistema de Agua Potable "Los Sauces"</h1>
+    <h1 class="app-name">Sistema de Agua Potable "{{ nombreComite$ | async }}"</h1>
 
     <div class="right">
       <ul>
@@ -50,10 +50,19 @@
           </div>
         </div>
         <mat-divider></mat-divider>
-        <a mat-list-item [routerLink]="nav.route" *ngFor="let nav of menuNav">
-          <mat-icon class="icono"> {{ nav.icon }}</mat-icon>
-          {{ nav.name }}
-        </a>
+        <div *ngFor="let grupo of visibleMenuGroups">
+          <a mat-list-item class="grupo-header" (click)="toggleGrupo(grupo.name)">
+            <mat-icon class="icono">{{ grupo.icon }}</mat-icon>
+            {{ grupo.name }}
+            <mat-icon class="expand-icon">{{ grupoAbierto(grupo.name) ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </a>
+          <ng-container *ngIf="grupoAbierto(grupo.name)">
+            <a mat-list-item class="submenu-item" [routerLink]="item.route" *ngFor="let item of grupo.items">
+              <mat-icon class="icono">{{ item.icon }}</mat-icon>
+              {{ item.name }}
+            </a>
+          </ng-container>
+        </div>
       </mat-nav-list>
     </mat-sidenav>
     <mat-sidenav-content>
