@@ -15,3 +15,14 @@
   color: #1565c0;
   margin-top: 12px;
 }
+
+.renuncia-activa-aviso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #fff3e0;
+  color: #e65100;
+  padding: 10px 14px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}

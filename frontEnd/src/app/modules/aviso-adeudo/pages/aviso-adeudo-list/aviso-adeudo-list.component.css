@@ -1,0 +1,104 @@
+.tarjeta-encabezado {
+  margin: 16px;
+  padding: 16px;
+}
+
+.hint {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.9em;
+}
+
+.fila-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.tabla-candidatos, .tabla-historial {
+  width: 100%;
+  margin: 0 16px;
+}
+
+.tabla-candidatos tr.mat-mdc-row:hover {
+  cursor: pointer;
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.acordeon-historial {
+  margin: 16px;
+}
+
+.fila-no-registrados {
+  margin-top: 8px;
+}
+
+.fila-no-registrados h3 {
+  margin-bottom: 4px;
+}
+
+.tabla-no-registrados {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-no-registrados td {
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.chk-canceladas {
+  margin: 0 16px 8px;
+  display: block;
+}
+
+.etiqueta {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.etiqueta-entregada {
+  background-color: #e6f4ea;
+  color: #1e7e34;
+}
+
+.etiqueta-pendiente {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.etiqueta-cancelada {
+  background-color: #fde8e8;
+  color: #c62828;
+}
+
+/* Ya recibió Primer aviso y se le sigue mostrando como candidato --
+   le toca generar el Segundo, no repetir el Primero. */
+.etiqueta-requiere-segundo {
+  background-color: #fde8e8;
+  color: #c62828;
+  font-weight: 600;
+}
+
+.fila-cancelada {
+  opacity: 0.6;
+}
+
+/* Primer aviso ya superado por un Segundo aviso posterior -- ya no se
+   puede cancelar ni volver a generarle el Segundo desde esta fila. */
+.etiqueta-superado {
+  background-color: #eceff1;
+  color: #455a64;
+}
+
+/* Tiene un convenio de pago vigente (fecha comprometida sin vencer) --
+   se pausa el Segundo aviso mientras esté en este estado. */
+.etiqueta-convenio {
+  background-color: #e3f0fd;
+  color: #1565c0;
+  font-weight: 600;
+}

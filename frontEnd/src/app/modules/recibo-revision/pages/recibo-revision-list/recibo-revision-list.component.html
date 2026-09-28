@@ -1,0 +1,122 @@
+<mat-card class="tarjeta-subir">
+  <h2>Revisión de recibos</h2>
+  <p class="hint">
+    Sube la foto de uno o varios recibos de papel. Mientras ves la foto, captura el folio y el N° de usuario
+    de cada recibo -- el sistema busca ese folio y te muestra al lado lo que dice para que compares.
+  </p>
+
+  <mat-card-content>
+    <div class="fila">
+      <mat-form-field appearance="fill" class="campo-obs">
+        <mat-label>Nota de la foto (opcional)</mat-label>
+        <input matInput [(ngModel)]="observacionesFoto" placeholder="Ej. carpeta 2023, folios 100-103">
+      </mat-form-field>
+
+      <button mat-raised-button color="primary" (click)="inputArchivo.click()" [disabled]="subiendoFoto">
+        <mat-icon>add_a_photo</mat-icon>
+        {{ subiendoFoto ? 'Subiendo...' : 'Subir foto' }}
+      </button>
+      <input #inputArchivo type="file" accept="image/*" hidden (change)="subirFoto($event)">
+    </div>
+  </mat-card-content>
+</mat-card>
+
+<p class="hint" *ngIf="cargando">Cargando fotos...</p>
+<p class="hint" *ngIf="!cargando && fotos.length === 0">Todavía no hay fotos subidas.</p>
+
+<mat-accordion multi="true" class="lista-fotos" *ngIf="fotos.length > 0">
+  <mat-expansion-panel class="panel-claro" *ngFor="let foto of fotos">
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        {{ foto.nombreOriginal }}
+        <span class="fecha-foto" *ngIf="foto.dateAdd">&nbsp;-- {{ foto.dateAdd | date:'dd/MM/yyyy HH:mm' }}</span>
+      </mat-panel-title>
+      <mat-panel-description>
+        {{ resumenFoto(foto) }}
+      </mat-panel-description>
+    </mat-expansion-panel-header>
+
+    <p class="hint" *ngIf="foto.observaciones">{{ foto.observaciones }}</p>
+
+    <div class="contenedor-foto">
+      <img *ngIf="foto.fotoId && fotoUrls[foto.fotoId]" [src]="fotoUrls[foto.fotoId]" alt="Foto del recibo" class="foto-grande">
+      <mat-spinner *ngIf="foto.fotoId && !fotoUrls[foto.fotoId]" diameter="32"></mat-spinner>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <h4>Capturar un recibo de esta foto</h4>
+    <div class="fila" *ngIf="foto.fotoId && formNuevaRevision[foto.fotoId] as form">
+      <mat-form-field appearance="fill" class="campo-corto">
+        <mat-label>N° Folio</mat-label>
+        <input matInput type="number" [(ngModel)]="form.noFolioCapturado" required>
+      </mat-form-field>
+      <mat-form-field appearance="fill" class="campo-corto">
+        <mat-label>N° Usuario</mat-label>
+        <input matInput type="number" [(ngModel)]="form.noUsuarioCapturado">
+      </mat-form-field>
+      <mat-form-field appearance="fill" class="campo-monto">
+        <mat-label>Monto (como aparece en letra)</mat-label>
+        <input matInput [(ngModel)]="form.montoTexto" placeholder="Ej. Doscientos pesos">
+      </mat-form-field>
+      <mat-form-field appearance="fill" class="campo-obs">
+        <mat-label>Nota (opcional)</mat-label>
+        <input matInput [(ngModel)]="form.observaciones">
+      </mat-form-field>
+      <button mat-raised-button color="primary"
+              (click)="agregarRevision(foto)"
+              [disabled]="guardandoRevision[foto.fotoId]">
+        Comparar
+      </button>
+    </div>
+
+    <div class="lista-revisiones" *ngIf="foto.revisiones && foto.revisiones.length > 0">
+      <h4>Recibos capturados</h4>
+      <div class="tarjeta-revision" *ngFor="let r of foto.revisiones">
+        <div class="chip-resultado" [style.background]="infoResultado(r.resultado).color">
+          {{ infoResultado(r.resultado).etiqueta }}
+        </div>
+
+        <div class="comparacion">
+          <div class="columna">
+            <strong>Papel</strong>
+            <p>Folio: {{ r.noFolioCapturado }}</p>
+            <p>Usuario: {{ r.noUsuarioCapturado ?? '(sin capturar)' }}</p>
+            <p *ngIf="r.montoTexto">Monto: {{ r.montoTexto }}</p>
+            <p *ngIf="r.observaciones">Nota: {{ r.observaciones }}</p>
+          </div>
+          <div class="columna">
+            <strong>Sistema</strong>
+            <ng-container *ngIf="r.reciboId; else sinSistema">
+              <p>Folio: {{ r.noFolioSistema }}</p>
+              <p>Usuario: {{ r.noUsuarioSistema }} -- {{ r.nombreUsuarioSistema || '(sin nombre)' }}</p>
+              <p>Monto: {{ r.montoSistema | currency }}</p>
+              <p *ngIf="r.conceptoSistema">Concepto: {{ r.conceptoSistema }}</p>
+              <p *ngIf="r.fechaSistema">Fecha: {{ r.fechaSistema | date:'dd/MM/yyyy' }}</p>
+            </ng-container>
+            <ng-template #sinSistema>
+              <p>No se encontró ningún recibo con ese folio en el sistema.</p>
+            </ng-template>
+          </div>
+        </div>
+
+        <div class="acciones-revision">
+          <button mat-icon-button title="Marcar como resuelto (ya se corrigió en el sistema)"
+                  *ngIf="r.resultado !== 'COINCIDE'"
+                  (click)="marcarResuelto(foto, r)">
+            <mat-icon>check_circle</mat-icon>
+          </button>
+          <button mat-icon-button title="Eliminar esta revisión" (click)="eliminarRevision(foto, r)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <mat-action-row>
+      <button mat-button color="warn" (click)="eliminarFoto(foto)">
+        <mat-icon>delete</mat-icon> Eliminar foto
+      </button>
+    </mat-action-row>
+  </mat-expansion-panel>
+</mat-accordion>

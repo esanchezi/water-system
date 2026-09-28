@@ -59,3 +59,17 @@ div ul {
 .icono{
     margin-right: 10px;
 }
+
+.grupo-header {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.grupo-header .expand-icon {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+.submenu-item {
+    padding-left: 24px !important;
+}

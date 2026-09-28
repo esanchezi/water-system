@@ -58,6 +58,19 @@ public class WaterReceiptService implements IWaterReceiptService {
         return findWaterReceipts(waterReceiptRepository.findByNoUsuario(noUser), RECIBOS);
     }
 
+    // findByNoFolio del repositorio ya existía (lo usa AvisoAdeudoService al
+    // validar folioReciboVinculado) pero no estaba expuesto por su cuenta --
+    // aquí sí importa distinguir "no existe" (lista vacía, se resuelve como
+    // 404 en findWaterReceipts) de un folio real, por eso se envuelve como
+    // lista de 0 o 1 en vez de usar directo la entidad (puede venir null).
+    @Override
+    @Transactional
+    public ResponseEntity<WaterReceiptRestResponse> findByNoFolioExacto(Integer noFolio) {
+        WaterReceiptEntity existente = waterReceiptRepository.findByNoFolio(noFolio);
+        List<WaterReceiptEntity> lista = existente != null ? List.of(existente) : List.of();
+        return findWaterReceipts(lista, RECIBOS);
+    }
+
     @Override
     public WaterReceiptDto create(WaterReceiptDto request) {
         WaterUserEntity user = waterHelper.getWaterUser(request.getWaterUser().getNoUsuario());

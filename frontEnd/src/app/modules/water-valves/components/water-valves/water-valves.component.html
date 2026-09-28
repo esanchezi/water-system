@@ -1,14 +1,795 @@
-<google-map
-  height="500px"
-  [center]="center"
-  [zoom]="zoom"
-  [options]="{ disableDefaultUI: true }"
->
-  <map-marker
-    *ngFor="let marker of markers"
-    [position]="marker.position ?? { lat: 0, lng: 0 }"
-    [label]="marker.label ?? ''" 
-    [title]="marker.title ?? ''" 
-  >
-  </map-marker>
-</google-map>
+<mat-card class="tarjeta-ancha">
+  <h2 class="alinear">Red de distribución</h2>
+
+  <mat-card-content>
+    <mat-accordion multi="true">
+      <!-- ============ Mapa ============ -->
+      <mat-expansion-panel class="panel-claro" [expanded]="true">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Mapa</mat-panel-title>
+        </mat-expansion-panel-header>
+
+    <div class="mapa-full-ancho">
+    <google-map
+      [height]="'70vh'"
+      [width]="'100%'"
+      [center]="center"
+      [zoom]="zoom"
+      [options]="mapOptions"
+      (mapClick)="onMapClick($event)"
+    >
+      <!-- Trazo que se está dibujando ahora, en modo manual -->
+      <map-polyline
+        *ngIf="modoTrazo === 'MANUAL' && trazoActual.length > 1"
+        [path]="trazoActual"
+        [options]="{ strokeColor: '#1976d2', strokeWeight: 4 }"
+      ></map-polyline>
+
+      <!-- Puntos marcados (en cualquier modo) -- clic en el marcador lo quita -->
+      <map-marker
+        *ngFor="let punto of puntosClic; let i = index"
+        [position]="punto"
+        [label]="(i + 1).toString()"
+        [title]="'Punto ' + (i + 1) + ' -- clic para quitarlo'"
+        (mapClick)="eliminarPunto(i)"
+      ></map-marker>
+
+      <!-- Vista previa de un tramo ya guardado -->
+      <map-polyline
+        *ngIf="tramoPreview.length > 1"
+        [path]="tramoPreview"
+        [options]="{ strokeColor: '#43a047', strokeWeight: 4 }"
+      ></map-polyline>
+
+      <!-- Pozos, arrastrables para reubicar -->
+      <map-marker
+        *ngFor="let pozo of pozosConUbicacion"
+        [position]="{ lat: pozo.lat!, lng: pozo.lng! }"
+        [title]="pozo.nombre + (pozo.observaciones ? ' — ' + pozo.observaciones : '')"
+        [icon]="pozoIcon"
+        [options]="{ draggable: true }"
+        (mapDragend)="onPozoDragEnd(pozo, $event)"
+      ></map-marker>
+
+      <!-- Cajas de válvulas, arrastrables para reubicar. Clic muestra sus
+           válvulas en un globo (y si están abiertas/cerradas para el tramo
+           activo, si hay uno). -->
+      <map-marker
+        #cajaMarker="mapMarker"
+        *ngFor="let caja of cajasConUbicacion"
+        [position]="{ lat: caja.lat!, lng: caja.lng! }"
+        [title]="caja.nombre"
+        [icon]="cajaIcon"
+        [options]="{ draggable: true }"
+        (mapDragend)="onCajaDragEnd(caja, $event)"
+        (mapClick)="abrirInfoCaja(caja, cajaMarker)"
+      ></map-marker>
+
+      <!-- Vista previa de la ubicación de la caja nueva, antes de guardarla
+           -- arrastrable, para ajustar el punto sin tener que tocar el mapa
+           de nuevo desde cero. -->
+      <map-marker
+        *ngIf="nuevaCaja.lat != null && nuevaCaja.lng != null"
+        [position]="{ lat: nuevaCaja.lat!, lng: nuevaCaja.lng! }"
+        title="Nueva caja (todavía sin guardar) -- arrástrala para ajustar"
+        [icon]="cajaIcon"
+        [options]="{ opacity: 0.6, draggable: true }"
+        (mapDragend)="onNuevaCajaDragEnd($event)"
+      ></map-marker>
+
+      <map-info-window>
+        <div *ngIf="cajaSeleccionadaInfo">
+          <strong>{{ cajaSeleccionadaInfo.nombre }}</strong>
+          <p class="hint" *ngIf="tramoActivoEnMapa">Para el tramo "{{ tramoActivoEnMapa.nombre }}":</p>
+          <p class="hint" *ngIf="!tramoActivoEnMapa">
+            No hay un tramo activo en el mapa -- ve al tramo con "ver en mapa" o elígelo en
+            "Modificar horario y válvulas" para ver aquí si cada válvula va abierta o cerrada.
+          </p>
+          <ul style="margin: 4px 0; padding-left: 18px;">
+            <li *ngFor="let v of cajaSeleccionadaInfo.listValvula">
+              {{ v.identificador }}
+              <ng-container *ngIf="estadoValvulaParaTramoActivo(v.valvulaId) as estado">
+                -- <strong [style.color]="estado === 'ABIERTA' ? '#2e7d32' : '#c62828'">{{ estado }}</strong>
+              </ng-container>
+            </li>
+          </ul>
+          <p class="hint" *ngIf="!cajaSeleccionadaInfo.listValvula?.length">Esta caja no tiene válvulas dadas de alta.</p>
+          <button mat-stroked-button color="primary" (click)="usarUbicacionActualCaja(cajaSeleccionadaInfo)">Reubicar con mi GPS</button>
+        </div>
+      </map-info-window>
+    </google-map>
+    </div>
+
+    <div class="fila">
+      <mat-form-field appearance="fill">
+        <mat-label>Filtrar por pozo</mat-label>
+        <mat-select [(ngModel)]="filtroPozoIdTramos" (selectionChange)="recalcularTramosFiltrados()">
+          <mat-option [value]="null">Todos</mat-option>
+          <mat-option *ngFor="let p of pozos" [value]="p.pozoId">{{ p.nombre }}</mat-option>
+          <mat-option value="SIN_ASIGNAR">Sin asignar</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="fill">
+        <mat-label>Filtrar por día</mat-label>
+        <mat-select [(ngModel)]="filtroDiaTramos" (selectionChange)="recalcularTramosFiltrados()">
+          <mat-option [value]="null">Todos</mat-option>
+          <mat-option *ngFor="let d of diasSemana" [value]="d">{{ d }}</mat-option>
+          <mat-option value="SIN_ASIGNAR">Sin asignar</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button mat-stroked-button color="primary" *ngIf="filtroDiaTramos || filtroPozoIdTramos != null" (click)="quitarFiltrosTramos()">
+        Quitar filtros
+      </button>
+      <span class="hint">Este filtro también aplica a la tabla de "Tramos guardados" más abajo.</span>
+    </div>
+
+    <div class="fila">
+      <mat-form-field appearance="fill">
+        <mat-label>Ver un tramo en el mapa</mat-label>
+        <mat-select [(ngModel)]="tramoSeleccionadoParaVerId" (selectionChange)="onSeleccionarTramoParaVer($event.value)">
+          <mat-option *ngFor="let t of tramosFiltrados" [value]="t.tramoId">
+            {{ t.nombre }}<span *ngIf="t.lado"> -- {{ t.lado }}</span>
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button mat-stroked-button color="primary" *ngIf="tramoPreview.length > 0" (click)="quitarPreview(); tramoSeleccionadoParaVerId = null">
+        Quitar del mapa
+      </button>
+    </div>
+
+    <div class="fila">
+      <button mat-stroked-button color="primary" (click)="centrarEntrePozos()">Centrar entre los pozos</button>
+      <button mat-stroked-button color="primary" (click)="toggleRestriccionMapa()">
+        {{ restriccionMapaActiva ? 'Quitar límite del mapa' : 'Activar límite del mapa' }}
+      </button>
+      <span class="hint" *ngIf="restriccionMapaActiva">
+        El mapa no deja alejarse mucho de pozos/cajas/tramos ya capturados.
+      </span>
+    </div>
+
+    <p class="hint" *ngIf="colocandoNuevaCaja" style="font-weight: bold;">
+      Toca el mapa donde va la nueva caja de válvulas.
+      <button mat-stroked-button color="primary" (click)="colocandoNuevaCaja = false">Cancelar</button>
+    </p>
+
+    <p class="hint" *ngIf="editandoTrazoExistente" style="font-weight: bold;">
+      Editando el trazo de "{{ tramoEditandoTrazoNombre }}" --
+      marca más puntos en el mapa y guarda, o cancela.
+      <button mat-raised-button color="primary" (click)="guardarTrazoEditado()" [disabled]="guardandoTrazoEditado">
+        Guardar trazo
+      </button>
+      <button mat-stroked-button color="primary" (click)="cancelarEdicionTrazo()">Cancelar</button>
+    </p>
+      </mat-expansion-panel>
+
+      <!-- ============ Trazar tramo ============ -->
+      <mat-expansion-panel class="panel-claro" [expanded]="true">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Trazar un tramo</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <p class="hint" *ngIf="!editandoTrazoExistente">
+          Prueba los dos métodos y quédate con el que se vea mejor sobre el mapa.
+        </p>
+        <p class="hint" *ngIf="editandoTrazoExistente">
+          Editando el trazo de un tramo existente: cada punto que marques se agrega al final del trazo ya
+          guardado. Usa los botones junto al mapa para guardar o cancelar.
+        </p>
+
+        <div class="fila" *ngIf="!editandoTrazoExistente">
+          <mat-button-toggle-group [(ngModel)]="modoTrazo" (change)="cambiarModo($event.value)">
+            <mat-button-toggle value="DIRECTIONS">Seguir la calle (Directions)</mat-button-toggle>
+            <mat-button-toggle value="MANUAL">Dibujo manual punto por punto</mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+
+        <div class="fila">
+          <button mat-raised-button [color]="capturandoTrazo ? 'accent' : 'primary'" (click)="toggleCaptura()">
+            {{ capturandoTrazo ? 'Dejar de marcar puntos' : 'Empezar a marcar puntos en el mapa' }}
+          </button>
+          <button mat-stroked-button color="primary" (click)="quitarUltimoPunto()" [disabled]="puntosClic.length === 0">
+            Quitar último punto
+          </button>
+          <button mat-stroked-button color="primary" (click)="limpiarTrazo()" [disabled]="puntosClic.length === 0 || editandoTrazoExistente">
+            Limpiar
+          </button>
+        </div>
+
+        <p class="hint" *ngIf="capturandoTrazo">
+          {{ editandoTrazoExistente
+              ? 'Cada clic agrega un punto al final del trazo.'
+              : (modoTrazo === 'DIRECTIONS'
+                  ? 'Marca inicio, paradas intermedias y fin -- la ruta se dibuja sola siguiendo la calle.'
+                  : 'Marca los puntos en el orden en que quieres que se conecten.') }}
+          Puntos marcados: {{ puntosClic.length }}
+        </p>
+
+        <!-- Lista de puntos del trazo -- para quitar cualquiera, no solo el
+             último (también se puede hacer clic directo en su marcador). -->
+        <div class="lista-chips" *ngIf="puntosClic.length > 0">
+          <span class="chip" *ngFor="let punto of puntosClic; let i = index">
+            Punto {{ i + 1 }}
+            <button mat-icon-button matTooltip="Quitar este punto" (click)="eliminarPunto(i)">
+              <mat-icon>close</mat-icon>
+            </button>
+          </span>
+        </div>
+
+        <ng-container *ngIf="!editandoTrazoExistente">
+          <div class="fila">
+            <mat-form-field appearance="fill">
+              <mat-label>Nombre del tramo</mat-label>
+              <input matInput [(ngModel)]="nombreTramo" placeholder="Ej. Jazmín">
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Descripción (opcional)</mat-label>
+              <input matInput [(ngModel)]="descripcionTramo" placeholder="Ej. de la calle X a la Y">
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Lado de la calle (opcional)</mat-label>
+              <mat-select [(ngModel)]="ladoTramo">
+                <mat-option [value]="null">Sin especificar</mat-option>
+                <mat-option *ngFor="let l of ladosCaja" [value]="l">{{ l }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+          <p class="hint">
+            Si una calle tiene 2 redes independientes (ej. la principal) y cada lado tiene su propio horario,
+            crea un tramo por lado (mismo nombre de calle, distinto "lado") en vez de mezclarlos en uno solo.
+          </p>
+
+          <p class="hint">
+            Horarios de esta ruta de suministro (opcional, se puede asignar después). Un mismo tramo puede
+            tener más de uno -- agrega los que necesites antes de guardar.
+          </p>
+          <div class="fila">
+            <mat-form-field appearance="fill">
+              <mat-label>Pozo</mat-label>
+              <mat-select [(ngModel)]="pozoIdNuevoHorario">
+                <mat-option *ngFor="let pozo of pozos" [value]="pozo.pozoId">{{ pozo.nombre }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Día de la semana</mat-label>
+              <mat-select [(ngModel)]="diaSemanaNuevoHorario">
+                <mat-option *ngFor="let dia of diasSemana" [value]="dia">{{ dia }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Hora inicio</mat-label>
+              <input matInput type="time" [(ngModel)]="horaInicioNuevoHorario">
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Hora fin</mat-label>
+              <input matInput type="time" [(ngModel)]="horaFinNuevoHorario">
+            </mat-form-field>
+            <button mat-stroked-button color="primary" (click)="agregarHorarioNuevoTramo()">Agregar horario</button>
+          </div>
+
+          <div class="lista-chips" *ngIf="horariosNuevoTramo.length > 0">
+            <span class="chip" *ngFor="let h of horariosNuevoTramo; let i = index">
+              {{ h.pozoNombre }} -- {{ h.diaSemana }} {{ h.horaInicio }} a {{ h.horaFin }}
+              <button mat-icon-button matTooltip="Quitar" (click)="quitarHorarioNuevoTramo(i)">
+                <mat-icon>close</mat-icon>
+              </button>
+            </span>
+          </div>
+
+          <div class="fila">
+            <button mat-raised-button color="primary" (click)="guardarTramo()" [disabled]="guardandoTramo">
+              Guardar tramo
+            </button>
+          </div>
+        </ng-container>
+
+        <p class="hint" *ngIf="tramoPreview.length > 1">
+          Viendo en el mapa: <strong>{{ tramoPreviewNombre }}</strong>
+          <button mat-stroked-button color="primary" (click)="quitarPreview()">Quitar</button>
+        </p>
+      </mat-expansion-panel>
+
+      <!-- ============ Lista de tramos (solo lectura) ============ -->
+      <mat-expansion-panel class="panel-oscuro">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Tramos guardados</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div class="fila">
+          <mat-form-field appearance="fill">
+            <mat-label>Filtrar por pozo</mat-label>
+            <mat-select [(ngModel)]="filtroPozoIdTramos" (selectionChange)="recalcularTramosFiltrados()">
+              <mat-option [value]="null">Todos</mat-option>
+              <mat-option *ngFor="let p of pozos" [value]="p.pozoId">{{ p.nombre }}</mat-option>
+              <mat-option value="SIN_ASIGNAR">Sin asignar</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="fill">
+            <mat-label>Filtrar por día</mat-label>
+            <mat-select [(ngModel)]="filtroDiaTramos" (selectionChange)="recalcularTramosFiltrados()">
+              <mat-option [value]="null">Todos</mat-option>
+              <mat-option *ngFor="let d of diasSemana" [value]="d">{{ d }}</mat-option>
+              <mat-option value="SIN_ASIGNAR">Sin asignar</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <button mat-stroked-button color="primary" *ngIf="filtroDiaTramos || filtroPozoIdTramos != null" (click)="quitarFiltrosTramos()">
+            Quitar filtros
+          </button>
+          <span class="hint">{{ tramosFiltrados.length }} de {{ tramos.length }} tramo(s)</span>
+        </div>
+
+        <table mat-table [dataSource]="tramosFiltrados" class="mat-cell">
+          <ng-container matColumnDef="nombre">
+            <th mat-header-cell *matHeaderCellDef>Tramo</th>
+            <td mat-cell *matCellDef="let tramo">
+              {{ tramo.nombre }} <strong *ngIf="tramo.lado">-- {{ tramo.lado }}</strong>
+              <div class="hint">{{ tramo.metodoTrazo === 'MANUAL' ? 'trazo manual' : 'trazo por Directions' }}</div>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="horarios">
+            <th mat-header-cell *matHeaderCellDef>Horarios</th>
+            <td mat-cell *matCellDef="let tramo">
+              <div *ngFor="let h of tramo.horarios">{{ h.pozoNombre }} -- {{ h.diaSemana }} {{ h.horaInicio }} a {{ h.horaFin }}</div>
+              <span *ngIf="!tramo.horarios?.length" class="hint">Sin horario asignado</span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="valvulas">
+            <th mat-header-cell *matHeaderCellDef>Válvulas</th>
+            <td mat-cell *matCellDef="let tramo">
+              <!-- Cascada: icono para ver las cajas de este tramo, y dentro
+                   de cada caja, otro icono para ver sus válvulas -- las
+                   cajas van ordenadas desde el pozo (inicio del trazo)
+                   hacia el final del tramo. -->
+              <ng-container *ngIf="valvulasPorCajaPorTramo[tramo.tramoId]?.length; else sinValvulas">
+                <button mat-icon-button matTooltip="Ver cajas de válvulas" (click)="toggleCajasTramo(tramo.tramoId)">
+                  <mat-icon>{{ cajasVisibles(tramo.tramoId) ? 'expand_less' : 'view_list' }}</mat-icon>
+                </button>
+                <span class="hint">{{ (gruposVisiblesPorTramo[tramo.tramoId] || valvulasPorCajaPorTramo[tramo.tramoId]).length }} caja(s)</span>
+
+                <!-- Si esta calle tiene cajas de los 2 lados, se puede
+                     filtrar para no ver todas mezcladas. -->
+                <div class="fila" *ngIf="(ladosDisponiblesPorTramo[tramo.tramoId]?.length ?? 0) > 1">
+                  <button mat-stroked-button [color]="!ladoFiltroActivo(tramo.tramoId) ? 'primary' : ''"
+                          (click)="setLadoFiltro(tramo.tramoId, null)">Todos los lados</button>
+                  <button mat-stroked-button *ngFor="let l of ladosDisponiblesPorTramo[tramo.tramoId]"
+                          [color]="ladoFiltroActivo(tramo.tramoId) === l ? 'primary' : ''"
+                          (click)="setLadoFiltro(tramo.tramoId, l)">{{ l }}</button>
+                </div>
+
+                <table class="subtabla" *ngIf="cajasVisibles(tramo.tramoId)">
+                  <tr *ngFor="let grupo of gruposVisiblesPorTramo[tramo.tramoId]">
+                    <td>
+                      <button mat-icon-button matTooltip="Ver válvulas de esta caja"
+                              (click)="toggleValvulasCaja(tramo.tramoId, grupo.cajaId)">
+                        <mat-icon>{{ valvulasVisibles(tramo.tramoId, grupo.cajaId) ? 'expand_less' : 'opacity' }}</mat-icon>
+                      </button>
+                      {{ grupo.cajaNombre }}
+                      <span class="hint" *ngIf="grupo.lado">-- {{ grupo.lado }}</span>
+                      <span class="hint">({{ grupo.valvulas.length }} válvula(s))</span>
+
+                      <table class="subtabla subtabla-nivel2" *ngIf="valvulasVisibles(tramo.tramoId, grupo.cajaId)">
+                        <tr *ngFor="let v of grupo.valvulas">
+                          <td>{{ v.valvulaIdentificador }}</td>
+                          <td>
+                            <strong [style.color]="v.estadoRequerido === 'ABIERTA' ? '#2e7d32' : '#c62828'">{{ v.estadoRequerido }}</strong>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </ng-container>
+              <ng-template #sinValvulas>
+                <span class="hint">Sin válvulas asignadas</span>
+              </ng-template>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="tuberia">
+            <th mat-header-cell *matHeaderCellDef>Tubería</th>
+            <td mat-cell *matCellDef="let tramo">
+              <span *ngIf="tramo.segmentos?.length">
+                {{ tramo.segmentos.length }} segmento(s):
+                <span *ngFor="let s of tramo.segmentos; let last = last">
+                  {{ s.material }}<span *ngIf="s.diametro"> {{ s.diametro }}</span><span *ngIf="!last"> → </span>
+                </span>
+              </span>
+              <span *ngIf="!tramo.segmentos?.length" class="hint">Sin capturar</span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Acciones</th>
+            <td mat-cell *matCellDef="let tramo">
+              <button mat-icon-button matTooltip="Ver en el mapa" (click)="verTramoEnMapa(tramo)">
+                <mat-icon>visibility</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Agregar puntos al trazo" (click)="iniciarEdicionTrazo(tramo.tramoId)">
+                <mat-icon>edit_road</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Duplicar tramo (mismo trazo, horarios y válvulas)" (click)="duplicarTramo(tramo)">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Eliminar" (click)="eliminarTramo(tramo)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="['nombre','horarios','valvulas','tuberia','actions']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['nombre','horarios','valvulas','tuberia','actions']"></tr>
+        </table>
+        <p *ngIf="tramos.length === 0" class="hint">Todavía no hay tramos guardados.</p>
+      </mat-expansion-panel>
+
+      <!-- ============ Modificar un tramo (nombre, lado, horario y válvulas) (uno a la vez) ============ -->
+      <mat-expansion-panel class="panel-claro">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Modificar un tramo (nombre, lado, horario y válvulas)</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div class="fila">
+          <mat-form-field appearance="fill">
+            <mat-label>Elige el tramo</mat-label>
+            <mat-select [(ngModel)]="tramoSeleccionadoId" (selectionChange)="onSeleccionarTramo($event.value)">
+              <mat-option *ngFor="let tramo of tramos" [value]="tramo.tramoId">{{ tramo.nombre }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <ng-container *ngIf="tramoSeleccionado">
+          <div class="fila">
+            <mat-form-field appearance="fill">
+              <mat-label>Nombre del tramo</mat-label>
+              <input matInput [(ngModel)]="nombreEdit">
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Descripción (opcional)</mat-label>
+              <input matInput [(ngModel)]="descripcionEdit">
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Lado de la calle (opcional)</mat-label>
+              <mat-select [(ngModel)]="ladoEdit">
+                <mat-option [value]="null">Sin especificar</mat-option>
+                <mat-option *ngFor="let l of ladosCaja" [value]="l">{{ l }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="lista-chips" *ngIf="horariosEdit.length > 0">
+            <span class="chip" *ngFor="let h of horariosEdit; let i = index">
+              {{ h.pozoNombre }} -- {{ h.diaSemana }} {{ h.horaInicio }} a {{ h.horaFin }}
+              <button mat-icon-button matTooltip="Quitar" (click)="quitarHorarioEdit(i)">
+                <mat-icon>close</mat-icon>
+              </button>
+            </span>
+          </div>
+          <p *ngIf="horariosEdit.length === 0" class="hint">Este tramo no tiene horarios asignados todavía.</p>
+
+          <div class="fila">
+            <mat-form-field appearance="fill">
+              <mat-label>Pozo</mat-label>
+              <mat-select [(ngModel)]="pozoIdHorarioEdit">
+                <mat-option *ngFor="let pozo of pozos" [value]="pozo.pozoId">{{ pozo.nombre }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Día de la semana</mat-label>
+              <mat-select [(ngModel)]="diaSemanaHorarioEdit">
+                <mat-option *ngFor="let dia of diasSemana" [value]="dia">{{ dia }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Hora inicio</mat-label>
+              <input matInput type="time" [(ngModel)]="horaInicioHorarioEdit">
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Hora fin</mat-label>
+              <input matInput type="time" [(ngModel)]="horaFinHorarioEdit">
+            </mat-form-field>
+            <button mat-stroked-button color="primary" (click)="agregarHorarioEdit()">Agregar horario</button>
+          </div>
+
+          <p class="hint">
+            Válvulas que hay que abrir/cerrar para que este tramo reciba agua. Una misma válvula puede
+            estar abierta para este tramo y cerrada para otro -- es normal, así es como se dirige el agua.
+          </p>
+          <div class="lista-chips" *ngIf="valvulasEdit.length > 0">
+            <span class="chip" *ngFor="let v of valvulasEdit; let i = index">
+              {{ v.valvulaIdentificador }}:
+              <strong [style.color]="v.estadoRequerido === 'ABIERTA' ? '#2e7d32' : '#c62828'">{{ v.estadoRequerido }}</strong>
+              <button mat-icon-button matTooltip="Quitar" (click)="quitarInstruccionValvula(i)">
+                <mat-icon>close</mat-icon>
+              </button>
+            </span>
+          </div>
+          <p *ngIf="valvulasEdit.length === 0" class="hint">Este tramo no tiene válvulas asignadas todavía.</p>
+
+          <div class="fila">
+            <mat-form-field appearance="fill">
+              <mat-label>Válvula</mat-label>
+              <mat-select [(ngModel)]="valvulaIdInstruccionEdit">
+                <mat-option *ngFor="let v of valvulasDisponibles" [value]="v.valvulaId">{{ v.label }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Estado requerido</mat-label>
+              <mat-select [(ngModel)]="estadoInstruccionEdit">
+                <mat-option *ngFor="let e of estadosValvula" [value]="e">{{ e }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <button mat-stroked-button color="primary" (click)="agregarInstruccionValvula()">Agregar válvula</button>
+          </div>
+          <p class="hint" *ngIf="valvulasDisponibles.length === 0">
+            Todavía no hay válvulas dadas de alta -- captúralas en el panel "Cajas de válvulas y válvulas".
+          </p>
+
+          <p class="hint">
+            De qué está hecho este tramo, en orden desde el pozo/origen -- útil cuando cambia de tubería
+            fija a manguera (o de diámetro) a la mitad del camino. Opcional.
+          </p>
+          <ol *ngIf="segmentosEdit.length > 0" class="lista-segmentos">
+            <li *ngFor="let s of segmentosEdit; let i = index">
+              <strong>{{ s.material }}</strong>
+              <span *ngIf="s.diametro"> -- {{ s.diametro }}</span>
+              <span *ngIf="s.longitudMetros != null"> -- {{ s.longitudMetros }} m</span>
+              <span *ngIf="s.observaciones"> -- {{ s.observaciones }}</span>
+              <button mat-icon-button matTooltip="Subir" (click)="moverSegmentoEdit(i, -1)" [disabled]="i === 0">
+                <mat-icon>arrow_upward</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Bajar" (click)="moverSegmentoEdit(i, 1)" [disabled]="i === segmentosEdit.length - 1">
+                <mat-icon>arrow_downward</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Quitar" (click)="quitarSegmentoEdit(i)">
+                <mat-icon>close</mat-icon>
+              </button>
+            </li>
+          </ol>
+          <p *ngIf="segmentosEdit.length === 0" class="hint">Este tramo no tiene segmentos de tubería capturados todavía.</p>
+
+          <div class="fila">
+            <mat-form-field appearance="fill">
+              <mat-label>Material</mat-label>
+              <mat-select [(ngModel)]="materialSegmentoEdit">
+                <mat-option *ngFor="let m of materialesSegmento" [value]="m">{{ m }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Diámetro (opcional)</mat-label>
+              <input matInput [(ngModel)]="diametroSegmentoEdit" placeholder="Ej. 2&quot;">
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Longitud en metros (opcional)</mat-label>
+              <input matInput type="number" [(ngModel)]="longitudSegmentoEdit">
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Observaciones (opcional)</mat-label>
+              <input matInput [(ngModel)]="observacionesSegmentoEdit">
+            </mat-form-field>
+            <button mat-stroked-button color="primary" (click)="agregarSegmentoEdit()">Agregar segmento</button>
+          </div>
+
+          <div class="fila">
+            <button mat-raised-button color="primary" (click)="guardarHorariosSeleccionado()" [disabled]="guardandoHorario">
+              Guardar cambios del tramo
+            </button>
+          </div>
+        </ng-container>
+        <p *ngIf="!tramoSeleccionado" class="hint">Elige un tramo de la lista para administrar su horario y válvulas.</p>
+      </mat-expansion-panel>
+
+      <!-- ============ Pozos ============ -->
+      <mat-expansion-panel class="panel-oscuro">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Pozos</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <p class="hint">
+          Son fijos (solo estos 2). Si la ubicación no es exacta, arrastra su pin morado en el mapa (se guarda
+          solo al soltarlo), o para más precisión ve al pozo con la tablet y usa "Usar mi ubicación actual".
+        </p>
+
+        <div class="fila" *ngFor="let pozo of pozos" style="border-bottom: 1px solid #ddd; padding-bottom: 8px;">
+          <strong style="min-width: 160px;">{{ pozo.nombre }}</strong>
+          <mat-form-field appearance="fill">
+            <mat-label>Latitud</mat-label>
+            <input matInput type="number" step="0.0000001" [(ngModel)]="pozo.lat">
+          </mat-form-field>
+          <mat-form-field appearance="fill">
+            <mat-label>Longitud</mat-label>
+            <input matInput type="number" step="0.0000001" [(ngModel)]="pozo.lng">
+          </mat-form-field>
+          <button mat-raised-button color="primary" (click)="usarUbicacionActualPozo(pozo)"
+                  [disabled]="guardandoUbicacionPozoId === pozo.pozoId">
+            Reubicar con mi GPS
+          </button>
+          <button mat-stroked-button color="primary" (click)="guardarUbicacionPozo(pozo)"
+                  [disabled]="guardandoUbicacionPozoId === pozo.pozoId">
+            Guardar coordenadas escritas a mano
+          </button>
+        </div>
+        <p *ngIf="pozos.length === 0" class="hint">Cargando pozos...</p>
+      </mat-expansion-panel>
+
+      <!-- ============ Cajas de válvulas ============ -->
+      <mat-expansion-panel class="panel-claro">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Cajas de válvulas y válvulas</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div class="fila">
+          <mat-form-field appearance="fill">
+            <mat-label>Código (opcional)</mat-label>
+            <input matInput [(ngModel)]="nuevaCaja.codigo">
+          </mat-form-field>
+          <mat-form-field appearance="fill">
+            <mat-label>Nombre / ubicación de la caja</mat-label>
+            <input matInput [(ngModel)]="nuevaCaja.nombre" placeholder="Ej. Esquina 15 de Agosto y Principal">
+          </mat-form-field>
+          <mat-form-field appearance="fill">
+            <mat-label>Lado de la calle (opcional)</mat-label>
+            <mat-select [(ngModel)]="nuevaCaja.lado">
+              <mat-option [value]="null">Sin especificar</mat-option>
+              <mat-option *ngFor="let l of ladosCaja" [value]="l">{{ l }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+        <p class="hint">
+          La caja en sí no se asigna a un tramo -- lo que se asigna es cada válvula individual (abierta o
+          cerrada) desde el panel "Modificar un tramo (nombre, lado, horario y válvulas)", ya que una misma caja puede
+          tener válvulas que le sirven a tramos distintos. El "lado" es solo para calles con 2 redes (ej. la
+          principal), para poder filtrar y no ver todas las cajas mezcladas.
+        </p>
+
+        <div class="fila">
+          <mat-form-field appearance="fill">
+            <mat-label>Identificador de válvula</mat-label>
+            <input matInput [(ngModel)]="nuevaValvulaIdentificador" placeholder="Ej. V-1"
+                   (keyup.enter)="agregarValvulaANuevaCaja()">
+          </mat-form-field>
+          <button mat-stroked-button color="primary" (click)="agregarValvulaANuevaCaja()">Agregar válvula a esta caja</button>
+        </div>
+
+        <div class="lista-chips" *ngIf="(nuevaCaja.listValvula?.length || 0) > 0">
+          <span class="chip" *ngFor="let v of nuevaCaja.listValvula; let i = index">
+            {{ v.identificador }}
+            <button mat-icon-button matTooltip="Quitar" (click)="quitarValvulaDeNuevaCaja(i)">
+              <mat-icon>close</mat-icon>
+            </button>
+          </span>
+        </div>
+
+        <p class="hint">
+          Ubicación exacta de la caja (levantamiento tipo catastro): ve al lugar con la tablet/celular y usa
+          "Usar mi ubicación actual", o captura las coordenadas a mano.
+        </p>
+        <div class="fila">
+          <mat-form-field appearance="fill">
+            <mat-label>Latitud</mat-label>
+            <input matInput type="number" step="0.0000001" [(ngModel)]="nuevaCaja.lat">
+          </mat-form-field>
+          <mat-form-field appearance="fill">
+            <mat-label>Longitud</mat-label>
+            <input matInput type="number" step="0.0000001" [(ngModel)]="nuevaCaja.lng">
+          </mat-form-field>
+          <button mat-stroked-button color="primary" (click)="usarUbicacionActualNuevaCaja()">Usar mi ubicación actual (GPS)</button>
+          <button mat-stroked-button color="primary" (click)="toggleColocarNuevaCaja()">
+            {{ colocandoNuevaCaja ? 'Cancelar -- toca el mapa' : 'Colocar en el mapa' }}
+          </button>
+        </div>
+
+        <div class="fila">
+          <button mat-raised-button color="primary" (click)="guardarCaja()">Guardar caja de válvulas</button>
+        </div>
+
+        <h4>Cajas registradas</h4>
+        <mat-accordion multi="true">
+          <mat-expansion-panel *ngFor="let caja of cajas">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                {{ caja.nombre }}
+              </mat-panel-title>
+              <mat-panel-description>
+                {{ caja.listValvula?.length || 0 }} válvula(s)
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+            <p *ngIf="caja.codigo">Código: {{ caja.codigo }}</p>
+            <p *ngIf="caja.observaciones">{{ caja.observaciones }}</p>
+            <ul class="lista-valvulas-fotos">
+              <li *ngFor="let v of caja.listValvula; let i = index">
+                <div class="fila">
+                  {{ v.identificador }} -- {{ v.estado || 'sin estado' }}
+                  <button mat-icon-button matTooltip="Quitar válvula" (click)="quitarValvulaDeCajaExistente(caja, i)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+
+                <div class="fila-fotos">
+                  <div class="miniatura-foto" *ngFor="let foto of v.fotos">
+                    <img *ngIf="fotoUrls[foto.fotoId]" [src]="fotoUrls[foto.fotoId]" [alt]="foto.nombreOriginal">
+                    <button mat-icon-button matTooltip="Eliminar foto" (click)="eliminarFotoValvula(foto.fotoId)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+
+                  <button mat-stroked-button color="primary" (click)="inputFoto.click()"
+                          [disabled]="subiendoFotoValvulaId === v.valvulaId">
+                    {{ subiendoFotoValvulaId === v.valvulaId ? 'Subiendo...' : 'Agregar foto' }}
+                  </button>
+                  <input #inputFoto type="file" accept="image/*" style="display:none"
+                         (change)="subirFotoValvula(v, $event)">
+                </div>
+              </li>
+            </ul>
+
+            <div class="fila">
+              <mat-form-field appearance="fill">
+                <mat-label>Identificador de nueva válvula</mat-label>
+                <input matInput [(ngModel)]="nuevaValvulaPorCaja[caja.cajaId!]" placeholder="Ej. V-2"
+                       (keyup.enter)="agregarValvulaACajaExistente(caja)">
+              </mat-form-field>
+              <button mat-stroked-button color="primary" (click)="agregarValvulaACajaExistente(caja)">Agregar válvula a esta caja</button>
+            </div>
+
+            <div class="fila">
+              <mat-form-field appearance="fill">
+                <mat-label>Lado de la calle (opcional)</mat-label>
+                <mat-select [(ngModel)]="caja.lado">
+                  <mat-option [value]="null">Sin especificar</mat-option>
+                  <mat-option *ngFor="let l of ladosCaja" [value]="l">{{ l }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="fila">
+              <mat-form-field appearance="fill">
+                <mat-label>Latitud</mat-label>
+                <input matInput type="number" step="0.0000001" [(ngModel)]="caja.lat">
+              </mat-form-field>
+              <mat-form-field appearance="fill">
+                <mat-label>Longitud</mat-label>
+                <input matInput type="number" step="0.0000001" [(ngModel)]="caja.lng">
+              </mat-form-field>
+              <button mat-raised-button color="primary" (click)="usarUbicacionActualCaja(caja)"
+                      [disabled]="guardandoUbicacionCajaId === caja.cajaId">
+                Reubicar con mi GPS
+              </button>
+              <button mat-stroked-button color="primary" (click)="guardarUbicacionCaja(caja)"
+                      [disabled]="guardandoUbicacionCajaId === caja.cajaId">
+                Guardar coordenadas/lado escritos a mano
+              </button>
+            </div>
+
+            <button mat-stroked-button color="accent" (click)="eliminarCaja(caja)">Eliminar caja</button>
+          </mat-expansion-panel>
+        </mat-accordion>
+        <p *ngIf="cajas.length === 0" class="hint">Todavía no hay cajas de válvulas capturadas.</p>
+      </mat-expansion-panel>
+
+      <!-- ============ Resumen ============ -->
+      <mat-expansion-panel class="panel-oscuro">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Resumen</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <h4>Días con agua por pozo</h4>
+        <ul>
+          <li *ngFor="let d of diasPorPozo">{{ d.pozoNombre }}: {{ d.totalDias }} día(s)</li>
+        </ul>
+        <p *ngIf="diasPorPozo.length === 0" class="hint">
+          Todavía no hay registros de suministro capturados por pozo.
+        </p>
+
+        <h4>Días con agua por tramo</h4>
+        <ul>
+          <li *ngFor="let d of diasPorTramo">{{ d.tramoNombre }}: {{ d.totalDias }} día(s)</li>
+        </ul>
+        <p *ngIf="diasPorTramo.length === 0" class="hint">
+          Todavía no hay registros de suministro capturados por tramo.
+        </p>
+
+        <h4>Cajas y válvulas</h4>
+        <p *ngIf="resumenValvulas">
+          {{ resumenValvulas.totalCajas }} caja(s) de válvulas, {{ resumenValvulas.totalValvulas }} válvula(s) en total.
+        </p>
+      </mat-expansion-panel>
+
+    </mat-accordion>
+  </mat-card-content>
+</mat-card>

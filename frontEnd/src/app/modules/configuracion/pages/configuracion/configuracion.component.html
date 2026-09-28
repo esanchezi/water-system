@@ -1,0 +1,34 @@
+<mat-card class="tarjeta-config">
+  <h2 class="alinear">Configuración</h2>
+
+  <mat-card-content>
+    <p class="hint" *ngIf="cargando">Cargando configuraciones...</p>
+
+    <div class="fila">
+      <mat-slide-toggle
+        [(ngModel)]="bloqueado"
+        (change)="onToggleBloqueado($event.checked)">
+        Bloquear configuraciones
+      </mat-slide-toggle>
+    </div>
+    <p class="hint" *ngIf="bloqueado">
+      Las configuraciones están bloqueadas -- desactiva el interruptor de arriba para poder editarlas.
+    </p>
+
+    <mat-divider></mat-divider>
+
+    <h4>Nombre del comité</h4>
+    <p class="hint">Aparece en el título de la aplicación.</p>
+    <div class="fila">
+      <mat-form-field appearance="fill">
+        <mat-label>Nombre del comité</mat-label>
+        <input matInput [(ngModel)]="nombreComite" [disabled]="bloqueado" placeholder="Ej. Los Lopez">
+      </mat-form-field>
+      <button mat-raised-button color="primary"
+              (click)="guardarNombreComite()"
+              [disabled]="bloqueado || guardandoNombreComite">
+        Guardar
+      </button>
+    </div>
+  </mat-card-content>
+</mat-card>

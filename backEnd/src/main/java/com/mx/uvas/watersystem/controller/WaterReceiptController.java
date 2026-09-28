@@ -30,6 +30,11 @@ public class WaterReceiptController {
         return waterReceiptService.findByNoUsuario(noUser);
     }
 
+    @GetMapping("/porFolio/{folio}")
+    public ResponseEntity<WaterReceiptRestResponse> findByNoFolioExacto(@PathVariable Integer folio) {
+        return waterReceiptService.findByNoFolioExacto(folio);
+    }
+
     @PostMapping("/")
     public ResponseEntity<WaterReceiptDto> post (@RequestBody WaterReceiptDto request){
         return ResponseEntity.ok(waterReceiptService.create(request));

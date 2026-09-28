@@ -1,0 +1,28 @@
+.tarjeta-config {
+  margin: 16px;
+  padding: 16px;
+  max-width: 600px;
+}
+
+.alinear {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.hint {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.9em;
+}
+
+mat-divider {
+  margin: 16px 0;
+}

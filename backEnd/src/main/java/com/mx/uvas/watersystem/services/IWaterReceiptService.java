@@ -11,6 +11,12 @@ public interface IWaterReceiptService {
 
     ResponseEntity<WaterReceiptRestResponse> findByNoUsuario(Integer noFolio);
 
+    // Búsqueda exacta por folio (no ambigua, a diferencia de
+    // findByNoFolioOrNoUsuario que también matchea por número de usuario) --
+    // pensada para detectar en el frontend si un folio ya fue capturado
+    // antes de guardar un recibo nuevo.
+    ResponseEntity<WaterReceiptRestResponse> findByNoFolioExacto(Integer noFolio);
+
     WaterReceiptDto create(WaterReceiptDto request);
 
     ResponseEntity<WaterReceiptRestResponse> update(Integer id, WaterReceiptDto request);

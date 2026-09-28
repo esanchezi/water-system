@@ -4,8 +4,11 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, forkJoin } from 'rxjs';
 import { WaterAgreementModel } from 'src/app/modules/shared/models/WaterAgreement.model';
+import { AvisoAdeudoAtencionModel, AvisoAdeudoModel } from 'src/app/modules/shared/models/AvisoAdeudo.model';
+import { AvisoAdeudoService } from 'src/app/modules/shared/services/aviso-adeudo.service';
+import { AvisoAdeudoAtencionDialogComponent } from 'src/app/modules/shared/components/aviso-adeudo-atencion-dialog/aviso-adeudo-atencion-dialog.component';
 import { AgreementService } from 'src/app/modules/shared/services/agreement.service';
 import { NewConvenioComponent } from 'src/app/modules/convenio/components/new-convenio/new-convenio.component';
 import { AssemblyModel } from 'src/app/modules/shared/models/Assembly.model';
@@ -28,6 +31,12 @@ import { UserService } from 'src/app/modules/shared/services/user.service';
 import { HouseService } from 'src/app/modules/shared/services/house.service';
 import { GroupService } from 'src/app/modules/shared/services/group.service';
 import { WaterUserAnnualPaymentService } from 'src/app/modules/shared/services/water-user-annual-payment.service';
+import { ValorGeneralService } from 'src/app/modules/shared/services/valor-general.service';
+import { ValorGeneralModel, CLAVES_VALOR_GENERAL } from 'src/app/modules/shared/models/ValorGeneral.model';
+import { RenunciaTemporalService } from 'src/app/modules/shared/services/renuncia-temporal.service';
+import { RenunciaTemporalModel } from 'src/app/modules/shared/models/RenunciaTemporal.model';
+import { RenunciaTemporalDialogComponent } from '../renuncia-temporal-dialog/renuncia-temporal-dialog.component';
+import { RenunciaTemporalReconexionDialogComponent } from '../renuncia-temporal-reconexion-dialog/renuncia-temporal-reconexion-dialog.component';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -52,6 +61,9 @@ export class DetailsUserComponent implements OnInit {
   private readonly houseService     = inject(HouseService);
   private readonly groupService     = inject(GroupService);
   private readonly annualPaymentService = inject(WaterUserAnnualPaymentService);
+  private readonly avisoAdeudoService = inject(AvisoAdeudoService);
+  private readonly valorGeneralService = inject(ValorGeneralService);
+  private readonly renunciaTemporalService = inject(RenunciaTemporalService);
   private readonly dialog           = inject(MatDialog);
 
   public detailsForm: FormGroup = this.fb.group({});
@@ -66,6 +78,7 @@ export class DetailsUserComponent implements OnInit {
   displayColumnsCharge:   string[] = ['concepto','descripcion','monto','fechaStr','montoPagado','montoCondonado','saldo','estatusPago'];
   displayColumnsAgreement: string[] = ['noFolio','fechaStr','motivo','adeudo','fechaCompromisoPagoStr','montoCondonadoTotal','estatusConvenio'];
   displayColumnsAnnualPayment: string[] = ['anio','fechaValidacion','observaciones','estatus','acciones'];
+  displayColumnsRenuncia: string[] = ['folio','fechaRenuncia','motivo','adeudoALaFecha','estado','acciones'];
 
   // Totales de la tabla de Cargos / Multas (fila de pie de tabla)
   totalMonto      = 0;
@@ -79,6 +92,12 @@ export class DetailsUserComponent implements OnInit {
   dataSourceCharge   = new MatTableDataSource<WaterUserChargeModel>();
   dataSourceAgreement = new MatTableDataSource<WaterAgreementModel>();
   dataSourceAnnualPayment = new MatTableDataSource<WaterUserAnnualPaymentModel>();
+  dataSourceRenuncia = new MatTableDataSource<RenunciaTemporalModel>();
+
+  // Renuncia temporal ACTIVA (sin reconectar todavía), si la hay -- se
+  // usa para mostrar el aviso arriba del historial y decidir si se
+  // ofrece "Solicitar renuncia" o "Registrar reconexión".
+  renunciaActiva: RenunciaTemporalModel | null = null;
 
   usuario!: WaterUserModel;
   user!:    WaterUserDetailModel;
@@ -99,6 +118,10 @@ export class DetailsUserComponent implements OnInit {
   estatusToma:   CatalogOptionModel[] = [];
   estatusAviso:  CatalogOptionModel[] = [];
   conceptosCargo: CatalogOptionModel[] = [];
+  // Valores generales (multa por falta de pago, corte/reconexión, aviso,
+  // válvulas) -- para sugerir el monto vigente al elegir uno de esos
+  // conceptos en "Nuevo cargo" (ver onConceptoCargoChange()).
+  valoresGenerales: ValorGeneralModel[] = [];
   tiposAviso:      CatalogOptionModel[] = [];
   responsablesPendiente: CatalogOptionModel[] = [];
   calles:          CatalogOptionModel[] = [];
@@ -250,6 +273,10 @@ export class DetailsUserComponent implements OnInit {
     });
     this.catalogService.getOptionsByClave('CONCEPTO_CARGO_EXTRA').subscribe({
       next: (opts) => this.conceptosCargo = opts,
+      error: (e: any) => console.error(e)
+    });
+    this.valorGeneralService.getAll().subscribe({
+      next: (resp: any) => { if (resp.metadata?.[0]?.code === '00') this.valoresGenerales = resp.data || []; },
       error: (e: any) => console.error(e)
     });
     this.catalogService.getOptionsByClave('TIPO_AVISO').subscribe({
@@ -520,6 +547,28 @@ export class DetailsUserComponent implements OnInit {
     this.totalPagado    = dataCharge.reduce((acc, c) => acc + (Number(c.montoPagado) || 0), 0);
     this.totalCondonado = dataCharge.reduce((acc, c) => acc + (Number(c.montoCondonado) || 0), 0);
     this.totalSaldo     = dataCharge.reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
+  }
+
+  // Si el concepto elegido corresponde a uno de los valores generales
+  // (multa por falta de pago, corte/reconexión, aviso, multa de válvulas --
+  // ver ValorGeneralClave en el backend), sugiere el monto vigente del año
+  // en curso llenando el campo "monto" -- solo si todavía está vacío, para
+  // no pisar un monto que ya se haya escrito a mano (ej. la multa de
+  // válvulas es un rango, el monto configurado es solo referencia).
+  onConceptoCargoChange(conceptoId: number): void {
+    const concepto = this.conceptosCargo.find(c => c.catalogoOpcionesId === conceptoId);
+    if (!concepto || this.chargeForm.value.monto) return;
+
+    const claveMatch = CLAVES_VALOR_GENERAL.find(cv => cv.nombre === concepto.nombre);
+    if (!claveMatch) return;
+
+    const anioActual = new Date().getFullYear();
+    const vigente = this.valoresGenerales
+      .filter(v => v.clave === claveMatch.clave && v.vigencia <= anioActual)
+      .sort((a, b) => b.vigencia - a.vigencia)[0];
+    if (vigente) {
+      this.chargeForm.patchValue({ monto: vigente.monto });
+    }
   }
 
   onSaveCharge(): void {
@@ -798,7 +847,16 @@ export class DetailsUserComponent implements OnInit {
         if (resp.metadata[0].code !== '00') return;
         const u = resp.data[0];
         this.user = u;
+        // "usuario" (el que recibe <app-user-censo>) se había quedado
+        // fijo con lo que llegó por query param al entrar a la página --
+        // si ese objeto no traía aguaUsuarioId bien puesto (depende de
+        // desde qué lista se navegó aquí), el censo mandaba peticiones a
+        // ".../waterUserCensus/undefined" (400 Bad Request). Aquí se
+        // sincroniza con el dato recién confirmado por el backend, que es
+        // el mismo que ya usan los pagos anuales más abajo.
+        this.usuario = u;
         this.person = { personaId: u.personaId, nombre: u.nombre, nombre2: u.nombre2, app: u.app, apm: u.apm };
+        this.revisarAvisosAdeudoPendientes(u.aguaUsuarioId, u.noUsuario);
         this.detailsForm.patchValue({
           fkIdCuota:          u.cuotaId,
           fkFrecuenciaPagoId: u.frecuenciaPagoId,
@@ -835,5 +893,222 @@ export class DetailsUserComponent implements OnInit {
       },
       error: (e: any) => console.error('Error al cargar usuario', e)
     });
+  }
+
+  // Si este usuario ya tiene alguna carta de adeudo entregada y todavía
+  // sin marcar como atendida, se alerta cada vez que se consulta su ficha
+  // -- a razón de realizar el cobro correspondiente. La alerta se repite
+  // en cada consulta mientras no se marque atendida (no es un aviso
+  // "visto una vez", es un pendiente activo).
+  private revisarAvisosAdeudoPendientes(aguaUsuarioId: number, noUsuario: number): void {
+    if (!aguaUsuarioId) {
+      this.revisarNotasPendientes(noUsuario);
+      return;
+    }
+    this.avisoAdeudoService.getPendientesDeAtencion(aguaUsuarioId).subscribe({
+      next: (resp: any) => {
+        if (resp.metadata?.code !== '00') {
+          this.revisarNotasPendientes(noUsuario);
+          return;
+        }
+        const pendientes: AvisoAdeudoModel[] = resp.data || [];
+        if (pendientes.length === 0) {
+          this.revisarNotasPendientes(noUsuario);
+          return;
+        }
+
+        const detalle = pendientes.map(a => {
+          const tipo = a.tipoAviso === 'SEGUNDO' ? 'Segundo aviso' : 'Primer aviso';
+          // Texto plano (sin pasar por Date/zona horaria) -- fechaEntrega es
+          // una fecha "naive", ver aviso-adeudo-entrega-dialog.component.ts.
+          const fecha = a.fechaEntrega ? this.formatearFechaNaive(a.fechaEntrega) : '--';
+          return `<li>Folio ${a.folioNotificacion} (${tipo}) -- entregada el ${fecha}</li>`;
+        }).join('');
+
+        Swal.fire({
+          icon: 'warning',
+          title: 'Carta de adeudo entregada',
+          html: `<p style="text-align:left">Este usuario ya recibió su carta de adeudo y sigue pendiente de realizar el cobro correspondiente:</p>
+                 <ul style="text-align:left">${detalle}</ul>`,
+          showCancelButton: true,
+          confirmButtonText: 'Ya se hizo el cobro (marcar atendida)',
+          cancelButtonText: 'Cerrar'
+        }).then(result => {
+          if (!result.isConfirmed) {
+            this.revisarNotasPendientes(noUsuario);
+            return;
+          }
+          // Se pide cómo se resolvió (pagado/condonado/convenio/otro) antes
+          // de marcar -- mismo dato para todos los pendientes de este
+          // usuario, ya que normalmente un solo pago/trámite los resuelve
+          // en conjunto. Ver AvisoAdeudoAtencionDialogComponent.
+          const dialogRef = this.dialog.open(AvisoAdeudoAtencionDialogComponent, {
+            width: '420px',
+            data: { avisos: pendientes }
+          });
+          dialogRef.afterClosed().subscribe((datos: AvisoAdeudoAtencionModel | null) => {
+            if (!datos) {
+              this.revisarNotasPendientes(noUsuario);
+              return;
+            }
+            forkJoin(pendientes.map(a => this.avisoAdeudoService.marcarAtendida(a.avisoAdeudoId, datos))).subscribe({
+              next: () => {
+                Swal.fire('Listo', 'Se marcó como atendida.', 'success').then(() => this.revisarNotasPendientes(noUsuario));
+              },
+              error: (e: any) => {
+                console.error(e);
+                const mensaje = e?.error?.metadata?.message || 'No se pudo marcar como atendida, intenta de nuevo.';
+                Swal.fire('Error', mensaje, 'error').then(() => this.revisarNotasPendientes(noUsuario));
+              }
+            });
+          });
+        });
+      },
+      error: (e: any) => {
+        console.error('Error al consultar avisos de adeudo pendientes', e);
+        this.revisarNotasPendientes(noUsuario);
+      }
+    });
+  }
+
+  // Alerta persistente de avisos/notas (tabla agua_usuario_aviso, distinta
+  // de las cartas de adeudo) que siguen en estatus "Pendiente" -- se
+  // muestra cada vez que se consulta la ficha del usuario, hasta que se
+  // marquen como "Atendido" (mismo patrón que revisarAvisosAdeudoPendientes,
+  // encadenado después de esa para que no se empalmen los Swal).
+  private revisarNotasPendientes(noUsuario: number): void {
+    if (!noUsuario) return;
+    this.userNoticeService.getUsersNotice(noUsuario).subscribe({
+      next: (resp: any) => {
+        if (resp.metadata?.code !== '00' && resp.metadata?.[0]?.code !== '00') return;
+        const notas: WaterUserNotifyModel[] = resp.data || [];
+        const pendientes = notas.filter(n => n.estatusAviso?.nombre === 'Pendiente');
+        if (pendientes.length === 0) return;
+
+        const detalle = pendientes.map(n => {
+          const tipo = n.tipo?.nombre ? `${n.tipo.nombre}: ` : '';
+          return `<li>${tipo}${n.aviso}${n.comentario ? ' -- ' + n.comentario : ''}</li>`;
+        }).join('');
+
+        Swal.fire({
+          icon: 'warning',
+          title: 'Avisos/notas pendientes',
+          html: `<p style="text-align:left">Este usuario tiene avisos/notas sin resolver:</p>
+                 <ul style="text-align:left">${detalle}</ul>`,
+          showCancelButton: true,
+          confirmButtonText: 'Marcar como resueltas',
+          cancelButtonText: 'Cerrar'
+        }).then(result => {
+          if (!result.isConfirmed) return;
+          const atendido = this.estatusAviso.find(e => e.nombre === 'Atendido');
+          if (!atendido) {
+            Swal.fire('Error', 'No se encontró el estatus "Atendido" en el catálogo.', 'error');
+            return;
+          }
+          forkJoin(pendientes.map(n => this.userNoticeService.updateEstatus(n.aguaUsuarioAvisoId!, atendido.catalogoOpcionesId))).subscribe({
+            next: () => {
+              Swal.fire('Listo', 'Se marcaron como resueltas.', 'success');
+              this.getNotify();
+            },
+            error: (e: any) => {
+              console.error(e);
+              Swal.fire('Error', 'No se pudo actualizar, intenta de nuevo.', 'error');
+            }
+          });
+        });
+      },
+      error: (e: any) => console.error('Error al consultar avisos/notas pendientes', e)
+    });
+  }
+
+  // --- Renuncia temporal al servicio (Art. 6 Bis) ---
+
+  getHistorialRenuncia(): void {
+    if (!this.usuario?.aguaUsuarioId) return;
+    this.renunciaTemporalService.getHistorialPorUsuario(this.usuario.aguaUsuarioId).subscribe({
+      next: (resp: any) => {
+        if (resp.metadata?.code !== '00') return;
+        const historial: RenunciaTemporalModel[] = resp.data || [];
+        this.dataSourceRenuncia = new MatTableDataSource<RenunciaTemporalModel>(historial);
+        this.renunciaActiva = historial.find(r => !r.reconectado) || null;
+      },
+      error: (e: any) => console.error('Error al consultar historial de renuncia temporal', e)
+    });
+  }
+
+  onSolicitarRenuncia(): void {
+    const dialogRef = this.dialog.open(RenunciaTemporalDialogComponent, {
+      width: '700px',
+      data: {
+        aguaUsuarioId: this.usuario.aguaUsuarioId,
+        noUsuario:     this.usuario.noUsuario,
+        nombreUsuario: `${this.person?.nombre || ''} ${this.person?.app || ''}`.trim()
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (!result) return;
+      if (!result.ok) {
+        Swal.fire({ icon: 'error', title: 'Error', text: result.mensaje || 'Ocurrió un problema al generar la solicitud.', confirmButtonText: 'Cerrar' });
+        return;
+      }
+      this.descargarBlob(result.blob, 'renuncia_temporal.pdf');
+      Swal.fire({ icon: 'success', title: 'Renuncia registrada', text: 'Se generó y descargó el acta de renuncia temporal.', confirmButtonText: 'Aceptar' });
+      this.getHistorialRenuncia();
+    });
+  }
+
+  onReconectar(item: RenunciaTemporalModel): void {
+    const dialogRef = this.dialog.open(RenunciaTemporalReconexionDialogComponent, {
+      width: '700px',
+      data: { renuncia: item }
+    });
+
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result === 1) {
+        Swal.fire({ icon: 'success', title: 'Reconexión registrada', confirmButtonText: 'Aceptar' });
+        this.getHistorialRenuncia();
+      } else if (result === 2) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un problema al registrar la reconexión.', confirmButtonText: 'Cerrar' });
+      }
+    });
+  }
+
+  // Solo para corregir un registro dado de alta por error -- no exime el
+  // adeudo previo ni reconecta al usuario por sí sola.
+  onCancelarRenuncia(item: RenunciaTemporalModel): void {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Cancelar renuncia',
+      text: `¿Confirmas cancelar la renuncia temporal folio ${item.folio}? Esto es solo para corregir un registro dado de alta por error.`,
+      showCancelButton: true,
+      confirmButtonText: 'Cancelar renuncia',
+      cancelButtonText: 'Cerrar'
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      this.renunciaTemporalService.cancelar(item.renunciaTemporalId).subscribe({
+        next: () => this.getHistorialRenuncia(),
+        error: (e: any) => {
+          console.error(e);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cancelar el registro.', confirmButtonText: 'Cerrar' });
+        }
+      });
+    });
+  }
+
+  // "dd/MM/yyyy" armado con puro texto -- ver aviso-adeudo-list.component.ts
+  // (mismo motivo: fechaEntrega es una fecha "naive", sin zona horaria).
+  private formatearFechaNaive(fechaISO: string): string {
+    const [anio, mes, dia] = fechaISO.substring(0, 10).split('-');
+    return `${dia}/${mes}/${anio}`;
+  }
+
+  private descargarBlob(blob: Blob, nombreArchivo: string): void {
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = nombreArchivo;
+    enlace.click();
+    URL.revokeObjectURL(url);
   }
 }

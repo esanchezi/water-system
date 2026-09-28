@@ -25,4 +25,14 @@ public class WaterUserNoticeController {
         return waterUserNoticeService.create(request);
     }
 
+    // Para marcar un aviso/nota como Atendido/Cerrado (o cualquier otro
+    // estatus del catálogo ESTATUS_AVISO) -- ver alerta de avisos
+    // pendientes al consultar la ficha del usuario.
+    @PutMapping("/{aguaUsuarioAvisoId}/estatus/{avisoEstatusId}")
+    public ResponseEntity<WaterUserNoticeRestResponse> updateEstatus(
+            @PathVariable Integer aguaUsuarioAvisoId,
+            @PathVariable Integer avisoEstatusId) {
+        return waterUserNoticeService.updateEstatus(aguaUsuarioAvisoId, avisoEstatusId);
+    }
+
 }

@@ -1,0 +1,62 @@
+<mat-card class="tarjeta-ancha">
+  <h2 class="alinear">Usuarios del sistema</h2>
+  <p class="hint">
+    Cuentas para iniciar sesión en esta aplicación -- no confundir con "Usuarios" (los clientes del
+    servicio de agua). El rol "USUARIO1" no ve las secciones de Finanzas del menú.
+  </p>
+
+  <mat-card-content>
+    <h4>Nueva cuenta</h4>
+    <div class="fila">
+      <mat-form-field appearance="fill">
+        <mat-label>Usuario (para entrar)</mat-label>
+        <input matInput [(ngModel)]="nuevoUsername" placeholder="Ej. juan.perez">
+      </mat-form-field>
+      <mat-form-field appearance="fill">
+        <mat-label>Contraseña (mínimo 8 caracteres)</mat-label>
+        <input matInput type="password" [(ngModel)]="nuevoPassword">
+      </mat-form-field>
+      <mat-form-field appearance="fill">
+        <mat-label>Nombre (opcional)</mat-label>
+        <input matInput [(ngModel)]="nuevoNombre">
+      </mat-form-field>
+      <mat-form-field appearance="fill">
+        <mat-label>Rol</mat-label>
+        <mat-select [(ngModel)]="nuevoRol">
+          <mat-option *ngFor="let r of roles" [value]="r">{{ r }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button mat-raised-button color="primary" (click)="crearCuenta()" [disabled]="guardando">
+        Crear cuenta
+      </button>
+    </div>
+
+    <h4>Cuentas registradas</h4>
+    <p class="hint" *ngIf="cargando">Cargando...</p>
+    <table class="tabla-cuentas" *ngIf="!cargando">
+      <tr>
+        <th>Usuario</th>
+        <th>Nombre</th>
+        <th>Rol</th>
+        <th>Acciones</th>
+      </tr>
+      <tr *ngFor="let cuenta of cuentas">
+        <td>{{ cuenta.username }}</td>
+        <td>{{ cuenta.nombre || '--' }}</td>
+        <td>{{ cuenta.rol }}</td>
+        <td>
+          <button mat-icon-button matTooltip="Editar nombre/rol" (click)="editarCuenta(cuenta)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button matTooltip="Restablecer contraseña" (click)="resetearPassword(cuenta)">
+            <mat-icon>lock_reset</mat-icon>
+          </button>
+          <button mat-icon-button matTooltip="Desactivar cuenta" (click)="desactivarCuenta(cuenta)">
+            <mat-icon>person_off</mat-icon>
+          </button>
+        </td>
+      </tr>
+    </table>
+    <p *ngIf="!cargando && cuentas.length === 0" class="hint">Todavía no hay cuentas registradas.</p>
+  </mat-card-content>
+</mat-card>

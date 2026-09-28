@@ -11,7 +11,13 @@ public interface IWaterReceiptPaymentRepository extends JpaRepository <WaterRece
 
     // Pagos de "Aportación" (concepto_id = 6) aplicados a un año en particular,
     // usados para saber cuánto se ha abonado a la cuota de ese año cuando
-    // todavía no está marcado como pagado en agua_usuario_pago_anual.
+    // todavía no está marcado como pagado en agua_usuario_pago_anual. Es
+    // para cálculo de ADEUDO (no para corte de caja), así que aquí sí
+    // importa excluir tanto recibos cancelados (r.estatus = 1 ya los deja
+    // fuera) como invalidados (r.invalido IS NULL) -- un pago cancelado o
+    // invalidado no debe contar como que el usuario ya pagó. Esto es
+    // aparte de las consultas de corte de caja (findValidosPara...), que
+    // tienen su propio criterio y no se tocan aquí.
     // No se filtra por p.estatus: igual que en el resto del historial de
     // recibos, ese campo puede venir nulo en pagos históricos.
     @Query("SELECT p FROM WaterReceiptPaymentEntity p " +
@@ -19,7 +25,8 @@ public interface IWaterReceiptPaymentRepository extends JpaRepository <WaterRece
             "JOIN FETCH r.waterUser wu " +
             "WHERE p.catConcepto.catalogoOpcionesId = :conceptoId " +
             "AND p.anio = :anio " +
-            "AND r.estatus = 1")
+            "AND r.estatus = 1 " +
+            "AND r.invalido IS NULL")
     List<WaterReceiptPaymentEntity> findByConceptoAndAnio(@Param("conceptoId") Integer conceptoId, @Param("anio") Integer anio);
 
     // Pagos válidos para el reporte de "Totales por año y concepto": recibos

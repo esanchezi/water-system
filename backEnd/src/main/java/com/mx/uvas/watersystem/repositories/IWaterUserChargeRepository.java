@@ -19,6 +19,11 @@ public interface IWaterUserChargeRepository extends JpaRepository<WaterUserCharg
     // calculan el saldo pendiente (getSaldo()) sin hacer una query por usuario.
     List<WaterUserChargeEntity> findByEstatus(Integer estatus);
 
+    // Igual, pero acotado a un grupo de usuarios -- para no traer los
+    // cargos de TODO el sistema cuando solo interesan unos cuantos (ver
+    // AdeudoLuzService, "multa acumulada" de la carta de adeudo).
+    List<WaterUserChargeEntity> findByEstatusAndWaterUser_AguaUsuarioIdIn(Integer estatus, List<Integer> aguaUsuarioIds);
+
     // Todos los cargos activos de todos los usuarios que pertenecen a un
     // grupo -- para la lista de multas/cargos de todo el grupo (en vez de
     // tener que entrar a cada usuario por separado).
@@ -28,5 +33,14 @@ public interface IWaterUserChargeRepository extends JpaRepository<WaterUserCharg
             "WHERE wuc.estatus = 1 AND wu.waterGroup.grupoId = :grupoId " +
             "ORDER BY wuc.fecha DESC")
     List<WaterUserChargeEntity> findByGrupoId(Integer grupoId);
+
+    // Para no duplicar el cargo de Mantenimiento de cajón (Art. 10) si se
+    // genera más de una carta para el mismo usuario -- a diferencia del
+    // cargo de Aviso (uno nuevo por cada carta), este es una sola vez por
+    // año adeudado, así que antes de crearlo se busca por descripción
+    // exacta ("Mantenimiento de cajón 2024", etc.) para ese usuario. Ver
+    // AvisoAdeudoService.crearCargoMantenimiento().
+    boolean existsByWaterUser_AguaUsuarioIdAndConcepto_NombreAndDescripcionAndEstatus(
+            Integer aguaUsuarioId, String nombreConcepto, String descripcion, Integer estatus);
 
 }

@@ -77,6 +77,10 @@ export class UserCensoComponent implements OnInit {
   }
 
   onSaveCenso(): void {
+    if (!this.usuario?.aguaUsuarioId) {
+      Swal.fire({ icon: 'warning', title: 'Guarda primero al usuario', text: 'Necesitas guardar el usuario antes de agregar personas al censo.', confirmButtonText: 'Entendido' });
+      return;
+    }
     const form = this.censusForm.value;
     const data = {
       edad: form.edad !== '' && form.edad !== null ? Number(form.edad) : null,
@@ -95,6 +99,10 @@ export class UserCensoComponent implements OnInit {
   // la familia no quiere dar edades individuales pero sí sabemos cuántas
   // son en total. Cada una editable después si algún día se obtiene el dato.
   onAgregarVariasSinEdad(): void {
+    if (!this.usuario?.aguaUsuarioId) {
+      Swal.fire({ icon: 'warning', title: 'Guarda primero al usuario', text: 'Necesitas guardar el usuario antes de agregar personas al censo.', confirmButtonText: 'Entendido' });
+      return;
+    }
     const cantidad = Number(this.censusForm.value.cantidadSinEdad);
     if (!cantidad || cantidad < 1) return;
 

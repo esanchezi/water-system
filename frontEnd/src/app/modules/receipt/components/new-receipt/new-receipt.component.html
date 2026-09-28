@@ -4,7 +4,10 @@
 
       <!-- PRIMER CARD -->
       <mat-card>
-        <mat-card-title>{{ esEdicion ? 'Editar recibo N° ' + receiptForm.get('noFolio')?.value : 'Agregar nuevo recibo' }}</mat-card-title>
+        <mat-card-title>
+          {{ esEdicion ? 'Editar recibo N° ' + receiptForm.get('noFolio')?.value
+             : (usuarioBloqueado ? 'Agregar recibo -- ' + usuarioSeleccionado?.nombreCompleto : 'Agregar nuevo recibo') }}
+        </mat-card-title>
         <mat-card-content>
 
           <!-- 🔹 AUTOCOMPLETE USUARIO -->
@@ -29,6 +32,18 @@
             </mat-autocomplete>
 
             </mat-form-field>
+          <p class="hint" *ngIf="usuarioBloqueado">
+            Este recibo se está capturando directamente desde la ficha de este usuario -- solo falta el resto de los datos del recibo.
+          </p>
+
+          <!-- ÚLTIMO RECIBO DEL USUARIO (solo consulta) -->
+          <div class="ultimo-recibo" *ngIf="ultimoRecibo">
+            <mat-icon>history</mat-icon>
+            <span>
+              Último recibo: folio {{ ultimoRecibo.noFolio }} -- {{ ultimoRecibo.fecha | date:'dd/MM/yyyy' }}
+              -- {{ ultimoRecibo.concepto }} -- ${{ ultimoRecibo.total }}
+            </span>
+          </div>
 
           <mat-form-field>
             <mat-label>N° Folio</mat-label>
@@ -145,6 +160,27 @@
             </div>
         </div>
 
+        </mat-card-content>
+      </mat-card>
+
+      <!-- AVISOS DE ADEUDO PENDIENTES DE COBRO -->
+      <mat-card *ngIf="avisosPendientes.length > 0">
+        <mat-card-title>Avisos de adeudo pendientes de cobro</mat-card-title>
+        <mat-card-content>
+          <p class="hint">
+            Este usuario tiene cartas de adeudo ya entregadas y sin marcar como cobradas. Marca aquí las que se liquidan
+            con este recibo -- se marcarán como "Pagado" y quedarán vinculadas al folio capturado arriba, sin necesidad de
+            ir después a su ficha a hacerlo por separado.
+          </p>
+          <div class="aviso-pendiente-item" *ngFor="let aviso of avisosPendientes">
+            <mat-checkbox
+              [checked]="avisosSeleccionados.has(aviso.avisoAdeudoId)"
+              (change)="toggleAviso(aviso.avisoAdeudoId)">
+              Folio {{ aviso.folioNotificacion }} -- {{ aviso.tipoAviso === 'SEGUNDO' ? 'Segundo aviso' : 'Primer aviso' }}
+              -- adeudo ${{ aviso.adeudoTotal }}
+              <span *ngIf="aviso.fechaEntrega"> -- entregado {{ aviso.fechaEntrega | date:'dd/MM/yyyy' }}</span>
+            </mat-checkbox>
+          </div>
         </mat-card-content>
       </mat-card>
 

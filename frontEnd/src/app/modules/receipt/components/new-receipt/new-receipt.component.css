@@ -13,3 +13,26 @@
   color: rgba(0, 0, 0, 0.6);
   font-size: 0.85rem;
 }
+
+.aviso-pendiente-item {
+  display: block;
+  margin: 6px 0;
+}
+
+.ultimo-recibo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #e3f2fd;
+  color: #1565c0;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 4px 0 12px;
+  font-size: 0.85rem;
+}
+
+.ultimo-recibo mat-icon {
+  font-size: 18px;
+  height: 18px;
+  width: 18px;
+}

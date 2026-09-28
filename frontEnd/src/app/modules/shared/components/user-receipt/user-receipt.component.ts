@@ -1,10 +1,13 @@
 import { Component, Input, ViewChild, inject } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { ReceiptService } from '../../services/receipt.service';
 import { WaterReceiptModel } from '../../models/WaterReceipt.model';
 import { WaterUserModel } from '../../models/WaterUser.model';
 import { CatalogData, CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model';
+import { NewReceiptComponent } from 'src/app/modules/receipt/components/new-receipt/new-receipt.component';
 
 @Component({
   selector: 'app-user-receipt',
@@ -29,6 +32,40 @@ export class UserReceiptComponent {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   private readonly receiptService = inject(ReceiptService);
+  private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
+
+  // Abre el mismo formulario de "Agregar recibo" que usa el módulo de
+  // Pagos, pero con el usuario ya cargado (se conoce desde esta ficha) --
+  // solo falta capturar el folio y el resto del recibo. Ver
+  // NewReceiptComponent.usuarioBloqueado.
+  agregarRecibo(): void {
+    if (!this.usuario) {
+      return;
+    }
+    const persona = this.usuario.person;
+    const nombreCompleto = [persona?.nombre, persona?.nombre2, persona?.app, persona?.apm]
+      .filter(Boolean).join(' ');
+    const dialogRef = this.dialog.open(NewReceiptComponent, {
+      width: '1200px',
+      data: {
+        usuarioPreseleccionado: {
+          noUsuario: Number(this.usuario.noUsuario),
+          nombreCompleto,
+          aguaUsuarioId: this.usuario.aguaUsuarioId
+        }
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result === 1) {
+        this.snackBar.open('Recibo agregado', 'Éxito', { duration: 3000 });
+        this.getReceipt();
+      } else if (result === 2) {
+        this.snackBar.open('No se pudo guardar el recibo', 'Error', { duration: 3000 });
+      }
+    });
+  }
 
   getReceipt() {
     if (!this.usuario) return;

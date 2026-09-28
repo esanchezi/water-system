@@ -1,0 +1,334 @@
+<mat-card class="tarjeta-encabezado">
+  <h2>Cartas de adeudo (Luz/CFE)</h2>
+  <p class="hint">
+    Usuarios con saldo pendiente de la aportación de Luz/CFE. Selecciona a quiénes generarles la carta,
+    elige si es primer o segundo aviso, y descarga el PDF listo para imprimir (folio consecutivo incluido).
+  </p>
+
+  <mat-card-content>
+    <div class="fila-filtros">
+      <mat-form-field appearance="fill">
+        <mat-label>Zona</mat-label>
+        <mat-select [(ngModel)]="zonaIdSeleccionada" (selectionChange)="onZonaChange($event.value)">
+          <mat-option [value]="null">Todas</mat-option>
+          <mat-option *ngFor="let z of zonas" [value]="z.catalogoOpcionesId">{{ z.nombre }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Calle</mat-label>
+        <mat-select [(ngModel)]="calleIdSeleccionada" (selectionChange)="onCalleChange($event.value)">
+          <mat-option [value]="-1">Todas las calles (más lento)</mat-option>
+          <mat-option *ngFor="let c of calles" [value]="c.catalogoOpcionesId">{{ c.nombre }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="fill" *ngIf="yaSeBusco">
+        <mat-label>N° Casa</mat-label>
+        <input matInput (keyup)="applyCasaFilter($event)" placeholder="N° Casa">
+      </mat-form-field>
+
+      <mat-form-field appearance="fill" *ngIf="yaSeBusco">
+        <mat-label>Estatus (para ver quién ya tiene corte)</mat-label>
+        <mat-select [(ngModel)]="estatusComiteFiltro" (selectionChange)="applyEstatusComiteFilter()">
+          <mat-option value="">Todos</mat-option>
+          <mat-option *ngFor="let e of estatusComiteOpciones" [value]="e">{{ e }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Tipo de aviso</mat-label>
+        <mat-select [(ngModel)]="tipoAviso">
+          <mat-option *ngFor="let t of tiposAviso" [value]="t.valor">{{ t.etiqueta }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="fill" *ngIf="yaSeBusco || noRegistrados.length > 0">
+        <mat-label>Fecha en que debe presentarse a pagar</mat-label>
+        <input matInput type="date" [(ngModel)]="fechaPresentacion" required>
+      </mat-form-field>
+
+      <button mat-raised-button color="primary" (click)="generarCartas()" [disabled]="generando" *ngIf="yaSeBusco || noRegistrados.length > 0">
+        <mat-icon>picture_as_pdf</mat-icon>
+        {{ generando ? 'Generando...' : 'Generar cartas' }}
+      </button>
+    </div>
+
+    <p class="hint" *ngIf="selection.selected.length > 0">
+      {{ selection.selected.length }} usuario(s) seleccionado(s) -- adeudo total: {{ totalAdeudoSeleccionado | currency }}
+    </p>
+
+    <mat-divider></mat-divider>
+
+    <div class="fila-no-registrados">
+      <h3>Persona sin usuario en el sistema (censo en proceso)</h3>
+      <p class="hint">
+        Solo captura nombre y, si la tienes, dirección. El adeudo se calcula con la cuota fija anual desde 2021
+        (no depende de recibos, porque no tiene usuario registrado).
+      </p>
+
+      <div class="fila-filtros">
+        <mat-form-field appearance="fill">
+          <mat-label>Nombre</mat-label>
+          <input matInput [(ngModel)]="nuevoNoRegistradoNombre" placeholder="Nombre completo">
+        </mat-form-field>
+
+        <mat-form-field appearance="fill">
+          <mat-label>Dirección (opcional)</mat-label>
+          <input matInput [(ngModel)]="nuevoNoRegistradoDireccion" placeholder="Domicilio">
+        </mat-form-field>
+
+        <button mat-stroked-button color="primary" (click)="agregarNoRegistrado()">
+          <mat-icon>person_add</mat-icon>
+          Agregar
+        </button>
+      </div>
+
+      <table class="tabla-no-registrados" *ngIf="noRegistrados.length > 0">
+        <tr *ngFor="let p of noRegistrados; let i = index">
+          <td>{{ p.nombre }}</td>
+          <td>{{ p.direccion || '--' }}</td>
+          <td>
+            <button mat-icon-button color="warn" (click)="quitarNoRegistrado(i)" title="Quitar">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </mat-card-content>
+</mat-card>
+
+<p class="hint" *ngIf="!yaSeBusco && !cargando">Elige una zona y una calle para calcular los candidatos de esa calle.</p>
+
+<p class="hint" *ngIf="cargando">Calculando candidatos...</p>
+
+<table mat-table [dataSource]="dataSource" class="tabla-candidatos" *ngIf="yaSeBusco && !cargando">
+
+  <ng-container matColumnDef="select">
+    <th mat-header-cell *matHeaderCellDef>
+      <mat-checkbox (change)="masterToggle()" [checked]="isAllSelected()"></mat-checkbox>
+    </th>
+    <td mat-cell *matCellDef="let row">
+      <mat-checkbox (click)="$event.stopPropagation()" (change)="toggleFila(row)" [checked]="selection.isSelected(row)"></mat-checkbox>
+    </td>
+  </ng-container>
+
+  <ng-container matColumnDef="calleNombre">
+    <th mat-header-cell *matHeaderCellDef>Calle</th>
+    <td mat-cell *matCellDef="let row">{{ row.calleNombre }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="casaNo">
+    <th mat-header-cell *matHeaderCellDef>N° Casa</th>
+    <td mat-cell *matCellDef="let row">{{ row.casaNoTexto || row.casaNo }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="noUsuario">
+    <th mat-header-cell *matHeaderCellDef>N° Usuario</th>
+    <td mat-cell *matCellDef="let row">
+      <a (click)="$event.stopPropagation(); irADetalleUsuario(row.aguaUsuarioId)"
+         style="text-decoration: underline; cursor: pointer;"
+         title="Ver ficha completa del usuario">{{ row.noUsuario }}</a>
+    </td>
+  </ng-container>
+
+  <ng-container matColumnDef="nombreCompleto">
+    <th mat-header-cell *matHeaderCellDef>Usuario</th>
+    <td mat-cell *matCellDef="let row">{{ row.noUsuario }} - {{ row.nombreCompleto }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="estatusComiteNombre">
+    <th mat-header-cell *matHeaderCellDef>Estatus</th>
+    <td mat-cell *matCellDef="let row">{{ row.estatusComiteNombre || '--' }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="periodosAdeudadosTexto">
+    <th mat-header-cell *matHeaderCellDef>Desglose por año (para revisar el cálculo)</th>
+    <td mat-cell *matCellDef="let row">{{ row.periodosAdeudadosTexto }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="adeudoTotal">
+    <th mat-header-cell *matHeaderCellDef>Adeudo total</th>
+    <td mat-cell *matCellDef="let row">{{ row.adeudoTotal | currency }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="noFolioUltimoPago">
+    <th mat-header-cell *matHeaderCellDef>Folio último pago</th>
+    <td mat-cell *matCellDef="let row">{{ row.noFolioUltimoPago || '--' }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="fechaUltimoPago">
+    <th mat-header-cell *matHeaderCellDef>Fecha último pago</th>
+    <td mat-cell *matCellDef="let row">{{ row.fechaUltimoPago ? (row.fechaUltimoPago | date:'dd/MM/yyyy') : '--' }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="ultimoAviso">
+    <th mat-header-cell *matHeaderCellDef>Último aviso</th>
+    <td mat-cell *matCellDef="let row">
+      <span class="etiqueta"
+            [class.etiqueta-convenio]="row.enConvenioVigente"
+            [class.etiqueta-requiere-segundo]="row.requiereSegundoAviso && !row.enConvenioVigente"
+            [class.etiqueta-pendiente]="!row.enConvenioVigente && (!row.ultimoTipoAviso || (row.ultimoTipoAviso && !row.ultimoAvisoEntregado))"
+            [class.etiqueta-entregada]="!row.enConvenioVigente && row.ultimoTipoAviso && row.ultimoAvisoEntregado && !row.requiereSegundoAviso">
+        {{ etiquetaUltimoAviso(row) }}
+      </span>
+    </td>
+  </ng-container>
+
+  <tr mat-header-row *matHeaderRowDef="displayColumns"></tr>
+  <tr mat-row *matRowDef="let row; columns: displayColumns" (click)="toggleFila(row)"></tr>
+</table>
+
+<p class="hint" *ngIf="yaSeBusco && !cargando && dataSource.data.length === 0">No hay usuarios con adeudo de Luz/CFE pendiente en esa calle.</p>
+
+<mat-paginator [pageSizeOptions]="[10,20,50]" showFirstLastButtons></mat-paginator>
+
+<mat-accordion class="acordeon-historial">
+  <mat-expansion-panel class="panel-claro" (opened)="toggleHistorial(true)">
+    <mat-expansion-panel-header>
+      <mat-panel-title>Historial de avisos generados</mat-panel-title>
+    </mat-expansion-panel-header>
+
+    <p class="hint" *ngIf="cargandoHistorial">Cargando historial...</p>
+
+    <mat-checkbox *ngIf="!cargandoHistorial" [(ngModel)]="mostrarCanceladas" class="chk-canceladas">
+      Mostrar canceladas
+    </mat-checkbox>
+
+    <button mat-raised-button color="accent" *ngIf="avisosSeleccionadosSegundo.size > 0" [disabled]="generando"
+            (click)="generarSegundosSeleccionados()" style="margin: 0 0 8px 16px;">
+      <mat-icon>forward_to_inbox</mat-icon> Generar Segundo aviso ({{ avisosSeleccionadosSegundo.size }})
+    </button>
+
+    <table mat-table [dataSource]="historialVisible" class="tabla-historial" *ngIf="!cargandoHistorial">
+      <ng-container matColumnDef="seleccionSegundo">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let a">
+          <mat-checkbox *ngIf="puedeGenerarSegundo(a)"
+                        [checked]="avisosSeleccionadosSegundo.has(a.avisoAdeudoId)"
+                        (change)="toggleSeleccionSegundo(a.avisoAdeudoId)"
+                        title="Seleccionar para generar el Segundo aviso en lote"></mat-checkbox>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="folioNotificacion">
+        <th mat-header-cell *matHeaderCellDef>Folio</th>
+        <td mat-cell *matCellDef="let a">{{ a.folioNotificacion }}</td>
+      </ng-container>
+      <ng-container matColumnDef="tipoAviso">
+        <th mat-header-cell *matHeaderCellDef>Tipo</th>
+        <td mat-cell *matCellDef="let a">{{ a.tipoAviso === 'SEGUNDO' ? 'Segundo aviso' : 'Primer aviso' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="noUsuario">
+        <th mat-header-cell *matHeaderCellDef>N° Usuario</th>
+        <td mat-cell *matCellDef="let a">
+          <a *ngIf="a.aguaUsuarioId; else soloNoUsuario"
+             (click)="irADetalleUsuario(a.aguaUsuarioId)"
+             style="text-decoration: underline; cursor: pointer;"
+             title="Ver ficha completa del usuario">{{ a.noUsuario }}</a>
+          <ng-template #soloNoUsuario>{{ a.noUsuario }}</ng-template>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="nombreUsuarioTitular">
+        <th mat-header-cell *matHeaderCellDef>Usuario</th>
+        <td mat-cell *matCellDef="let a">{{ a.noUsuario }} - {{ a.nombreUsuarioTitular }}</td>
+      </ng-container>
+      <ng-container matColumnDef="periodosAdeudados">
+        <th mat-header-cell *matHeaderCellDef>Desglose por año</th>
+        <td mat-cell *matCellDef="let a">{{ a.periodosAdeudados }}</td>
+      </ng-container>
+      <ng-container matColumnDef="adeudoTotal">
+        <th mat-header-cell *matHeaderCellDef>Adeudo</th>
+        <td mat-cell *matCellDef="let a">{{ a.adeudoTotal | currency }}</td>
+      </ng-container>
+      <ng-container matColumnDef="noFolioUltimoPago">
+        <th mat-header-cell *matHeaderCellDef>Folio último pago</th>
+        <td mat-cell *matCellDef="let a">{{ a.noFolioUltimoPago || '--' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="fechaUltimoPago">
+        <th mat-header-cell *matHeaderCellDef>Fecha último pago</th>
+        <td mat-cell *matCellDef="let a">{{ a.fechaUltimoPago ? (a.fechaUltimoPago | date:'dd/MM/yyyy') : '--' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="dateAdd">
+        <th mat-header-cell *matHeaderCellDef>Generado</th>
+        <td mat-cell *matCellDef="let a">{{ a.dateAdd | date:'dd/MM/yyyy HH:mm' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="entrega">
+        <th mat-header-cell *matHeaderCellDef>Entrega</th>
+        <td mat-cell *matCellDef="let a">
+          <span *ngIf="a.cancelada" class="etiqueta etiqueta-cancelada">Cancelada</span>
+          <span *ngIf="!a.cancelada && a.entregado"
+                class="etiqueta etiqueta-entregada"
+                [title]="etiquetaTipoEntrega(a.tipoEntrega) + (a.nombreReceptor ? (' -- Recibió: ' + a.nombreReceptor + ' (' + a.parentescoReceptor + ')') : '')">
+            Entregada {{ formatearFechaNaive(a.fechaEntrega) }}
+          </span>
+          <span *ngIf="!a.cancelada && !a.entregado" class="etiqueta etiqueta-pendiente">Pendiente</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="atencion">
+        <th mat-header-cell *matHeaderCellDef>Cobro/Atención</th>
+        <td mat-cell *matCellDef="let a">
+          <span *ngIf="!a.cancelada && a.entregado && a.atendido"
+                class="etiqueta"
+                [class.etiqueta-convenio]="a.resultadoAtencion === 'CONVENIO'"
+                [class.etiqueta-entregada]="a.resultadoAtencion !== 'CONVENIO'"
+                [title]="a.comentarioAtencion ? a.comentarioAtencion : ''">
+            {{ etiquetaResultadoAtencion(a.resultadoAtencion) }}
+            <ng-container *ngIf="a.folioReciboVinculado"> (recibo {{ a.folioReciboVinculado }})</ng-container>
+            <ng-container *ngIf="a.folioConvenioVinculado"> (convenio {{ a.folioConvenioVinculado }})</ng-container>
+            <ng-container *ngIf="a.resultadoAtencion === 'CONVENIO' && a.fechaCompromiso"> -- compromiso {{ formatearFechaNaive(a.fechaCompromiso) }}</ng-container>
+          </span>
+          <span *ngIf="!a.cancelada && a.entregado && !a.atendido && !tieneSegundoPosterior(a)"
+                class="etiqueta etiqueta-pendiente">Pendiente de cobro</span>
+          <span *ngIf="!a.cancelada && a.entregado && !a.atendido && tieneSegundoPosterior(a)"
+                class="etiqueta etiqueta-superado"
+                title="Ya se generó el Segundo aviso para este usuario -- el seguimiento de cobro sigue con el Segundo, no con este Primero">
+            Ya tiene Segundo aviso
+          </span>
+          <span *ngIf="!a.cancelada && !a.entregado">--</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="acciones">
+        <th mat-header-cell *matHeaderCellDef>Acciones</th>
+        <td mat-cell *matCellDef="let a">
+          <button mat-icon-button color="primary" *ngIf="!a.cancelada && !a.entregado"
+                  title="Marcar como entregada" (click)="registrarEntrega(a)">
+            <mat-icon>mark_email_read</mat-icon>
+          </button>
+          <button mat-icon-button color="accent" *ngIf="a.entregado && a.tipoEntrega === 'NO_ENCONTRADO'"
+                  title="Ver evidencia fotográfica (no se encontró a nadie al entregar)" (click)="verEvidenciaFotografica(a)">
+            <mat-icon>photo_library</mat-icon>
+          </button>
+          <button mat-icon-button color="primary" *ngIf="!a.cancelada && a.entregado && !a.atendido && !tieneSegundoPosterior(a)"
+                  title="Marcar como atendida (ya se hizo el cobro)" (click)="marcarAtendida(a)">
+            <mat-icon>paid</mat-icon>
+          </button>
+          <button mat-icon-button color="accent" *ngIf="!a.cancelada && a.tipoAviso === 'PRIMERO' && a.entregado && !tieneSegundoPosterior(a)"
+                  title="Generar Segundo aviso para este usuario (se revisa primero si en verdad le toca)"
+                  (click)="generarSegundoDesdeAviso(a)">
+            <mat-icon>forward_to_inbox</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" *ngIf="!a.cancelada && !tieneSegundoPosterior(a)"
+                  title="Cancelar" (click)="cancelarAviso(a)">
+            <mat-icon>cancel</mat-icon>
+          </button>
+          <button mat-icon-button color="primary" *ngIf="a.cancelada"
+                  title="Reactivar" (click)="reactivarAviso(a)">
+            <mat-icon>restore</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="historialColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: historialColumns" [class.fila-cancelada]="row.cancelada"></tr>
+    </table>
+
+    <p class="hint" *ngIf="!cargandoHistorial && historialVisible.length === 0">
+      {{ historial.length === 0 ? 'Todavía no se ha generado ningún aviso.' : 'No hay avisos (activa "Mostrar canceladas" para verlos).' }}
+    </p>
+  </mat-expansion-panel>
+</mat-accordion>
