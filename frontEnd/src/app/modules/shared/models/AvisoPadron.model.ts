@@ -29,6 +29,8 @@ export interface AvisoPadronModel {
   // "Debe presentarse el día ___ de ___ de 20__" -- fecha completa elegida
   // al generar (mismo criterio que fechaPresentacion en Cartas de adeudo).
   fechaPresentacion?: string;
+  // Motivo por el que se solicitó la actualización -- opcional.
+  motivoSolicitud?: string;
   dateAdd: string;
 
   // Se oculta del historial por default (mismo patrón que avisos de
@@ -45,6 +47,7 @@ export interface AvisoPadronModel {
   nombreNotificador?: string;
   nombreTestigo1?: string;
   nombreTestigo2?: string;
+  comentarioEntrega?: string;
 }
 
 // Datos que se capturan al marcar un aviso de padrón como entregado --
@@ -56,5 +59,6 @@ export interface AvisoPadronEntregaModel {
   nombreNotificador?: string;
   nombreTestigo1?: string;
   nombreTestigo2?: string;
+  comentarioEntrega?: string;
   fechaEntrega?: string;
 }

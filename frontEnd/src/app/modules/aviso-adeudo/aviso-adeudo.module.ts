@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MaterialModule } from '../core/material.module';
 import { SharedModule } from '../shared/shared.module';
 import { AvisoAdeudoListComponent } from './pages/aviso-adeudo-list/aviso-adeudo-list.component';
@@ -14,6 +14,7 @@ import { AvisoAdeudoEntregaDialogComponent } from './components/aviso-adeudo-ent
   imports: [
     CommonModule,
     FormsModule,
+    ReactiveFormsModule,
     MaterialModule,
     SharedModule
   ],

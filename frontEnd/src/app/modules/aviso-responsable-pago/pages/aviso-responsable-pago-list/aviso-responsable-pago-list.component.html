@@ -1,0 +1,174 @@
+<div class="contenedor">
+  <h2>Aviso sobre personas responsables de pago del domicilio</h2>
+  <p class="subtitulo">
+    Busca la casa (algunas personas que viven ahí pueden no estar dadas de alta todavía), captura el motivo
+    y arma la tabla de personas/familias responsables de pago.
+  </p>
+
+  <div class="buscador-casa" *ngIf="!casaSeleccionada">
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Buscar casa (No. de casa o calle)</mat-label>
+      <input matInput placeholder="Ej. 45 o Clavel"
+             [formControl]="casaSearchCtrl"
+             [matAutocomplete]="casaAuto" />
+      <mat-autocomplete #casaAuto="matAutocomplete" [displayWith]="displayCasa" (optionSelected)="onCasaSeleccionada($event)">
+        <mat-option *ngFor="let casa of casaSearchResults" [value]="casa">
+          Casa {{ casa.casaNo }}{{ casa.lado ? '-' + casa.lado : '' }} -- {{ casa.calle || 'sin calle' }}
+        </mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
+  </div>
+
+  <div class="casa-elegida" *ngIf="casaSeleccionada">
+    <div class="casa-info">
+      <strong>Casa {{ casaSeleccionada.casaNo }}{{ casaSeleccionada.lado ? '-' + casaSeleccionada.lado : '' }}</strong>
+      -- {{ casaSeleccionada.calle || 'sin calle' }}
+      <button mat-button color="warn" (click)="quitarCasaSeleccionada()">Cambiar de casa</button>
+    </div>
+
+    <mat-accordion>
+      <mat-expansion-panel class="panel-claro" expanded="true">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Datos de la solicitud</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div class="campos">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>Motivo de la solicitud</mat-label>
+            <input matInput [(ngModel)]="motivoSolicitud" placeholder="Ej. Solicitud del usuario titular, desacuerdo entre habitantes...">
+          </mat-form-field>
+
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>Fecha de la solicitud</mat-label>
+            <input matInput type="date" [(ngModel)]="fechaSolicitud">
+          </mat-form-field>
+        </div>
+      </mat-expansion-panel>
+
+      <mat-expansion-panel class="panel-oscuro" expanded="true">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Personas / familias responsables de pago ({{ personas.length }})</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <table class="tabla-personas" *ngIf="personas.length > 0">
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Nombre completo</th>
+              <th>Relación / parentesco</th>
+              <th>Familia para cuota</th>
+              <th>Cuota vigente</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of personas; let i = index">
+              <td>{{ i + 1 }}</td>
+              <td>
+                {{ p.nombreCompleto }}
+                <span class="chip-usuario" *ngIf="p.noUsuario">N° {{ p.noUsuario }}</span>
+              </td>
+              <td>{{ p.parentesco || '--' }}</td>
+              <td>{{ p.familiaCuota ?? '--' }}</td>
+              <td>{{ p.cuotaVigenteSnapshot != null ? ('$' + p.cuotaVigenteSnapshot) : '--' }}</td>
+              <td><button mat-icon-button color="warn" (click)="quitarPersona(i)" title="Quitar"><mat-icon>delete</mat-icon></button></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="hint" *ngIf="personas.length === 0">Todavía no agregas a nadie a la tabla.</p>
+
+        <div class="agregar-persona">
+          <mat-form-field appearance="fill" *ngIf="usuariosCasaDisponibles.length > 0">
+            <mat-label>Agregar usuario ya dado de alta en esta casa</mat-label>
+            <mat-select [ngModel]="aguaUsuarioIdNuevo" (ngModelChange)="onUsuarioExistenteSeleccionado($event)">
+              <mat-option [value]="null">-- Persona sin usuario (nombre libre) --</mat-option>
+              <mat-option *ngFor="let u of usuariosCasaDisponibles" [value]="u.aguaUsuarioId">
+                N° {{ u.noUsuario }} - {{ u.nombreCompleto }} (cuota: {{ u.cuotaVigente != null ? ('$' + u.cuotaVigente) : 'sin cuota' }})
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+          <p class="hint" *ngIf="cargandoUsuariosCasa">Cargando usuarios de la casa...</p>
+
+          <div class="campos-fila">
+            <mat-form-field appearance="fill">
+              <mat-label>Nombre completo</mat-label>
+              <input matInput [(ngModel)]="nuevoNombre" [readonly]="aguaUsuarioIdNuevo != null" placeholder="Nombre de la persona">
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Relación / parentesco</mat-label>
+              <input matInput [(ngModel)]="nuevoParentesco" placeholder="Ej. Titular, hijo, inquilino...">
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+              <mat-label>Familia para efectos de cuota (No.)</mat-label>
+              <input matInput type="number" [(ngModel)]="nuevoFamiliaCuota">
+            </mat-form-field>
+            <span class="cuota-preview" *ngIf="cuotaVigenteNueva != null">Cuota vigente: <strong>${{ cuotaVigenteNueva }}</strong></span>
+          </div>
+          <button mat-stroked-button color="primary" (click)="agregarPersona()">
+            <mat-icon>add</mat-icon> Agregar a la tabla
+          </button>
+        </div>
+      </mat-expansion-panel>
+
+      <mat-expansion-panel class="panel-claro">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Observaciones adicionales del Comité</mat-panel-title>
+        </mat-expansion-panel-header>
+        <mat-form-field appearance="fill" class="w-100">
+          <textarea matInput rows="3" [(ngModel)]="observacionesComite" placeholder="Opcional"></textarea>
+        </mat-form-field>
+      </mat-expansion-panel>
+    </mat-accordion>
+
+    <div class="acciones-generar">
+      <button mat-raised-button color="primary" (click)="generar()" [disabled]="generando">
+        {{ generando ? 'Generando...' : 'Generar aviso' }}
+      </button>
+    </div>
+
+    <mat-accordion>
+      <mat-expansion-panel class="panel-oscuro">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Historial de esta casa ({{ historialVisible.length }})</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <mat-checkbox [(ngModel)]="mostrarCanceladas">Mostrar canceladas</mat-checkbox>
+
+        <p class="hint" *ngIf="cargandoHistorial">Cargando historial...</p>
+
+        <table class="tabla-historial" *ngIf="!cargandoHistorial && historialVisible.length > 0">
+          <thead>
+            <tr>
+              <th>Folio</th>
+              <th>Motivo</th>
+              <th>Fecha solicitud</th>
+              <th>Generado</th>
+              <th>Entrega</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let aviso of historialVisible" [class.cancelada]="aviso.cancelado">
+              <td>{{ aviso.folioNotificacion }}</td>
+              <td>{{ aviso.motivoSolicitud || '--' }}</td>
+              <td>{{ formatearFechaNaive(aviso.fechaSolicitud) }}</td>
+              <td>{{ aviso.dateAdd | date:'dd/MM/yyyy' }}</td>
+              <td>
+                <span *ngIf="aviso.entregado">{{ etiquetaTipoEntrega(aviso.tipoEntrega) }} -- {{ aviso.fechaEntrega | date:'dd/MM/yyyy' }}</span>
+                <span *ngIf="!aviso.entregado">Sin entregar</span>
+              </td>
+              <td>
+                <button mat-button *ngIf="!aviso.entregado && !aviso.cancelado" (click)="registrarEntrega(aviso)">Registrar entrega</button>
+                <button mat-button color="accent" *ngIf="aviso.entregado && (aviso.tipoEntrega === 'NO_ENCONTRADO' || aviso.tipoEntrega === 'SE_NEGO')"
+                        (click)="verEvidenciaFotografica(aviso)">Ver evidencia fotográfica</button>
+                <button mat-button color="warn" *ngIf="!aviso.cancelado" (click)="cancelarAviso(aviso)">Cancelar</button>
+                <button mat-button *ngIf="aviso.cancelado" (click)="reactivarAviso(aviso)">Reactivar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="hint" *ngIf="!cargandoHistorial && historialVisible.length === 0">Sin avisos generados para esta casa.</p>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </div>
+</div>

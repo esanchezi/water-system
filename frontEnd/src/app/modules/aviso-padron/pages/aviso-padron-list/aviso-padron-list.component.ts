@@ -43,7 +43,7 @@ export class AvisoPadronListComponent implements OnInit {
 
   historialColumns: string[] = [
     'folioNotificacion', 'noUsuario', 'nombreUsuarioTitular', 'noCasaTexto', 'domicilioToma',
-    'fechaPresentacion', 'dateAdd', 'entrega', 'acciones'
+    'fechaPresentacion', 'motivoSolicitud', 'dateAdd', 'entrega', 'acciones'
   ];
 
   tiposEntrega = TIPOS_ENTREGA;
@@ -54,6 +54,11 @@ export class AvisoPadronListComponent implements OnInit {
   // Fecha en la que debe presentarse -- se pide siempre antes de generar,
   // se llena en la carta ("Debe presentarse el día ___ de ___ de 20__").
   fechaPresentacion: string | null = null;
+
+  // Motivo por el que se solicita la actualización -- opcional, se imprime
+  // en la carta cuando se captura (pedido de Ely: quiere dejar constancia
+  // de la razón concreta de cada solicitud).
+  motivoSolicitud = '';
 
   zonas: CatalogOptionModel[] = [];
   private todasLasCalles: CatalogOptionModel[] = [];
@@ -270,7 +275,7 @@ export class AvisoPadronListComponent implements OnInit {
     this.generando = true;
     const ids = this.selection.selected.map(r => r.aguaUsuarioId);
 
-    this.avisoPadronService.generar(ids, this.fechaPresentacion!).subscribe({
+    this.avisoPadronService.generar(ids, this.fechaPresentacion!, this.motivoSolicitud.trim() || undefined).subscribe({
       next: (resp) => {
         this.generando = false;
         const blob = resp.body;
@@ -282,6 +287,7 @@ export class AvisoPadronListComponent implements OnInit {
         this.openSnackBar('Avisos generados correctamente', 'Éxito');
 
         this.selection.clear();
+        this.motivoSolicitud = '';
         this.historial = [];
         this.cargarHistorial();
         this.recargarCandidatosActuales();
@@ -305,6 +311,16 @@ export class AvisoPadronListComponent implements OnInit {
         this.openSnackBar('Entrega registrada', 'Éxito');
         this.cargarHistorial();
       }
+    });
+  }
+
+  // Reabre el mismo dialog solo para consultar/agregar/quitar las fotos de
+  // respaldo de una entrega ya registrada -- ver AvisoAdeudoListComponent,
+  // mismo patrón.
+  verEvidenciaFotografica(aviso: AvisoPadronModel): void {
+    this.dialog.open(AvisoPadronEntregaDialogComponent, {
+      width: '480px',
+      data: { aviso, soloVerFotos: true }
     });
   }
 

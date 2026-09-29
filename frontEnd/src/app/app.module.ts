@@ -22,7 +22,9 @@ import { ReciboRevisionModule } from './modules/recibo-revision/recibo-revision.
 import { AvisoAdeudoModule } from './modules/aviso-adeudo/aviso-adeudo.module';
 import { AvisoBombaModule } from './modules/aviso-bomba/aviso-bomba.module';
 import { AvisoPadronModule } from './modules/aviso-padron/aviso-padron.module';
+import { AvisoResponsablePagoModule } from './modules/aviso-responsable-pago/aviso-responsable-pago.module';
 import { ValorGeneralModule } from './modules/valor-general/valor-general.module';
+import { AvisoInformativoAdeudoModule } from './modules/aviso-informativo-adeudo/aviso-informativo-adeudo.module';
 
 registerLocaleData(localeEsMx);
 
@@ -47,7 +49,9 @@ registerLocaleData(localeEsMx);
     AvisoAdeudoModule,
     AvisoBombaModule,
     AvisoPadronModule,
-    ValorGeneralModule
+    AvisoResponsablePagoModule,
+    ValorGeneralModule,
+    AvisoInformativoAdeudoModule
 ],
   providers: [
     CurrencyPipe,

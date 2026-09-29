@@ -58,6 +58,14 @@ public class AvisoAdeudoEntity implements Serializable {
     private Integer noFolioUltimoPago;
     private LocalDateTime fechaUltimoPago;
 
+    // Fecha completa en la que el usuario debía presentarse en el Comité
+    // (día+mes+año elegidos al generar, ver AvisoAdeudoService.generar()) --
+    // antes solo se usaba para imprimir el párrafo "Debe presentarse el día
+    // ___" en el PDF (CartaAdeudoDatos.fechaPresentacion) pero no se
+    // guardaba en el historial; se agrega aquí para poder mostrarla en el
+    // acordeón "Cartas generadas" de la ficha de usuario.
+    private LocalDate fechaPresentacion;
+
     // 1 = activa, 0 = cancelada (se oculta del historial por default, pero
     // se puede seguir consultando -- ver AvisoAdeudoService.historial()).
     @Builder.Default
@@ -80,6 +88,8 @@ public class AvisoAdeudoEntity implements Serializable {
     private String nombreNotificador;
     private String nombreTestigo1;
     private String nombreTestigo2;
+    @Column(length = 500)
+    private String comentarioEntrega;
 
     // Se llena cuando, tras entregar la carta, ya se hizo el cobro (o se
     // atendió de otra forma) correspondiente -- mientras esté en null, el

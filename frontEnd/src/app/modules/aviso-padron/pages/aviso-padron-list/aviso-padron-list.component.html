@@ -41,6 +41,11 @@
         <input matInput type="date" [(ngModel)]="fechaPresentacion" required>
       </mat-form-field>
 
+      <mat-form-field appearance="fill" *ngIf="yaSeBusco">
+        <mat-label>Motivo de la solicitud (opcional)</mat-label>
+        <input matInput [(ngModel)]="motivoSolicitud" placeholder="Ej. se detectó una persona adicional habitando el domicilio">
+      </mat-form-field>
+
       <button mat-raised-button color="primary" (click)="generarAvisos()" [disabled]="generando" *ngIf="yaSeBusco">
         <mat-icon>picture_as_pdf</mat-icon>
         {{ generando ? 'Generando...' : 'Generar avisos' }}
@@ -148,6 +153,10 @@
         <th mat-header-cell *matHeaderCellDef>Debe presentarse</th>
         <td mat-cell *matCellDef="let a">{{ a.fechaPresentacion ? formatearFechaNaive(a.fechaPresentacion) : '--' }}</td>
       </ng-container>
+      <ng-container matColumnDef="motivoSolicitud">
+        <th mat-header-cell *matHeaderCellDef>Motivo</th>
+        <td mat-cell *matCellDef="let a">{{ a.motivoSolicitud || '--' }}</td>
+      </ng-container>
       <ng-container matColumnDef="dateAdd">
         <th mat-header-cell *matHeaderCellDef>Generado</th>
         <td mat-cell *matCellDef="let a">{{ a.dateAdd | date:'dd/MM/yyyy HH:mm' }}</td>
@@ -172,6 +181,10 @@
           <button mat-icon-button color="primary" *ngIf="!a.cancelado && !a.entregado"
                   title="Marcar como entregada" (click)="registrarEntrega(a)">
             <mat-icon>mark_email_read</mat-icon>
+          </button>
+          <button mat-icon-button color="accent" *ngIf="a.entregado && (a.tipoEntrega === 'NO_ENCONTRADO' || a.tipoEntrega === 'SE_NEGO')"
+                  title="Ver evidencia fotográfica" (click)="verEvidenciaFotografica(a)">
+            <mat-icon>photo_library</mat-icon>
           </button>
           <button mat-icon-button color="warn" *ngIf="!a.cancelado"
                   title="Cancelar" (click)="cancelarAviso(a)">

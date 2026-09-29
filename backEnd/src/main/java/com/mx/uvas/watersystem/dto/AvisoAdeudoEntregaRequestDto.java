@@ -17,6 +17,14 @@ public class AvisoAdeudoEntregaRequestDto implements Serializable {
     private String nombreNotificador;
     private String nombreTestigo1;
     private String nombreTestigo2;
+    // Comentario libre para explicar qué sucedió (opcional).
+    private String comentarioEntrega;
+    // Solo aplica cuando tipoEntrega = ABONO -- folio del recibo que ya se
+    // capturó por el abono, como soporte. Se valida contra agua_recibo
+    // antes de guardarse (mismo criterio que en marcarAtendida) y, si viene,
+    // también cierra automáticamente la alerta de "pendiente de atención"
+    // (equivale a marcarla atendida con resultado PAGADO).
+    private Integer folioReciboVinculado;
     // Opcional -- si no se manda, se usa la fecha/hora del servidor al
     // momento de registrar la entrega.
     private LocalDateTime fechaEntrega;

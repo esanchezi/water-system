@@ -43,6 +43,13 @@ public class AvisoAdeudoController {
         return avisoAdeudoService.historial();
     }
 
+    // Historial completo (activas + canceladas) de un usuario específico --
+    // para el acordeón "Cartas generadas" en su ficha.
+    @GetMapping("/porUsuario/{aguaUsuarioId}")
+    public ResponseEntity<AvisoAdeudoRestResponse> porUsuario(@PathVariable Integer aguaUsuarioId) {
+        return avisoAdeudoService.porUsuario(aguaUsuarioId);
+    }
+
     // Para el botón "Generar Segundo aviso" directo desde una fila del
     // historial -- recalcula el estado ACTUAL de este usuario (no la fila
     // del historial, que es un snapshot viejo) y regresa si de verdad le

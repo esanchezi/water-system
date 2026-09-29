@@ -43,12 +43,12 @@
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="fill" *ngIf="yaSeBusco || noRegistrados.length > 0">
+      <mat-form-field appearance="fill" *ngIf="yaSeBusco || noRegistrados.length > 0 || usuariosManuales.length > 0">
         <mat-label>Fecha en que debe presentarse a pagar</mat-label>
-        <input matInput type="date" [(ngModel)]="fechaPresentacion" required>
+        <input matInput type="date" [(ngModel)]="fechaPresentacion" [min]="hoyStr" required>
       </mat-form-field>
 
-      <button mat-raised-button color="primary" (click)="generarCartas()" [disabled]="generando" *ngIf="yaSeBusco || noRegistrados.length > 0">
+      <button mat-raised-button color="primary" (click)="generarCartas()" [disabled]="generando" *ngIf="yaSeBusco || noRegistrados.length > 0 || usuariosManuales.length > 0">
         <mat-icon>picture_as_pdf</mat-icon>
         {{ generando ? 'Generando...' : 'Generar cartas' }}
       </button>
@@ -90,6 +90,59 @@
           <td>{{ p.direccion || '--' }}</td>
           <td>
             <button mat-icon-button color="warn" (click)="quitarNoRegistrado(i)" title="Quitar">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <div class="fila-no-registrados">
+      <h3>Usuario ya registrado, con monto de adeudo capturado a mano</h3>
+      <p class="hint">
+        Para usuarios que no salieron como candidatos, o cuyo cálculo automático no aplica (ej. su cuenta se "juntó"
+        con la de otro familiar). Busca al usuario, captura el monto que debe y, si quieres, una observación con el
+        motivo -- se imprime en la carta y sí queda en su historial.
+      </p>
+
+      <div class="fila-filtros">
+        <mat-form-field appearance="fill">
+          <mat-label>N° de usuario o nombre</mat-label>
+          <input matInput placeholder="Escribe el N° de usuario o nombre"
+                 [formControl]="manualUserSearchCtrl"
+                 [matAutocomplete]="manualUserAuto" />
+          <mat-autocomplete #manualUserAuto="matAutocomplete" [displayWith]="displayManualUsuario" (optionSelected)="onManualUsuarioSeleccionado($event)">
+            <mat-option *ngFor="let u of manualUserSearchResults" [value]="u">
+              N° {{ u.noUsuario }} - {{ u.nombreCompleto }}
+            </mat-option>
+          </mat-autocomplete>
+        </mat-form-field>
+
+        <mat-form-field appearance="fill">
+          <mat-label>Monto que debe</mat-label>
+          <input matInput type="number" [(ngModel)]="nuevoManualMonto" placeholder="0.00">
+        </mat-form-field>
+
+        <mat-form-field appearance="fill">
+          <mat-label>Observación (opcional)</mat-label>
+          <input matInput [(ngModel)]="nuevoManualObservacion" placeholder="Ej. cuenta juntada con la de su hija, usuario 512">
+        </mat-form-field>
+
+        <button mat-stroked-button color="primary" (click)="agregarUsuarioManual()">
+          <mat-icon>person_add</mat-icon>
+          Agregar
+        </button>
+      </div>
+
+      <table class="tabla-no-registrados" *ngIf="usuariosManuales.length > 0">
+        <tr *ngFor="let u of usuariosManuales; let i = index">
+          <td>N° {{ u.noUsuario }} - {{ u.nombreCompleto }}</td>
+          <td>{{ u.montoAdeudo | currency }}</td>
+          <td>{{ u.observacion || '--' }}</td>
+          <td>
+            <button mat-icon-button color="warn" (click)="quitarUsuarioManual(i)" title="Quitar">
               <mat-icon>delete</mat-icon>
             </button>
           </td>
@@ -299,8 +352,8 @@
                   title="Marcar como entregada" (click)="registrarEntrega(a)">
             <mat-icon>mark_email_read</mat-icon>
           </button>
-          <button mat-icon-button color="accent" *ngIf="a.entregado && a.tipoEntrega === 'NO_ENCONTRADO'"
-                  title="Ver evidencia fotográfica (no se encontró a nadie al entregar)" (click)="verEvidenciaFotografica(a)">
+          <button mat-icon-button color="accent" *ngIf="a.entregado && (a.tipoEntrega === 'NO_ENCONTRADO' || a.tipoEntrega === 'SE_NEGO')"
+                  title="Ver evidencia fotográfica" (click)="verEvidenciaFotografica(a)">
             <mat-icon>photo_library</mat-icon>
           </button>
           <button mat-icon-button color="primary" *ngIf="!a.cancelada && a.entregado && !a.atendido && !tieneSegundoPosterior(a)"

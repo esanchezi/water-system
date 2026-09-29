@@ -1,6 +1,6 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { AvisoAdeudoEntregaModel, AvisoAdeudoModel, TIPOS_ENTREGA } from '../../../shared/models/AvisoAdeudo.model';
+import { AvisoAdeudoEntregaModel, AvisoAdeudoModel, TIPOS_ENTREGA_ADEUDO } from '../../../shared/models/AvisoAdeudo.model';
 import { AvisoAdeudoFotoModel } from '../../../shared/models/AvisoAdeudoFoto.model';
 import { AvisoAdeudoService } from '../../../shared/services/aviso-adeudo.service';
 import { AvisoAdeudoFotoService } from '../../../shared/services/aviso-adeudo-foto.service';
@@ -30,7 +30,7 @@ export interface AvisoAdeudoEntregaDialogData {
 })
 export class AvisoAdeudoEntregaDialogComponent implements OnInit {
 
-  tiposEntrega = TIPOS_ENTREGA;
+  tiposEntrega = TIPOS_ENTREGA_ADEUDO;
 
   tipoEntrega = '';
   fechaEntrega = new Date().toISOString().substring(0, 10);
@@ -43,13 +43,24 @@ export class AvisoAdeudoEntregaDialogComponent implements OnInit {
   guardando = false;
   error = '';
 
-  // Fotos de respaldo (solo cuando no se encontró al usuario)
+  // Fotos de respaldo (cuando no se encontró al usuario o se negó a firmar)
   fotos: AvisoAdeudoFotoModel[] = [];
   fotoUrls: { [fotoId: number]: string } = {};
   subiendoFoto = false;
 
+  // Comentario libre para explicar qué sucedió (opcional)
+  comentarioEntrega = '';
+
+  // Solo aplica cuando tipoEntrega = ABONO -- folio del recibo ya
+  // capturado en Pagos, como soporte del abono.
+  folioReciboVinculado: number | null = null;
+
   get requiereFotos(): boolean {
-    return this.tipoEntrega === 'NO_ENCONTRADO' || this.data.soloVerFotos === true;
+    return this.tipoEntrega === 'NO_ENCONTRADO' || this.tipoEntrega === 'SE_NEGO' || this.data.soloVerFotos === true;
+  }
+
+  get esAbono(): boolean {
+    return this.tipoEntrega === 'ABONO';
   }
 
   get requiereReceptor(): boolean {
@@ -155,6 +166,8 @@ export class AvisoAdeudoEntregaDialogComponent implements OnInit {
       nombreNotificador: this.nombreNotificador.trim(),
       nombreTestigo1: this.nombreTestigo1.trim() || undefined,
       nombreTestigo2: this.nombreTestigo2.trim() || undefined,
+      comentarioEntrega: this.comentarioEntrega.trim() || undefined,
+      folioReciboVinculado: this.esAbono && this.folioReciboVinculado ? this.folioReciboVinculado : undefined,
       // OJO: se manda como fecha/hora "naive" (sin Z ni offset) a propósito
       // -- convertir con new Date(...).toISOString() la anclaba en UTC
       // medianoche, y al mostrarla de vuelta en la zona horaria local

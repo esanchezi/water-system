@@ -18,6 +18,11 @@ public interface IAvisoAdeudoRepository extends JpaRepository<AvisoAdeudoEntity,
 
     List<AvisoAdeudoEntity> findByWaterUser_AguaUsuarioIdAndEstatusOrderByFolioNotificacionDesc(Integer aguaUsuarioId, Integer estatus);
 
+    // Historial completo (activas + canceladas) de un usuario específico --
+    // para el acordeón "Cartas generadas" en su ficha. Ver
+    // AvisoAdeudoService.porUsuario().
+    List<AvisoAdeudoEntity> findByWaterUser_AguaUsuarioIdAndEstatusInOrderByFolioNotificacionDesc(Integer aguaUsuarioId, List<Integer> estatuses);
+
     // Para el control de Primer/Segundo aviso en la pantalla de candidatos:
     // trae TODOS los avisos activos de un grupo de usuarios, ordenados por
     // folio (consecutivo global) descendente -- como folioNotificacion es

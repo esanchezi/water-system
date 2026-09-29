@@ -167,6 +167,48 @@
       </form>
     </mat-expansion-panel>
 
+    <!-- Responsables de pago del domicilio -->
+    <mat-expansion-panel class="panel-oscuro" (opened)="getHistorialResponsablePago()">
+      <mat-expansion-panel-header>
+        <mat-panel-title>Responsables de pago</mat-panel-title>
+        <mat-panel-description>
+          Avisos sobre quién(es) responde(n) por el pago de este domicilio
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+
+      <div fxLayout="row" fxLayoutAlign="end center" style="margin-bottom: 8px;">
+        <button mat-stroked-button color="primary" (click)="irAGenerarAvisoResponsablePago()">
+          <mat-icon>add</mat-icon> Generar / gestionar aviso
+        </button>
+      </div>
+
+      <p class="mat-hint" *ngIf="cargandoHistorialResponsablePago">Cargando historial...</p>
+
+      <table class="mat-hint" style="width: 100%; border-collapse: collapse;" *ngIf="!cargandoHistorialResponsablePago && historialResponsablePago.length > 0">
+        <thead>
+          <tr>
+            <th style="text-align: left; padding: 4px;">Folio</th>
+            <th style="text-align: left; padding: 4px;">Motivo</th>
+            <th style="text-align: left; padding: 4px;">Personas</th>
+            <th style="text-align: left; padding: 4px;">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let aviso of historialResponsablePago" [style.opacity]="aviso.cancelado ? 0.5 : 1">
+            <td style="padding: 4px;">{{ aviso.folioNotificacion }}</td>
+            <td style="padding: 4px;">{{ aviso.motivoSolicitud || '--' }}</td>
+            <td style="padding: 4px;">{{ aviso.personas.length || 0 }}</td>
+            <td style="padding: 4px;">
+              {{ aviso.cancelado ? 'Cancelado' : (aviso.entregado ? 'Entregado' : 'Sin entregar') }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="mat-hint" *ngIf="!cargandoHistorialResponsablePago && historialResponsablePago.length === 0">
+        Sin avisos generados para esta casa.
+      </p>
+    </mat-expansion-panel>
+
     <!-- Un acordeón por usuario de la casa: pagos, datos de uso, censo -->
     <mat-expansion-panel *ngFor="let user of listWaterUser; trackBy: trackByUser; let i = index"
       [ngClass]="i % 2 === 0 ? 'panel-claro' : 'panel-oscuro'">

@@ -6,10 +6,13 @@ import com.mx.uvas.watersystem.dto.AvisoAdeudoAtencionRequestDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoEntregaRequestDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoGenerarRequestDto;
 import com.mx.uvas.watersystem.dto.UsuarioNoRegistradoDto;
+import com.mx.uvas.watersystem.dto.UsuarioManualAdeudoDto;
 import com.mx.uvas.watersystem.mapping.AvisoAdeudoMapper;
 import com.mx.uvas.watersystem.model.AvisoAdeudoEntity;
 import com.mx.uvas.watersystem.model.CatalogOptionsEntity;
+import com.mx.uvas.watersystem.model.PersonEntity;
 import com.mx.uvas.watersystem.model.WaterAgreementEntity;
+import com.mx.uvas.watersystem.model.WaterHouseEntity;
 import com.mx.uvas.watersystem.model.WaterReceiptEntity;
 import com.mx.uvas.watersystem.model.WaterUserChargeEntity;
 import com.mx.uvas.watersystem.model.WaterUserEntity;
@@ -269,6 +272,29 @@ public class AvisoAdeudoService {
             aviso.setNombreNotificador(request.getNombreNotificador());
             aviso.setNombreTestigo1(request.getNombreTestigo1());
             aviso.setNombreTestigo2(request.getNombreTestigo2());
+            aviso.setComentarioEntrega(request.getComentarioEntrega());
+
+            // Cuando el motivo es ABONO y se ligó el folio del recibo, ese
+            // recibo YA es el soporte del pago -- se valida que exista y,
+            // de paso, se cierra la alerta de "pendiente de atención" de
+            // una vez (equivale a marcarla atendida con resultado PAGADO),
+            // para no obligar a Ely a repetir el mismo folio en un segundo
+            // paso.
+            Integer folioRecibo = request.getFolioReciboVinculado();
+            if (folioRecibo != null) {
+                WaterReceiptEntity recibo = waterReceiptRepository.findByNoFolio(folioRecibo);
+                if (recibo == null) {
+                    response.addMetadata(Constants.ERROR_RESPONSE_MESSAGE, Constants.ERROR_RESPONSE_CODE,
+                            "No se encontró ningún recibo con el folio " + folioRecibo);
+                    return ResponseEntity.badRequest().body(response);
+                }
+                aviso.setFolioReciboVinculado(folioRecibo);
+                if ("ABONO".equalsIgnoreCase(request.getTipoEntrega())) {
+                    aviso.setResultadoAtencion("PAGADO");
+                    aviso.setFechaAtencion(LocalDateTime.now());
+                }
+            }
+
             avisoAdeudoRepository.save(aviso);
 
             response.setData(List.of(avisoAdeudoMapper.entityToDto(aviso)));
@@ -326,6 +352,22 @@ public class AvisoAdeudoService {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseHandler.handleInternalServerError(response, "Error al reactivar el aviso", e);
+        }
+    }
+
+    // Historial completo (activas + canceladas) de un usuario específico --
+    // para el acordeón "Cartas generadas" en su ficha (details-user).
+    @Transactional(readOnly = true)
+    public ResponseEntity<AvisoAdeudoRestResponse> porUsuario(Integer aguaUsuarioId) {
+        AvisoAdeudoRestResponse response = new AvisoAdeudoRestResponse();
+        try {
+            List<AvisoAdeudoEntity> avisos = avisoAdeudoRepository
+                    .findByWaterUser_AguaUsuarioIdAndEstatusInOrderByFolioNotificacionDesc(aguaUsuarioId, List.of(1, 0));
+            response.setData(avisos.stream().map(avisoAdeudoMapper::entityToDto).toList());
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, "Cartas encontradas");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, "Error al consultar las cartas del usuario", e);
         }
     }
 
@@ -568,7 +610,8 @@ public class AvisoAdeudoService {
                     multaAcumulada,
                     notaEntregaPrimerAviso,
                     mantenimientoPendiente,
-                    mantenimientoPorAnioTexto
+                    mantenimientoPorAnioTexto,
+                    null
             ));
 
             // El snapshot del historial guarda el nombre SIN el número al
@@ -586,6 +629,7 @@ public class AvisoAdeudoService {
                     .noFolioUltimoPago(adeudo.getNoFolioUltimoPago())
                     .fechaUltimoPago(adeudo.getFechaUltimoPago())
                     .multaAcumulada(multaAcumulada)
+                    .fechaPresentacion(request.getFechaPresentacion())
                     .estatus(1)
                     .userIdAdd(userIdAdd)
                     .dateAdd(ahora)
@@ -626,8 +670,91 @@ public class AvisoAdeudoService {
                         0d,
                         null,
                         0d,
-                        ""
+                        "",
+                        null
                 ));
+            }
+        }
+
+        // Usuarios YA registrados con monto de adeudo capturado a mano --
+        // ver UsuarioManualAdeudoDto. A diferencia de noRegistrados, SÍ
+        // tienen aguaUsuarioId real: se les genera el mismo cargo
+        // automático de Aviso (Art. 20) que a cualquier otro, y la carta SÍ
+        // queda en su historial. El monto de adeudo en sí (Luz/CFE) no se
+        // recalcula -- se usa tal cual lo capturado, precisamente porque el
+        // cálculo automático no aplica o no lo detecta (motivo que se pide
+        // dejar en observacion).
+        if (request.getUsuariosManuales() != null) {
+            for (UsuarioManualAdeudoDto manual : request.getUsuariosManuales()) {
+                if (manual == null || manual.getAguaUsuarioId() == null
+                        || manual.getMontoAdeudo() == null || manual.getMontoAdeudo() <= 0) {
+                    continue;
+                }
+
+                Optional<WaterUserEntity> usuarioOpt = waterUserRepository.findById(manual.getAguaUsuarioId());
+                if (usuarioOpt.isEmpty()) {
+                    continue;
+                }
+                WaterUserEntity usuario = usuarioOpt.get();
+
+                Integer folio = siguienteFolio++;
+
+                String nombreCompleto = buildNombreCompleto(usuario);
+                String nombreConNumero = usuario.getNoUsuario() + " - " + nombreCompleto;
+                String casaNoTexto = buildCasaNoTexto(usuario);
+                String domicilioToma = buildDomicilio(usuario);
+
+                double multaAcumulada = crearCargoAviso(usuario, tipoAviso, folio, userIdAdd, ahora);
+
+                String observacion = manual.getObservacion() != null && !manual.getObservacion().isBlank()
+                        ? manual.getObservacion().trim() : null;
+
+                // "Monto capturado manualmente | Total $X" -- mismo criterio
+                // visual que el desglose por año normal, pero dejando claro
+                // que aquí no hay un cálculo año por año detrás.
+                String desglosePorAnio = "Monto capturado manualmente | Total " + formatoMoneda.format(manual.getMontoAdeudo());
+
+                String notaEntregaPrimerAviso = "SEGUNDO".equalsIgnoreCase(tipoAviso)
+                        ? construirNotaEntregaPrimerAviso(manual.getAguaUsuarioId())
+                        : null;
+
+                cartas.add(new CartaAdeudoDatos(
+                        folio,
+                        tipoAviso,
+                        nombreConNumero,
+                        casaNoTexto,
+                        domicilioToma,
+                        manual.getMontoAdeudo(),
+                        null,
+                        "",
+                        desglosePorAnio,
+                        request.getFechaPresentacion(),
+                        false,
+                        multaAcumulada,
+                        notaEntregaPrimerAviso,
+                        0d,
+                        "",
+                        observacion
+                ));
+
+                paraGuardar.add(AvisoAdeudoEntity.builder()
+                        .folioNotificacion(folio)
+                        .tipoAviso(tipoAviso)
+                        .nombreUsuarioTitular(nombreCompleto)
+                        .noCasa(usuario.getWaterHouse() != null ? usuario.getWaterHouse().getCasaNo() : null)
+                        .noCasaTexto(casaNoTexto)
+                        .domicilioToma(domicilioToma)
+                        .periodosAdeudados("Monto capturado manualmente" + (observacion != null ? " -- " + observacion : ""))
+                        .adeudoTotal(manual.getMontoAdeudo())
+                        .noFolioUltimoPago(null)
+                        .fechaUltimoPago(null)
+                        .multaAcumulada(multaAcumulada)
+                        .fechaPresentacion(request.getFechaPresentacion())
+                        .estatus(1)
+                        .userIdAdd(userIdAdd)
+                        .dateAdd(ahora)
+                        .waterUser(usuario)
+                        .build());
             }
         }
 
@@ -639,6 +766,48 @@ public class AvisoAdeudoService {
         avisoAdeudoRepository.saveAll(paraGuardar);
 
         return new GenerarAvisosResultado(pdf, cartas.size(), omitidos);
+    }
+
+    // "Calle #número" -- mismo criterio que AdeudoLuzService.buildDomicilio()
+    // (duplicado aquí porque ese método es privado y este flujo, a
+    // diferencia del normal, no pasa por AdeudoLuzService para nada -- el
+    // usuario no salió como candidato, por eso se está capturando a mano).
+    private String buildDomicilio(WaterUserEntity user) {
+        if (user.getAddress() != null && user.getAddress().getCalle() != null && !user.getAddress().getCalle().isBlank()) {
+            String numero = user.getAddress().getNumero();
+            return user.getAddress().getCalle() + (numero != null && !numero.isBlank() ? " #" + numero : "");
+        }
+        WaterHouseEntity casa = user.getWaterHouse();
+        if (casa != null) {
+            String calle = casa.getCatCalle() != null ? casa.getCatCalle().getNombre() : "";
+            String casaNo = casa.getCasaNo() != null ? " #" + casa.getCasaNo() : "";
+            return (calle + casaNo).trim();
+        }
+        return "";
+    }
+
+    // "2-D" / "2-I" -- mismo criterio que AdeudoLuzService.buildCasaNoTexto().
+    private String buildCasaNoTexto(WaterUserEntity user) {
+        WaterHouseEntity casa = user.getWaterHouse();
+        if (casa == null || casa.getCasaNo() == null) {
+            return "";
+        }
+        String lado = casa.getLado();
+        return lado != null && !lado.isBlank() ? casa.getCasaNo() + "-" + lado : String.valueOf(casa.getCasaNo());
+    }
+
+    // Mismo criterio que AdeudoLuzService.buildNombreCompleto().
+    private String buildNombreCompleto(WaterUserEntity user) {
+        PersonEntity person = user.getPerson();
+        if (person == null) return "";
+        return String.join(" ",
+                        nullToVacio(person.getNombre()), nullToVacio(person.getNombre2()),
+                        nullToVacio(person.getApp()), nullToVacio(person.getApm()))
+                .replaceAll("\\s+", " ").trim();
+    }
+
+    private String nullToVacio(String valor) {
+        return valor != null ? valor : "";
     }
 
     private String normalizarTipoAviso(String valor) {
@@ -808,6 +977,8 @@ public class AvisoAdeudoService {
             comoSeEntrego = "sin que la persona que atendió aceptara recibir o firmar; se fijó copia en el domicilio, ante testigos";
         } else if ("NO_ENCONTRADO".equalsIgnoreCase(tipoEntrega)) {
             comoSeEntrego = "sin encontrar a persona alguna en el domicilio; se fijó copia, ante testigos";
+        } else if ("ABONO".equalsIgnoreCase(tipoEntrega)) {
+            comoSeEntrego = "no se dejó, ya que el usuario realizó un abono en el momento";
         } else {
             comoSeEntrego = "conforme consta en el acta de notificación respectiva";
         }

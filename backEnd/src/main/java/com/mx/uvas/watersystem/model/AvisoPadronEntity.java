@@ -49,6 +49,11 @@ public class AvisoPadronEntity implements Serializable {
     // generar, no solo el día).
     private LocalDate fechaPresentacion;
 
+    // Motivo por el que se solicitó la actualización -- opcional, se
+    // imprime en la carta cuando se captura (v2, sept. 2026, pedido de Ely).
+    @Column(length = 500)
+    private String motivoSolicitud;
+
     // 1 = activo, 0 = cancelado (se oculta del historial por default, pero
     // se puede seguir consultando -- mismo patrón que avisos de adeudo/bomba).
     @Builder.Default
@@ -70,6 +75,8 @@ public class AvisoPadronEntity implements Serializable {
     private String nombreNotificador;
     private String nombreTestigo1;
     private String nombreTestigo2;
+    @Column(length = 500)
+    private String comentarioEntrega;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)

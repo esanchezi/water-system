@@ -37,7 +37,30 @@ import { RenunciaTemporalService } from 'src/app/modules/shared/services/renunci
 import { RenunciaTemporalModel } from 'src/app/modules/shared/models/RenunciaTemporal.model';
 import { RenunciaTemporalDialogComponent } from '../renuncia-temporal-dialog/renuncia-temporal-dialog.component';
 import { RenunciaTemporalReconexionDialogComponent } from '../renuncia-temporal-reconexion-dialog/renuncia-temporal-reconexion-dialog.component';
+import { AvisoBombaService } from 'src/app/modules/shared/services/aviso-bomba.service';
+import { AvisoPadronService } from 'src/app/modules/shared/services/aviso-padron.service';
+import { AvisoInformativoAdeudoService } from 'src/app/modules/shared/services/aviso-informativo-adeudo.service';
+import { TIPOS_ENTREGA_ADEUDO } from 'src/app/modules/shared/models/AvisoAdeudo.model';
 import Swal from 'sweetalert2';
+
+// Fila unificada del acordeón "Cartas generadas" -- combina el historial
+// de los 4 módulos de carta ligados directamente a un usuario (Cartas de
+// adeudo, Aviso informativo de adeudo, Aviso de bomba, Actualización de
+// padrón; Responsables de pago queda fuera porque está ligado a la CASA,
+// no al usuario -- ya tiene su propio acordeón en house-details). No todos
+// los campos aplican a todos los tipos (ej. adeudoTotal/fechaPresentacion
+// solo en Adeudo/InformativoAdeudo), quedan undefined cuando no aplica.
+interface CartaGeneradaRow {
+  tipo: string;
+  folioNotificacion: number;
+  dateAdd: string;
+  adeudoTotal?: number;
+  fechaPresentacion?: string;
+  entregado?: boolean;
+  fechaEntrega?: string;
+  tipoEntrega?: string;
+  cancelado?: boolean;
+}
 
 @Component({
   selector: 'app-details-user',
@@ -62,6 +85,9 @@ export class DetailsUserComponent implements OnInit {
   private readonly groupService     = inject(GroupService);
   private readonly annualPaymentService = inject(WaterUserAnnualPaymentService);
   private readonly avisoAdeudoService = inject(AvisoAdeudoService);
+  private readonly avisoBombaService = inject(AvisoBombaService);
+  private readonly avisoPadronService = inject(AvisoPadronService);
+  private readonly avisoInformativoAdeudoService = inject(AvisoInformativoAdeudoService);
   private readonly valorGeneralService = inject(ValorGeneralService);
   private readonly renunciaTemporalService = inject(RenunciaTemporalService);
   private readonly dialog           = inject(MatDialog);
@@ -98,6 +124,13 @@ export class DetailsUserComponent implements OnInit {
   // usa para mostrar el aviso arriba del historial y decidir si se
   // ofrece "Solicitar renuncia" o "Registrar reconexión".
   renunciaActiva: RenunciaTemporalModel | null = null;
+
+  // "Cartas generadas" -- combina el historial de los 4 módulos de carta
+  // ligados directamente a este usuario, ver getCartasGeneradas().
+  dataSourceCartas = new MatTableDataSource<CartaGeneradaRow>();
+  cargandoCartas = false;
+  cartasColumns: string[] = ['tipo', 'folioNotificacion', 'dateAdd', 'adeudoTotal', 'fechaPresentacion', 'entrega'];
+  private readonly tiposEntregaCartas = TIPOS_ENTREGA_ADEUDO;
 
   usuario!: WaterUserModel;
   user!:    WaterUserDetailModel;
@@ -1019,6 +1052,86 @@ export class DetailsUserComponent implements OnInit {
       },
       error: (e: any) => console.error('Error al consultar avisos/notas pendientes', e)
     });
+  }
+
+  // --- Cartas generadas (unifica los 4 módulos ligados a este usuario) ---
+  // AvisoResponsablePago queda fuera a propósito: está ligado a casaId, no
+  // a aguaUsuarioId, y ya tiene su propio acordeón en house-details.
+
+  getCartasGeneradas(): void {
+    if (!this.usuario?.aguaUsuarioId) return;
+    this.cargandoCartas = true;
+    forkJoin({
+      adeudo: this.avisoAdeudoService.getPorUsuario(this.usuario.aguaUsuarioId),
+      bomba: this.avisoBombaService.getPorUsuario(this.usuario.aguaUsuarioId),
+      padron: this.avisoPadronService.getPorUsuario(this.usuario.aguaUsuarioId),
+      informativo: this.avisoInformativoAdeudoService.getPorUsuario(this.usuario.aguaUsuarioId)
+    }).subscribe({
+      next: (resp: any) => {
+        this.cargandoCartas = false;
+        const filas: CartaGeneradaRow[] = [];
+
+        (resp.adeudo?.data || []).forEach((a: any) => filas.push({
+          tipo: a.tipoAviso === 'SEGUNDO' ? 'Carta de adeudo (2do aviso)' : 'Carta de adeudo (1er aviso)',
+          folioNotificacion: a.folioNotificacion,
+          dateAdd: a.dateAdd,
+          adeudoTotal: a.adeudoTotal,
+          fechaPresentacion: a.fechaPresentacion,
+          entregado: a.entregado,
+          fechaEntrega: a.fechaEntrega,
+          tipoEntrega: a.tipoEntrega,
+          cancelado: a.cancelada
+        }));
+
+        (resp.informativo?.data || []).forEach((a: any) => filas.push({
+          tipo: 'Aviso informativo de adeudo',
+          folioNotificacion: a.folioNotificacion,
+          dateAdd: a.dateAdd,
+          adeudoTotal: a.adeudoTotal,
+          fechaPresentacion: a.fechaPresentacion,
+          entregado: a.entregado,
+          fechaEntrega: a.fechaEntrega,
+          tipoEntrega: a.tipoEntrega,
+          cancelado: a.cancelado
+        }));
+
+        (resp.padron?.data || []).forEach((a: any) => filas.push({
+          tipo: 'Actualización de padrón',
+          folioNotificacion: a.folioNotificacion,
+          dateAdd: a.dateAdd,
+          adeudoTotal: undefined,
+          fechaPresentacion: a.fechaPresentacion,
+          entregado: a.entregado,
+          fechaEntrega: a.fechaEntrega,
+          tipoEntrega: a.tipoEntrega,
+          cancelado: a.cancelado
+        }));
+
+        (resp.bomba?.data || []).forEach((a: any) => filas.push({
+          tipo: 'Aviso de uso de bomba',
+          folioNotificacion: a.folioNotificacion,
+          dateAdd: a.dateAdd,
+          adeudoTotal: undefined,
+          fechaPresentacion: undefined,
+          entregado: a.entregado,
+          fechaEntrega: a.fechaEntrega,
+          tipoEntrega: a.tipoEntrega,
+          cancelado: a.cancelado
+        }));
+
+        filas.sort((a, b) => (b.dateAdd || '').localeCompare(a.dateAdd || ''));
+        this.dataSourceCartas = new MatTableDataSource<CartaGeneradaRow>(filas);
+      },
+      error: (e: any) => {
+        this.cargandoCartas = false;
+        console.error('Error al consultar cartas generadas', e);
+      }
+    });
+  }
+
+  etiquetaTipoEntregaCarta(tipoEntrega?: string): string {
+    if (!tipoEntrega) return '';
+    return this.tiposEntregaCartas.find(t => t.valor === tipoEntrega)?.etiqueta || tipoEntrega;
   }
 
   // --- Renuncia temporal al servicio (Art. 6 Bis) ---

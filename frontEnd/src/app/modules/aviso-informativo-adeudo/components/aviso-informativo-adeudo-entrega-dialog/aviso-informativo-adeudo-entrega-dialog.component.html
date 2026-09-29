@@ -1,0 +1,86 @@
+<h2 mat-dialog-title>{{ data.soloVerFotos ? 'Evidencia fotográfica' : 'Registrar entrega' }}</h2>
+
+<mat-dialog-content>
+  <p class="hint">
+    Folio {{ data.aviso.folioNotificacion }} -- {{ data.aviso.noUsuario }} - {{ data.aviso.nombreUsuarioTitular }}
+  </p>
+
+  <div class="campos" *ngIf="!data.soloVerFotos">
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>¿Qué pasó al entregar? (marcar lo que corresponda)</mat-label>
+      <mat-select [(ngModel)]="tipoEntrega">
+        <mat-option *ngFor="let t of tiposEntrega" [value]="t.valor">{{ t.etiqueta }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Fecha de entrega</mat-label>
+      <input matInput type="date" [(ngModel)]="fechaEntrega">
+    </mat-form-field>
+
+    <ng-container *ngIf="requiereReceptor">
+      <mat-form-field appearance="fill" class="w-100">
+        <mat-label>¿Quién recibió?</mat-label>
+        <input matInput [(ngModel)]="nombreReceptor" placeholder="Nombre de quien recibió">
+      </mat-form-field>
+
+      <mat-form-field appearance="fill" class="w-100">
+        <mat-label>¿Qué es del titular?</mat-label>
+        <input matInput [(ngModel)]="parentescoReceptor" placeholder="Ej. esposa, hijo, inquilino...">
+      </mat-form-field>
+    </ng-container>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Notificador(a) por el Comité</mat-label>
+      <input matInput [(ngModel)]="nombreNotificador" placeholder="Quién entregó el aviso">
+    </mat-form-field>
+
+    <ng-container *ngIf="requiereTestigos">
+      <mat-form-field appearance="fill" class="w-100">
+        <mat-label>Testigo 1</mat-label>
+        <input matInput [(ngModel)]="nombreTestigo1">
+      </mat-form-field>
+
+      <mat-form-field appearance="fill" class="w-100">
+        <mat-label>Testigo 2 (opcional)</mat-label>
+        <input matInput [(ngModel)]="nombreTestigo2">
+      </mat-form-field>
+    </ng-container>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Comentario (opcional)</mat-label>
+      <textarea matInput [(ngModel)]="comentarioEntrega" rows="2" placeholder="Explica qué sucedió, si hace falta más detalle"></textarea>
+    </mat-form-field>
+  </div>
+
+  <div class="fotos-respaldo" *ngIf="requiereFotos">
+    <h4>Fotos de respaldo</h4>
+    <p class="hint">Evidencia de que se buscó al usuario (ej. foto de la puerta/casa al momento de la visita).</p>
+
+    <div class="galeria-fotos">
+      <div class="miniatura-foto" *ngFor="let foto of fotos">
+        <img *ngIf="fotoUrls[foto.fotoId]" [src]="fotoUrls[foto.fotoId]" [alt]="foto.nombreOriginal">
+        <button mat-icon-button color="warn" title="Eliminar foto" (click)="eliminarFoto(foto)">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <input #inputFoto type="file" accept="image/*" style="display:none" (change)="subirFoto($event)">
+    <button mat-stroked-button color="primary" type="button" [disabled]="subiendoFoto" (click)="inputFoto.click()">
+      <mat-icon>add_a_photo</mat-icon> {{ subiendoFoto ? 'Subiendo...' : 'Agregar foto' }}
+    </button>
+  </div>
+
+  <p class="error" *ngIf="error">{{ error }}</p>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button *ngIf="data.soloVerFotos" (click)="cancelar()">Cerrar</button>
+  <ng-container *ngIf="!data.soloVerFotos">
+    <button mat-button (click)="cancelar()">Cancelar</button>
+    <button mat-raised-button color="primary" (click)="guardar()" [disabled]="!formularioValido || guardando">
+      {{ guardando ? 'Guardando...' : 'Guardar' }}
+    </button>
+  </ng-container>
+</mat-dialog-actions>

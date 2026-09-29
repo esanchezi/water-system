@@ -168,10 +168,15 @@ public class AvisoAdeudoPdfService {
         // vacío si va en su propio renglón de la tabla completa; si el
         // usuario no tiene casa capturada, el valor simplemente se deja en
         // blanco (la etiqueta se sigue mostrando).
+        // El valor de "No. Casa" es corto (o va vacío) -- la etiqueta ya
+        // trae su ancho justo, así que el valor solo necesita lo mínimo;
+        // el espacio que sobraba se lo lleva el valor de "Domicilio de la
+        // toma", que suele ser el dato más largo del renglón (v8, sept.
+        // 2026, Ely reportó espacio en blanco desperdiciado ahí).
         agregarFilaDatosDoble(datos,
                 "No. Casa", carta.noCasa() != null && !carta.noCasa().isBlank() ? carta.noCasa() : "",
                 "Domicilio de la toma", nullToVacio(carta.domicilioToma()),
-                new float[]{13f, 17f, 20f, 50f});
+                new float[]{13f, 7f, 22f, 58f});
 
         agregarFilaDatos(datos, "Desglose del adeudo por año",
                 carta.desglosePorAnio() != null && !carta.desglosePorAnio().isBlank() ? carta.desglosePorAnio() : "--",
@@ -260,6 +265,17 @@ public class AvisoAdeudoPdfService {
                     fontItalicChico);
             notaNoRegistrado.setSpacingAfter(1.8f);
             document.add(notaNoRegistrado);
+        }
+
+        // Usuario registrado con monto de adeudo capturado A MANO (ver
+        // UsuarioManualAdeudoDto/AvisoAdeudoService) -- se deja constancia
+        // en la carta del motivo, para que quede claro por qué el monto no
+        // salió del cálculo automático (ej. cuenta juntada con la de un
+        // familiar).
+        if (carta.observacionManual() != null && !carta.observacionManual().isBlank()) {
+            Paragraph notaManual = new Paragraph("Nota del Comité: " + carta.observacionManual(), fontRojoItalica);
+            notaManual.setSpacingAfter(1.8f);
+            document.add(notaManual);
         }
 
         // La consecuencia de no presentarse (siguiente aviso, o corte) ya

@@ -32,6 +32,13 @@ public class AvisoPadronController {
         return avisoPadronService.historial();
     }
 
+    // Historial completo de un usuario específico -- para el acordeón
+    // "Cartas generadas" en su ficha.
+    @GetMapping("/porUsuario/{aguaUsuarioId}")
+    public ResponseEntity<AvisoPadronRestResponse> porUsuario(@PathVariable Integer aguaUsuarioId) {
+        return avisoPadronService.porUsuario(aguaUsuarioId);
+    }
+
     @PutMapping("/{avisoPadronId}/entregar")
     public ResponseEntity<AvisoPadronRestResponse> marcarEntregada(
             @PathVariable Integer avisoPadronId,

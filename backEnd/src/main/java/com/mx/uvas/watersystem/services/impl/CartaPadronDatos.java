@@ -16,6 +16,8 @@ public record CartaPadronDatos(
         String domicilioToma,
         // "Debe presentarse el día ___ de ___ de 20__" -- fecha completa
         // elegida al generar (mismo criterio que en avisos de adeudo).
-        LocalDate fechaPresentacion
+        LocalDate fechaPresentacion,
+        // Motivo de la solicitud -- opcional, null/"" si no se capturó.
+        String motivoSolicitud
 ) {
 }

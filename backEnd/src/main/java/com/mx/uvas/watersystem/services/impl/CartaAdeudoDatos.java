@@ -60,6 +60,12 @@ public record CartaAdeudoDatos(
         Double mantenimientoPendiente,
         // "$100.00 - 2024 | $100.00 - 2025" -- desglose de
         // mantenimientoPendiente por año, "" si no hay ninguno pendiente.
-        String mantenimientoPorAnioTexto
+        String mantenimientoPorAnioTexto,
+        // Solo para usuarios registrados con monto de adeudo capturado A
+        // MANO (ver UsuarioManualAdeudoDto/AvisoAdeudoService) -- motivo por
+        // el que no se dejó calcular solo (ej. cuenta juntada con la de un
+        // familiar). Se imprime como nota del Comité en la carta. Null en
+        // cualquier otro caso.
+        String observacionManual
 ) {
 }

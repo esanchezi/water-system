@@ -127,7 +127,10 @@ public class AvisoPadronService {
             String domicilioToma = buildDomicilio(usuario);
             String nombreConNumero = usuario.getNoUsuario() + " - " + buildNombreCompleto(usuario.getPerson());
 
-            cartas.add(new CartaPadronDatos(folio, nombreConNumero, casaNoTexto, domicilioToma, request.getFechaPresentacion()));
+            String motivoSolicitud = request.getMotivoSolicitud() != null && !request.getMotivoSolicitud().isBlank()
+                    ? request.getMotivoSolicitud().trim() : null;
+
+            cartas.add(new CartaPadronDatos(folio, nombreConNumero, casaNoTexto, domicilioToma, request.getFechaPresentacion(), motivoSolicitud));
 
             paraGuardar.add(AvisoPadronEntity.builder()
                     .folioNotificacion(folio)
@@ -136,6 +139,7 @@ public class AvisoPadronService {
                     .noCasaTexto(casaNoTexto)
                     .domicilioToma(domicilioToma)
                     .fechaPresentacion(request.getFechaPresentacion())
+                    .motivoSolicitud(motivoSolicitud)
                     .estatus(1)
                     .userIdAdd(userIdAdd)
                     .dateAdd(ahora)
@@ -169,6 +173,22 @@ public class AvisoPadronService {
         }
     }
 
+    // Historial completo (activos + cancelados) de un usuario específico --
+    // para el acordeón "Cartas generadas" en su ficha (details-user).
+    @Transactional(readOnly = true)
+    public ResponseEntity<AvisoPadronRestResponse> porUsuario(Integer aguaUsuarioId) {
+        AvisoPadronRestResponse response = new AvisoPadronRestResponse();
+        try {
+            List<AvisoPadronEntity> avisos = avisoPadronRepository
+                    .findByWaterUser_AguaUsuarioIdAndEstatusInOrderByFolioNotificacionDesc(aguaUsuarioId, List.of(1, 0));
+            response.setData(avisos.stream().map(avisoPadronMapper::entityToDto).toList());
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, "Avisos encontrados");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, "Error al consultar los avisos del usuario", e);
+        }
+    }
+
     @Transactional
     public ResponseEntity<AvisoPadronRestResponse> marcarEntregada(Integer avisoPadronId, AvisoPadronEntregaRequestDto request) {
         AvisoPadronRestResponse response = new AvisoPadronRestResponse();
@@ -186,6 +206,7 @@ public class AvisoPadronService {
             aviso.setNombreNotificador(request.getNombreNotificador());
             aviso.setNombreTestigo1(request.getNombreTestigo1());
             aviso.setNombreTestigo2(request.getNombreTestigo2());
+            aviso.setComentarioEntrega(request.getComentarioEntrega());
             avisoPadronRepository.save(aviso);
 
             response.setData(List.of(avisoPadronMapper.entityToDto(aviso)));

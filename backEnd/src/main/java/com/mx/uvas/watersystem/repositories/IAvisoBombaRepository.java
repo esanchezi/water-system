@@ -16,4 +16,8 @@ public interface IAvisoBombaRepository extends JpaRepository<AvisoBombaEntity, I
     // Historial completo (activos + cancelados) -- el frontend oculta los
     // cancelados por default, mismo patrón que avisos de adeudo.
     List<AvisoBombaEntity> findByEstatusInOrderByFolioNotificacionDesc(List<Integer> estatuses);
+
+    // Historial completo de un usuario específico -- para el acordeón
+    // "Cartas generadas" en su ficha.
+    List<AvisoBombaEntity> findByWaterUser_AguaUsuarioIdAndEstatusInOrderByFolioNotificacionDesc(Integer aguaUsuarioId, List<Integer> estatuses);
 }

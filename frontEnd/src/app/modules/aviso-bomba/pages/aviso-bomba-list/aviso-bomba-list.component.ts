@@ -308,6 +308,16 @@ export class AvisoBombaListComponent implements OnInit {
     });
   }
 
+  // Reabre el mismo dialog solo para consultar/agregar/quitar las fotos de
+  // respaldo de una entrega ya registrada -- ver AvisoAdeudoListComponent,
+  // mismo patrón.
+  verEvidenciaFotografica(aviso: AvisoBombaModel): void {
+    this.dialog.open(AvisoBombaEntregaDialogComponent, {
+      width: '480px',
+      data: { aviso, soloVerFotos: true }
+    });
+  }
+
   cancelarAviso(aviso: AvisoBombaModel): void {
     Swal.fire({
       title: `¿Cancelar el folio ${aviso.folioNotificacion}?`,

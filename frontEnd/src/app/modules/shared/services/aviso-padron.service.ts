@@ -18,11 +18,17 @@ export class AvisoPadronService {
     return this.http.get(`${this.baseUrl}/historial`);
   }
 
+  // Historial completo de un usuario específico -- para el acordeón
+  // "Cartas generadas" en su ficha.
+  getPorUsuario(aguaUsuarioId: number): Observable<any> {
+    return this.http.get(`${this.baseUrl}/porUsuario/${aguaUsuarioId}`);
+  }
+
   // El PDF viene en el cuerpo; el motivo de un error va en el header
   // X-Error-Message -- mismo patrón que AvisoAdeudoService.generar()/
   // AvisoBombaService.generar().
-  generar(aguaUsuarioIds: number[], fechaPresentacion: string): Observable<HttpResponse<Blob>> {
-    return this.http.post(`${this.baseUrl}/generar`, { aguaUsuarioIds, fechaPresentacion }, {
+  generar(aguaUsuarioIds: number[], fechaPresentacion: string, motivoSolicitud?: string): Observable<HttpResponse<Blob>> {
+    return this.http.post(`${this.baseUrl}/generar`, { aguaUsuarioIds, fechaPresentacion, motivoSolicitud }, {
       observe: 'response',
       responseType: 'blob'
     });

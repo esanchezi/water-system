@@ -1,5 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { WaterHouseModel, WaterUserModel } from 'src/app/modules/shared/models/WaterUser.model';
 import { MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
@@ -11,6 +11,8 @@ import { CatalogService } from 'src/app/modules/shared/services/catalog.service'
 import { CatalogOptionModel } from 'src/app/modules/shared/models/Catalog.model';
 import { MatDialog } from '@angular/material/dialog';
 import { NewUserComponent } from '../../../user/components/new-user/new-user.component';
+import { AvisoResponsablePagoService } from 'src/app/modules/shared/services/aviso-responsable-pago.service';
+import { AvisoResponsablePagoModel } from 'src/app/modules/shared/models/AvisoResponsablePago.model';
 import { debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import Swal from 'sweetalert2';
 
@@ -28,10 +30,12 @@ interface UserSearchResult {
 export class HouseDetailsComponent implements OnInit {
 
   private readonly activatedRoute = inject(ActivatedRoute);
+  private readonly router         = inject(Router);
   private readonly houseService   = inject(HouseService);
   private readonly userService    = inject(UserService);
   private readonly preregistroService = inject(PreregistroUsuarioService);
   private readonly catalogService = inject(CatalogService);
+  private readonly avisoResponsablePagoService = inject(AvisoResponsablePagoService);
   private readonly fb             = inject(FormBuilder);
   private readonly dialog         = inject(MatDialog);
 
@@ -79,6 +83,11 @@ export class HouseDetailsComponent implements OnInit {
   // (según la clasificación de uso capturada en app-user-uso) -- se
   // actualiza en vivo con cada cambio, no depende de recargar la página.
   censoHabilitadoPorUsuario = new Map<number, boolean>();
+
+  // Historial de avisos de responsables de pago de esta casa -- se carga
+  // bajo demanda al abrir el acordeón (mismo patrón que preregistro).
+  historialResponsablePago: AvisoResponsablePagoModel[] = [];
+  cargandoHistorialResponsablePago = false;
 
   ngOnInit(): void {
     this.activatedRoute.queryParams.subscribe(params => {
@@ -326,6 +335,33 @@ export class HouseDetailsComponent implements OnInit {
           Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo descartar el registro.', confirmButtonText: 'Cerrar' });
         }
       });
+    });
+  }
+
+  getHistorialResponsablePago(): void {
+    if (!this.waterHouse?.casaId) return;
+    this.cargandoHistorialResponsablePago = true;
+    this.avisoResponsablePagoService.getHistorialPorCasa(this.waterHouse.casaId).subscribe({
+      next: (resp: any) => {
+        this.cargandoHistorialResponsablePago = false;
+        if (resp.metadata?.code === '00') {
+          this.historialResponsablePago = resp.data || [];
+        }
+      },
+      error: (e: any) => {
+        this.cargandoHistorialResponsablePago = false;
+        console.error('Error al cargar historial de responsables de pago', e);
+      }
+    });
+  }
+
+  // Manda a la pantalla completa del módulo con la casa ya preseleccionada
+  // (por queryParam) para armar/gestionar el aviso -- evita duplicar aquí
+  // todo el formulario de personas.
+  irAGenerarAvisoResponsablePago(): void {
+    if (!this.waterHouse?.casaId) return;
+    this.router.navigate(['dashboard/avisoResponsablePago'], {
+      queryParams: { casaId: this.waterHouse.casaId }
     });
   }
 

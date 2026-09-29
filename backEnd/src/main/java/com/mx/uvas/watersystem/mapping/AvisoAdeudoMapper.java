@@ -23,6 +23,7 @@ public class AvisoAdeudoMapper {
         dto.setMultaAcumulada(entity.getMultaAcumulada());
         dto.setNoFolioUltimoPago(entity.getNoFolioUltimoPago());
         dto.setFechaUltimoPago(entity.getFechaUltimoPago());
+        dto.setFechaPresentacion(entity.getFechaPresentacion());
         dto.setDateAdd(entity.getDateAdd());
         if (entity.getWaterUser() != null) {
             dto.setAguaUsuarioId(entity.getWaterUser().getAguaUsuarioId());
@@ -38,6 +39,7 @@ public class AvisoAdeudoMapper {
         dto.setNombreNotificador(entity.getNombreNotificador());
         dto.setNombreTestigo1(entity.getNombreTestigo1());
         dto.setNombreTestigo2(entity.getNombreTestigo2());
+        dto.setComentarioEntrega(entity.getComentarioEntrega());
 
         dto.setAtendido(entity.getFechaAtencion() != null);
         dto.setFechaAtencion(entity.getFechaAtencion());

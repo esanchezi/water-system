@@ -797,6 +797,53 @@
                     <app-user-revision [usuario]="usuario"></app-user-revision>
                 </mat-expansion-panel>
 
+                <mat-expansion-panel class="panel-oscuro" (opened)="getCartasGeneradas()" hideToggle>
+                    <mat-expansion-panel-header>
+                        <mat-panel-title>Cartas generadas</mat-panel-title>
+                        <mat-panel-description>Adeudo, bomba, padrón e informativo -- entrega y presentación</mat-panel-description>
+                    </mat-expansion-panel-header>
+
+                    <p *ngIf="cargandoCartas">Cargando...</p>
+                    <p *ngIf="!cargandoCartas && dataSourceCartas.data.length === 0">No hay cartas generadas para este usuario.</p>
+
+                    <table mat-table [dataSource]="dataSourceCartas" class="mat-cell" *ngIf="dataSourceCartas.data.length > 0">
+                        <ng-container matColumnDef="tipo">
+                            <th mat-header-cell *matHeaderCellDef>Tipo de carta</th>
+                            <td mat-cell *matCellDef="let element">
+                                {{element.tipo}}
+                                <span *ngIf="element.cancelado" class="etiqueta-cancelada" style="margin-left:6px;color:#b71c1c;font-size:0.85em;">(cancelada)</span>
+                            </td>
+                        </ng-container>
+                        <ng-container matColumnDef="folioNotificacion">
+                            <th mat-header-cell *matHeaderCellDef>Folio</th>
+                            <td mat-cell *matCellDef="let element">{{element.folioNotificacion}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="dateAdd">
+                            <th mat-header-cell *matHeaderCellDef>Fecha generado</th>
+                            <td mat-cell *matCellDef="let element">{{element.dateAdd | date:'dd/MM/yyyy'}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="adeudoTotal">
+                            <th mat-header-cell *matHeaderCellDef>Adeudo</th>
+                            <td mat-cell *matCellDef="let element">{{element.adeudoTotal != null ? (element.adeudoTotal | currency) : '—'}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="fechaPresentacion">
+                            <th mat-header-cell *matHeaderCellDef>Debía presentarse</th>
+                            <td mat-cell *matCellDef="let element">{{element.fechaPresentacion ? (element.fechaPresentacion | date:'dd/MM/yyyy') : '—'}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="entrega">
+                            <th mat-header-cell *matHeaderCellDef>Entrega</th>
+                            <td mat-cell *matCellDef="let element">
+                                <span *ngIf="element.entregado" title="{{etiquetaTipoEntregaCarta(element.tipoEntrega)}}">
+                                    Entregada el {{element.fechaEntrega | date:'dd/MM/yyyy'}}
+                                </span>
+                                <span *ngIf="!element.entregado">Pendiente de entregar</span>
+                            </td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="cartasColumns"></tr>
+                        <tr mat-row *matRowDef="let row; columns:cartasColumns"></tr>
+                    </table>
+                </mat-expansion-panel>
+
             </mat-accordion>
         </div>
     </form>

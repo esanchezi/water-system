@@ -22,4 +22,11 @@ public class AvisoAdeudoGenerarRequestDto implements Serializable {
     // también se les quiere generar carta -- ver UsuarioNoRegistradoDto.
     // Puede venir null/vacío si el lote es solo de usuarios registrados.
     private List<UsuarioNoRegistradoDto> noRegistrados;
+    // Usuarios YA registrados que no salieron como candidatos (o cuyo
+    // cálculo automático no aplica -- ej. cuenta "juntada" con la de otro
+    // familiar) pero a los que igual se les quiere generar la carta, con un
+    // monto de adeudo capturado a mano -- ver UsuarioManualAdeudoDto. A
+    // diferencia de noRegistrados, SÍ quedan en el historial (tienen
+    // aguaUsuarioId real).
+    private List<UsuarioManualAdeudoDto> usuariosManuales;
 }
