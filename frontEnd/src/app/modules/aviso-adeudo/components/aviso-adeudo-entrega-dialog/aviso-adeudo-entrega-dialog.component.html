@@ -18,6 +18,11 @@
       <input matInput type="date" [(ngModel)]="fechaEntrega">
     </mat-form-field>
 
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Hora de entrega</mat-label>
+      <input matInput type="time" [(ngModel)]="horaEntrega">
+    </mat-form-field>
+
     <ng-container *ngIf="requiereReceptor">
       <mat-form-field appearance="fill" class="w-100">
         <mat-label>¿Quién recibió?</mat-label>

@@ -35,6 +35,9 @@ public class AvisoAdeudoDto implements Serializable {
     // Derivado de estatus (0 = cancelada) -- se oculta del historial por
     // default en el frontend, pero se puede consultar explícitamente.
     private Boolean cancelada;
+    // Motivo de la cancelación (opcional) -- ej. "no fue entregada, se
+    // negaron a recibir" o "no fue entregada, no se encontró a nadie".
+    private String comentarioCancela;
 
     // Derivado de fechaEntrega != null.
     private Boolean entregado;

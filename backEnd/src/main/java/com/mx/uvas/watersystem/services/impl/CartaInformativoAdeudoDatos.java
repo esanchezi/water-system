@@ -16,6 +16,10 @@ public record CartaInformativoAdeudoDatos(
         // Texto libre capturado a mano, ej. "2024 - $600.00 | 2025 - $700.00".
         String periodosAdeudados,
         Double multaAcumulada,
+        // Desglose de multaAcumulada por concepto -- mismo campo y mismas
+        // reglas que CartaAdeudoDatos.multaAcumuladaDesglose (ver
+        // AdeudoLuzUsuarioDto.multaAcumuladaDesglose). Null cuando no aplica.
+        String multaAcumuladaDesglose,
         // Cooperación extraordinaria de mantenimiento de cajón (Art. 10)
         // pendiente -- se imprime en su propio renglón, aparte de la multa
         // (mismo criterio que Cartas de adeudo v5). mantenimientoPorAnioTexto

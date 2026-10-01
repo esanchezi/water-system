@@ -36,6 +36,24 @@
         </mat-select>
       </mat-form-field>
 
+      <mat-form-field appearance="fill" *ngIf="yaSeBusco" style="width: 190px;">
+        <mat-label>Meses sin abonar (mínimo)</mat-label>
+        <input matInput type="number" min="0" [(ngModel)]="mesesSinAbonarMinFiltro" (ngModelChange)="applyCandidatosAjustablesFilter()">
+        <mat-hint>Vacío = sin restringir</mat-hint>
+      </mat-form-field>
+
+      <mat-form-field appearance="fill" *ngIf="yaSeBusco" style="width: 170px;">
+        <mat-label>Adeudo mínimo</mat-label>
+        <input matInput type="number" min="0" [(ngModel)]="adeudoMinimoFiltro" (ngModelChange)="applyCandidatosAjustablesFilter()">
+        <mat-hint>Vacío = sin restringir</mat-hint>
+      </mat-form-field>
+
+      <div *ngIf="yaSeBusco" style="display:flex; align-items:center;">
+        <mat-checkbox [(ngModel)]="soloSinCartaPreviaFiltro" (ngModelChange)="applyCandidatosAjustablesFilter()">
+          Solo sin carta generada antes
+        </mat-checkbox>
+      </div>
+
       <mat-form-field appearance="fill">
         <mat-label>Tipo de aviso</mat-label>
         <mat-select [(ngModel)]="tipoAviso">
@@ -58,97 +76,106 @@
       {{ selection.selected.length }} usuario(s) seleccionado(s) -- adeudo total: {{ totalAdeudoSeleccionado | currency }}
     </p>
 
-    <mat-divider></mat-divider>
+    <mat-accordion class="acordeon-opciones-extra">
+      <mat-expansion-panel class="panel-claro">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Persona sin usuario en el sistema (censo en proceso)</mat-panel-title>
+          <mat-panel-description *ngIf="noRegistrados.length > 0">{{ noRegistrados.length }} agregada(s)</mat-panel-description>
+        </mat-expansion-panel-header>
 
-    <div class="fila-no-registrados">
-      <h3>Persona sin usuario en el sistema (censo en proceso)</h3>
-      <p class="hint">
-        Solo captura nombre y, si la tienes, dirección. El adeudo se calcula con la cuota fija anual desde 2021
-        (no depende de recibos, porque no tiene usuario registrado).
-      </p>
+        <p class="hint">
+          Solo captura nombre y, si la tienes, dirección. El adeudo se calcula con la cuota fija anual desde 2021
+          (no depende de recibos, porque no tiene usuario registrado).
+        </p>
 
-      <div class="fila-filtros">
-        <mat-form-field appearance="fill">
-          <mat-label>Nombre</mat-label>
-          <input matInput [(ngModel)]="nuevoNoRegistradoNombre" placeholder="Nombre completo">
-        </mat-form-field>
+        <div class="fila-filtros">
+          <mat-form-field appearance="fill">
+            <mat-label>Nombre</mat-label>
+            <input matInput [(ngModel)]="nuevoNoRegistradoNombre" placeholder="Nombre completo">
+          </mat-form-field>
 
-        <mat-form-field appearance="fill">
-          <mat-label>Dirección (opcional)</mat-label>
-          <input matInput [(ngModel)]="nuevoNoRegistradoDireccion" placeholder="Domicilio">
-        </mat-form-field>
+          <mat-form-field appearance="fill">
+            <mat-label>Dirección (opcional)</mat-label>
+            <input matInput [(ngModel)]="nuevoNoRegistradoDireccion" placeholder="Domicilio">
+          </mat-form-field>
 
-        <button mat-stroked-button color="primary" (click)="agregarNoRegistrado()">
-          <mat-icon>person_add</mat-icon>
-          Agregar
-        </button>
-      </div>
+          <button mat-stroked-button color="primary" (click)="agregarNoRegistrado()">
+            <mat-icon>person_add</mat-icon>
+            Agregar
+          </button>
+        </div>
 
-      <table class="tabla-no-registrados" *ngIf="noRegistrados.length > 0">
-        <tr *ngFor="let p of noRegistrados; let i = index">
-          <td>{{ p.nombre }}</td>
-          <td>{{ p.direccion || '--' }}</td>
-          <td>
-            <button mat-icon-button color="warn" (click)="quitarNoRegistrado(i)" title="Quitar">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </td>
-        </tr>
-      </table>
-    </div>
+        <table class="tabla-no-registrados" *ngIf="noRegistrados.length > 0">
+          <tr *ngFor="let p of noRegistrados; let i = index">
+            <td>{{ p.nombre }}</td>
+            <td>{{ p.direccion || '--' }}</td>
+            <td>
+              <button mat-icon-button color="warn" (click)="quitarNoRegistrado(i)" title="Quitar">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </tr>
+        </table>
+      </mat-expansion-panel>
 
-    <mat-divider></mat-divider>
+      <mat-expansion-panel class="panel-oscuro">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Usuario ya registrado, agregado a mano</mat-panel-title>
+          <mat-panel-description *ngIf="usuariosManuales.length > 0">{{ usuariosManuales.length }} agregado(s)</mat-panel-description>
+        </mat-expansion-panel-header>
 
-    <div class="fila-no-registrados">
-      <h3>Usuario ya registrado, con monto de adeudo capturado a mano</h3>
-      <p class="hint">
-        Para usuarios que no salieron como candidatos, o cuyo cálculo automático no aplica (ej. su cuenta se "juntó"
-        con la de otro familiar). Busca al usuario, captura el monto que debe y, si quieres, una observación con el
-        motivo -- se imprime en la carta y sí queda en su historial.
-      </p>
+        <p class="hint">
+          Para usuarios que no salieron como candidatos en la tabla de arriba, o que te es más rápido buscar por
+          nombre/número que ubicar en la lista filtrada por calle. Por default el adeudo se calcula automático, igual
+          que cualquier candidato; solo desmarca "Calcular automáticamente" para los casos reales donde el cálculo no
+          aplica (ej. su cuenta se "juntó" con la de otro familiar) y captura el monto a mano.
+        </p>
 
-      <div class="fila-filtros">
-        <mat-form-field appearance="fill">
-          <mat-label>N° de usuario o nombre</mat-label>
-          <input matInput placeholder="Escribe el N° de usuario o nombre"
-                 [formControl]="manualUserSearchCtrl"
-                 [matAutocomplete]="manualUserAuto" />
-          <mat-autocomplete #manualUserAuto="matAutocomplete" [displayWith]="displayManualUsuario" (optionSelected)="onManualUsuarioSeleccionado($event)">
-            <mat-option *ngFor="let u of manualUserSearchResults" [value]="u">
-              N° {{ u.noUsuario }} - {{ u.nombreCompleto }}
-            </mat-option>
-          </mat-autocomplete>
-        </mat-form-field>
+        <div class="fila-filtros">
+          <mat-form-field appearance="fill">
+            <mat-label>N° de usuario o nombre</mat-label>
+            <input matInput placeholder="Escribe el N° de usuario o nombre"
+                   [formControl]="manualUserSearchCtrl"
+                   [matAutocomplete]="manualUserAuto" />
+            <mat-autocomplete #manualUserAuto="matAutocomplete" [displayWith]="displayManualUsuario" (optionSelected)="onManualUsuarioSeleccionado($event)">
+              <mat-option *ngFor="let u of manualUserSearchResults" [value]="u">
+                N° {{ u.noUsuario }} - {{ u.nombreCompleto }}
+              </mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
 
-        <mat-form-field appearance="fill">
-          <mat-label>Monto que debe</mat-label>
-          <input matInput type="number" [(ngModel)]="nuevoManualMonto" placeholder="0.00">
-        </mat-form-field>
+          <mat-checkbox [(ngModel)]="nuevoManualCalcularAutomatico">Calcular automáticamente</mat-checkbox>
 
-        <mat-form-field appearance="fill">
-          <mat-label>Observación (opcional)</mat-label>
-          <input matInput [(ngModel)]="nuevoManualObservacion" placeholder="Ej. cuenta juntada con la de su hija, usuario 512">
-        </mat-form-field>
+          <mat-form-field appearance="fill" *ngIf="!nuevoManualCalcularAutomatico">
+            <mat-label>Monto que debe</mat-label>
+            <input matInput type="number" [(ngModel)]="nuevoManualMonto" placeholder="0.00">
+          </mat-form-field>
 
-        <button mat-stroked-button color="primary" (click)="agregarUsuarioManual()">
-          <mat-icon>person_add</mat-icon>
-          Agregar
-        </button>
-      </div>
+          <mat-form-field appearance="fill">
+            <mat-label>Observación (opcional)</mat-label>
+            <input matInput [(ngModel)]="nuevoManualObservacion" placeholder="Ej. cuenta juntada con la de su hija, usuario 512">
+          </mat-form-field>
 
-      <table class="tabla-no-registrados" *ngIf="usuariosManuales.length > 0">
-        <tr *ngFor="let u of usuariosManuales; let i = index">
-          <td>N° {{ u.noUsuario }} - {{ u.nombreCompleto }}</td>
-          <td>{{ u.montoAdeudo | currency }}</td>
-          <td>{{ u.observacion || '--' }}</td>
-          <td>
-            <button mat-icon-button color="warn" (click)="quitarUsuarioManual(i)" title="Quitar">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </td>
-        </tr>
-      </table>
-    </div>
+          <button mat-stroked-button color="primary" (click)="agregarUsuarioManual()">
+            <mat-icon>person_add</mat-icon>
+            Agregar
+          </button>
+        </div>
+
+        <table class="tabla-no-registrados" *ngIf="usuariosManuales.length > 0">
+          <tr *ngFor="let u of usuariosManuales; let i = index">
+            <td>N° {{ u.noUsuario }} - {{ u.nombreCompleto }}</td>
+            <td>{{ u.calcularAutomatico ? 'Se calcula al generar' : (u.montoAdeudo | currency) }}</td>
+            <td>{{ u.observacion || '--' }}</td>
+            <td>
+              <button mat-icon-button color="warn" (click)="quitarUsuarioManual(i)" title="Quitar">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </tr>
+        </table>
+      </mat-expansion-panel>
+    </mat-accordion>
   </mat-card-content>
 </mat-card>
 
@@ -245,9 +272,32 @@
 
     <p class="hint" *ngIf="cargandoHistorial">Cargando historial...</p>
 
-    <mat-checkbox *ngIf="!cargandoHistorial" [(ngModel)]="mostrarCanceladas" class="chk-canceladas">
-      Mostrar canceladas
-    </mat-checkbox>
+    <div *ngIf="!cargandoHistorial" fxLayout="row wrap" fxLayoutGap="16px" fxLayoutAlign="start center" style="margin-bottom: 8px;">
+      <mat-checkbox [(ngModel)]="mostrarCanceladas" class="chk-canceladas">
+        Mostrar canceladas
+      </mat-checkbox>
+
+      <mat-checkbox [(ngModel)]="mostrarCerradas" class="chk-canceladas"
+                    title="Cerradas = ya pagadas/condonadas/otro, o ya tienen Segundo aviso. Las que están en Convenio siempre se muestran.">
+        Mostrar cerradas (pagadas / con Segundo aviso)
+      </mat-checkbox>
+
+      <mat-form-field appearance="outline" style="width: 200px;">
+        <mat-label>Estatus de entrega</mat-label>
+        <mat-select [(ngModel)]="filtroEntrega">
+          <mat-option value="">Todas</mat-option>
+          <mat-option *ngFor="let op of opcionesFiltroEntrega" [value]="op.valor">{{ op.etiqueta }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" style="width: 220px;">
+        <mat-label>Estatus de cobro/atención</mat-label>
+        <mat-select [(ngModel)]="filtroAtencion">
+          <mat-option value="">Todos</mat-option>
+          <mat-option *ngFor="let op of opcionesFiltroAtencion" [value]="op.valor">{{ op.etiqueta }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
 
     <button mat-raised-button color="accent" *ngIf="avisosSeleccionadosSegundo.size > 0" [disabled]="generando"
             (click)="generarSegundosSeleccionados()" style="margin: 0 0 8px 16px;">
@@ -287,35 +337,24 @@
         <th mat-header-cell *matHeaderCellDef>Usuario</th>
         <td mat-cell *matCellDef="let a">{{ a.noUsuario }} - {{ a.nombreUsuarioTitular }}</td>
       </ng-container>
-      <ng-container matColumnDef="periodosAdeudados">
-        <th mat-header-cell *matHeaderCellDef>Desglose por año</th>
-        <td mat-cell *matCellDef="let a">{{ a.periodosAdeudados }}</td>
-      </ng-container>
       <ng-container matColumnDef="adeudoTotal">
         <th mat-header-cell *matHeaderCellDef>Adeudo</th>
         <td mat-cell *matCellDef="let a">{{ a.adeudoTotal | currency }}</td>
       </ng-container>
-      <ng-container matColumnDef="noFolioUltimoPago">
-        <th mat-header-cell *matHeaderCellDef>Folio último pago</th>
-        <td mat-cell *matCellDef="let a">{{ a.noFolioUltimoPago || '--' }}</td>
+      <ng-container matColumnDef="fechaPresentacion">
+        <th mat-header-cell *matHeaderCellDef>Debía presentarse</th>
+        <td mat-cell *matCellDef="let a">{{ a.fechaPresentacion ? formatearFechaNaive(a.fechaPresentacion) : '--' }}</td>
       </ng-container>
-      <ng-container matColumnDef="fechaUltimoPago">
-        <th mat-header-cell *matHeaderCellDef>Fecha último pago</th>
-        <td mat-cell *matCellDef="let a">{{ a.fechaUltimoPago ? (a.fechaUltimoPago | date:'dd/MM/yyyy') : '--' }}</td>
-      </ng-container>
-      <ng-container matColumnDef="dateAdd">
-        <th mat-header-cell *matHeaderCellDef>Generado</th>
-        <td mat-cell *matCellDef="let a">{{ a.dateAdd | date:'dd/MM/yyyy HH:mm' }}</td>
-      </ng-container>
-
       <ng-container matColumnDef="entrega">
         <th mat-header-cell *matHeaderCellDef>Entrega</th>
         <td mat-cell *matCellDef="let a">
-          <span *ngIf="a.cancelada" class="etiqueta etiqueta-cancelada">Cancelada</span>
+          <span *ngIf="a.cancelada" class="etiqueta etiqueta-cancelada" [title]="a.comentarioCancela || ''">
+            Cancelada{{ a.comentarioCancela ? ' -- ' + a.comentarioCancela : '' }}
+          </span>
           <span *ngIf="!a.cancelada && a.entregado"
                 class="etiqueta etiqueta-entregada"
                 [title]="etiquetaTipoEntrega(a.tipoEntrega) + (a.nombreReceptor ? (' -- Recibió: ' + a.nombreReceptor + ' (' + a.parentescoReceptor + ')') : '')">
-            Entregada {{ formatearFechaNaive(a.fechaEntrega) }}
+            Entregada {{ formatearFechaHoraNaive(a.fechaEntrega) }}
           </span>
           <span *ngIf="!a.cancelada && !a.entregado" class="etiqueta etiqueta-pendiente">Pendiente</span>
         </td>
@@ -334,7 +373,12 @@
             <ng-container *ngIf="a.folioConvenioVinculado"> (convenio {{ a.folioConvenioVinculado }})</ng-container>
             <ng-container *ngIf="a.resultadoAtencion === 'CONVENIO' && a.fechaCompromiso"> -- compromiso {{ formatearFechaNaive(a.fechaCompromiso) }}</ng-container>
           </span>
-          <span *ngIf="!a.cancelada && a.entregado && !a.atendido && !tieneSegundoPosterior(a)"
+          <span *ngIf="!a.cancelada && a.entregado && !a.atendido && !tieneSegundoPosterior(a) && procedeCorte(a)"
+                class="etiqueta etiqueta-vencida"
+                title="Ya pasó su fecha de presentación sin atenderse -- procede el corte">
+            Vencido -- procede corte
+          </span>
+          <span *ngIf="!a.cancelada && a.entregado && !a.atendido && !tieneSegundoPosterior(a) && !procedeCorte(a)"
                 class="etiqueta etiqueta-pendiente">Pendiente de cobro</span>
           <span *ngIf="!a.cancelada && a.entregado && !a.atendido && tieneSegundoPosterior(a)"
                 class="etiqueta etiqueta-superado"
@@ -360,6 +404,10 @@
                   title="Marcar como atendida (ya se hizo el cobro)" (click)="marcarAtendida(a)">
             <mat-icon>paid</mat-icon>
           </button>
+          <button mat-icon-button color="primary" *ngIf="!a.cancelada && a.atendido"
+                  title="Editar cobro/atención (ej. actualizar la fecha del convenio)" (click)="editarAtencion(a)">
+            <mat-icon>edit_calendar</mat-icon>
+          </button>
           <button mat-icon-button color="accent" *ngIf="!a.cancelada && a.tipoAviso === 'PRIMERO' && a.entregado && !tieneSegundoPosterior(a)"
                   title="Generar Segundo aviso para este usuario (se revisa primero si en verdad le toca)"
                   (click)="generarSegundoDesdeAviso(a)">
@@ -377,11 +425,14 @@
       </ng-container>
 
       <tr mat-header-row *matHeaderRowDef="historialColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: historialColumns" [class.fila-cancelada]="row.cancelada"></tr>
+      <tr mat-row *matRowDef="let row; columns: historialColumns"
+          [class.fila-cancelada]="row.cancelada"
+          [class.fila-procede-corte]="procedeCorte(row)"
+          [title]="procedeCorte(row) ? 'Ya pasó su fecha de presentación sin atenderse -- procede el corte' : ''"></tr>
     </table>
 
     <p class="hint" *ngIf="!cargandoHistorial && historialVisible.length === 0">
-      {{ historial.length === 0 ? 'Todavía no se ha generado ningún aviso.' : 'No hay avisos (activa "Mostrar canceladas" para verlos).' }}
+      {{ historial.length === 0 ? 'Todavía no se ha generado ningún aviso.' : 'No hay avisos con esos filtros.' }}
     </p>
   </mat-expansion-panel>
 </mat-accordion>

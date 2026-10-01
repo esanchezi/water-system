@@ -33,6 +33,15 @@ public class AdeudoLuzUsuarioDto implements Serializable {
     private String periodosAdeudadosTexto;
     private Double adeudoTotal;
 
+    // Meses transcurridos desde el último pago de Luz registrado (0 si
+    // pagó este mismo mes) -- valor centinela alto (ver
+    // AdeudoLuzService.MESES_SIN_PAGO_NUNCA_PAGADO) cuando nunca ha pagado.
+    // Antes esto decidía por sí solo si el usuario aparecía como candidato
+    // (regla fija de 3 meses); ahora se expone tal cual para que la
+    // pantalla de candidatos filtre con un mínimo ajustable (pedido de Ely,
+    // sept. 2026, v8 de la carta) en vez de una regla fija en el backend.
+    private Integer mesesSinPagoLuz;
+
     // Último pago de Luz registrado (cualquier año) -- para "No. de recibo
     // del último pago" / "Fecha del último pago" en la carta.
     private Integer noFolioUltimoPago;
@@ -66,12 +75,21 @@ public class AdeudoLuzUsuarioDto implements Serializable {
     // interés = adeudo total) sin tener que recalcularlo en el frontend.
     private Double interesMoratorio;
 
-    // Suma de cargos manuales pendientes de pago (multa por falta de pago,
-    // corte/reconexión, aviso, multa de válvulas -- ver WaterUserChargeEntity
-    // / AdeudoLuzService.CONCEPTOS_MULTA_ACUMULADA), NO incluida en
+    // Suma de TODOS los cargos manuales activos pendientes de pago excepto
+    // Mantenimiento de cajón (ver WaterUserChargeEntity /
+    // AdeudoLuzService.CONCEPTO_MANTENIMIENTO_NOMBRE), NO incluida en
     // adeudoTotal. Es la fila "Multa acumulada a la fecha" que se imprime
     // aparte en la carta de adeudo.
     private Double multaAcumulada;
+
+    // Desglose de multaAcumulada por concepto, solo cuando hay 2 o más
+    // cargos individuales sumando (con 1 solo cargo el monto ya es
+    // autoexplicativo) -- ver AdeudoLuzService.buildMultaAcumuladaDesglose().
+    // Ej. "Aviso $200.00 | Llave azul $600.00 | Multa (x2) $4,000.00: Por
+    // manipular toma (aprobado por asamblea el 10/09/2026); Por reconexión
+    // no autorizada | Mano de obra corte $600.00". Null cuando no aplica
+    // (0 o 1 cargo) -- en ese caso la carta solo imprime el monto total.
+    private String multaAcumuladaDesglose;
 
     // Cooperación extraordinaria de mantenimiento de cajón (Art. 10)
     // pendiente de pago -- calculada aparte de multaAcumulada a propósito

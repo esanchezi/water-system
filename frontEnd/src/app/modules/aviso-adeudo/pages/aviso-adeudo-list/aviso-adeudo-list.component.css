@@ -76,6 +76,14 @@
   color: #c62828;
 }
 
+/* Mismo criterio que fila-procede-corte -- ya pasó la fecha de
+   presentación sin atenderse, ya procede el corte. */
+.etiqueta-vencida {
+  background-color: #fde8e8;
+  color: #c62828;
+  font-weight: 600;
+}
+
 /* Ya recibió Primer aviso y se le sigue mostrando como candidato --
    le toca generar el Segundo, no repetir el Primero. */
 .etiqueta-requiere-segundo {
@@ -86,6 +94,18 @@
 
 .fila-cancelada {
   opacity: 0.6;
+}
+
+/* Ya pasó la fecha en que debía presentarse, la carta está entregada y
+   sigue sin atenderse -- ya procede el corte (Art. 19/20). Pedido de Ely
+   para identificarlos de un vistazo en el historial. */
+.fila-procede-corte {
+  background-color: #fdecea;
+}
+
+.fila-procede-corte td {
+  color: #c62828;
+  font-weight: 600;
 }
 
 /* Primer aviso ya superado por un Segundo aviso posterior -- ya no se

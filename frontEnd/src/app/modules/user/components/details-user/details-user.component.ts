@@ -175,6 +175,16 @@ export class DetailsUserComponent implements OnInit {
   casaSeleccionada: WaterHouseModel | null = null;
   callesDeSeccionDomicilio: CatalogOptionModel[] = [];
 
+  // Dirección (texto libre, campo "calle" de la sección de arriba): la
+  // Sección aquí es la misma catalogo SECCIONES_COLONIA que usa la cascada
+  // de Domicilio/Casa, así que se reutiliza el mismo catálogo de calles
+  // (this.calles) filtrado por zonaId, solo como sugerencia -- al elegir
+  // "calle" (Dirección) es un select amarrado directo a este catálogo -- ya
+  // no texto libre. El catálogo se completó y se normalizó el dato
+  // existente en direccion.calle para que coincidiera exacto (auditoría de
+  // sept. 2026 con Ely). Calle nueva = darla de alta primero en Catálogos.
+  callesDireccionFiltradas: CatalogOptionModel[] = [];
+
   readonly DEFAULT_COORDS: google.maps.LatLngLiteral = { lat: 21.04386, lng: -101.56864 };
   mapCenter: google.maps.LatLngLiteral = this.DEFAULT_COORDS;
   mapMarker: google.maps.LatLngLiteral = this.DEFAULT_COORDS;
@@ -324,6 +334,7 @@ export class DetailsUserComponent implements OnInit {
       next: (opts) => {
         this.calles = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre));
         this.callesDeSeccionDomicilio = this.calles;
+        this.onFkIdSeccionChange(this.detailsForm.get('fkIdSeccion')?.value ?? null);
       },
       error: (e: any) => console.error(e)
     });
@@ -393,6 +404,17 @@ export class DetailsUserComponent implements OnInit {
     const house = casaId != null ? this.allHouses.find(h => h.casaId === casaId) || null : null;
     this.detailsForm.patchValue({ casaNo: casaId });
     this.selectCasa(house);
+  }
+
+  // Filtra el catálogo de calles (mismo catálogo que usa Domicilio/Casa)
+  // por la Sección elegida en la Dirección de texto libre, para sugerir
+  // calles ya dadas de alta en Catálogos en vez de dejar el campo "Calle"
+  // sin ninguna ayuda al capturar.
+  onFkIdSeccionChange(seccionId: number | string | null): void {
+    const id = seccionId != null ? Number(seccionId) : null;
+    this.callesDireccionFiltradas = id != null
+      ? this.calles.filter(c => c.zonaId === id)
+      : this.calles;
   }
 
   private selectCasa(house: WaterHouseModel | null): void {
@@ -890,6 +912,11 @@ export class DetailsUserComponent implements OnInit {
         this.usuario = u;
         this.person = { personaId: u.personaId, nombre: u.nombre, nombre2: u.nombre2, app: u.app, apm: u.apm };
         this.revisarAvisosAdeudoPendientes(u.aguaUsuarioId, u.noUsuario);
+        // Se carga aqui (no solo al abrir el panel "Cargos / Multas") para
+        // poder mostrar el aviso de saldo pendiente arriba en la ficha
+        // apenas se abre, sin que la usuaria tenga que entrar al panel para
+        // enterarse -- ver banner "Cargos/multas pendientes" en el html.
+        this.getCharges();
         this.detailsForm.patchValue({
           fkIdCuota:          u.cuotaId,
           fkFrecuenciaPagoId: u.frecuenciaPagoId,
@@ -922,6 +949,7 @@ export class DetailsUserComponent implements OnInit {
           entrecalle1:        u.entrecalle1,
           entrecalle2:        u.entrecalle2
         });
+        this.onFkIdSeccionChange(u.seccionId ?? null);
         this.syncDomicilio();
       },
       error: (e: any) => console.error('Error al cargar usuario', e)

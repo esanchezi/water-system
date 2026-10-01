@@ -48,6 +48,10 @@ public class WaterUserChargeMapper {
             response.setFechaStr(entity.getFecha().format(dateFormatter));
         }
 
+        if (entity.getFechaAsamblea() != null) {
+            response.setFechaAsambleaStr(entity.getFechaAsamblea().format(dateFormatter));
+        }
+
         List<WaterUserChargePaymentDto> pagos = Objects.isNull(entity.getPagos())
                 ? List.of()
                 : entity.getPagos().stream()

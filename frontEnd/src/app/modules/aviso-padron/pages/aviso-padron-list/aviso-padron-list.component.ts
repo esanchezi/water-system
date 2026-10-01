@@ -238,13 +238,15 @@ export class AvisoPadronListComponent implements OnInit {
     this.selection.toggle(row);
   }
 
-  // Link directo a la ficha completa del usuario -- misma convención que ya
-  // usan Personas, Deudores, Cartas de adeudo y Aviso de bomba.
+  // Link directo a la ficha completa del usuario -- se abre en pestaña nueva
+  // (mismo criterio que Cartas de adeudo) para no perder el filtro/selección
+  // en curso en esta pantalla.
   irADetalleUsuario(aguaUsuarioId?: number): void {
     if (!aguaUsuarioId) return;
-    this.router.navigate(['dashboard/detailsUser'], {
+    const urlTree = this.router.createUrlTree(['dashboard/detailsUser'], {
       queryParams: { element: JSON.stringify({ usuarioId: aguaUsuarioId }) }
     });
+    window.open(this.router.serializeUrl(urlTree), '_blank');
   }
 
   generarAvisos(): void {

@@ -80,11 +80,14 @@ export class AvisoInformativoAdeudoListComponent implements OnInit {
     return `${dia}/${mes}/${anio}`;
   }
 
+  // Se abre en pestaña nueva (mismo criterio que Cartas de adeudo) para no
+  // perder el filtro/selección en curso en esta pantalla.
   irADetalleUsuario(aguaUsuarioId?: number): void {
     if (!aguaUsuarioId) return;
-    this.router.navigate(['dashboard/detailsUser'], {
+    const urlTree = this.router.createUrlTree(['dashboard/detailsUser'], {
       queryParams: { element: JSON.stringify({ usuarioId: aguaUsuarioId }) }
     });
+    window.open(this.router.serializeUrl(urlTree), '_blank');
   }
 
   ngOnInit(): void {

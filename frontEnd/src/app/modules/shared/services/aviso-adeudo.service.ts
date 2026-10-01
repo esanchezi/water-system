@@ -51,13 +51,14 @@ export class AvisoAdeudoService {
     noRegistrados: UsuarioNoRegistradoModel[] = [],
     usuariosManuales: UsuarioManualAdeudoModel[] = []
   ): Observable<HttpResponse<Blob>> {
-    // El backend solo espera aguaUsuarioId/montoAdeudo/observacion -- se
-    // limpian los campos que solo son para mostrar en la tabla del frontend
-    // (noUsuario, nombreCompleto).
+    // El backend solo espera aguaUsuarioId/montoAdeudo/observacion/
+    // calcularAutomatico -- se limpian los campos que solo son para mostrar
+    // en la tabla del frontend (noUsuario, nombreCompleto).
     const usuariosManualesPayload = usuariosManuales.map(u => ({
       aguaUsuarioId: u.aguaUsuarioId,
       montoAdeudo: u.montoAdeudo,
-      observacion: u.observacion
+      observacion: u.observacion,
+      calcularAutomatico: u.calcularAutomatico
     }));
     return this.http.post(`${this.baseUrl}/generar`,
       { aguaUsuarioIds, tipoAviso, fechaPresentacion, noRegistrados, usuariosManuales: usuariosManualesPayload }, {
@@ -70,8 +71,10 @@ export class AvisoAdeudoService {
     return this.http.put(`${this.baseUrl}/${avisoAdeudoId}/entregar`, datos);
   }
 
-  cancelar(avisoAdeudoId: number): Observable<any> {
-    return this.http.put(`${this.baseUrl}/${avisoAdeudoId}/cancelar`, {});
+  // comentarioCancela es opcional -- sobre todo para dejar constancia del
+  // motivo cuando se cancela porque la carta no fue entregada/recibida.
+  cancelar(avisoAdeudoId: number, comentarioCancela?: string): Observable<any> {
+    return this.http.put(`${this.baseUrl}/${avisoAdeudoId}/cancelar`, { comentarioCancela });
   }
 
   reactivar(avisoAdeudoId: number): Observable<any> {

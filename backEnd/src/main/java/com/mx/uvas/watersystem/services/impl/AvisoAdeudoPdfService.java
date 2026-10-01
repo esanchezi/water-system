@@ -182,11 +182,28 @@ public class AvisoAdeudoPdfService {
                 carta.desglosePorAnio() != null && !carta.desglosePorAnio().isBlank() ? carta.desglosePorAnio() : "--",
                 fontItalicChico);
 
-        // Multa acumulada y mantenimiento de cajón, cada uno con su propia
-        // etiqueta y monto (no texto libre en 2 líneas -- eso confundía).
-        String textoMulta = carta.multaAcumulada() != null && carta.multaAcumulada() > 0
-                ? formatoMonedaTabla.format(carta.multaAcumulada())
-                : "Sin multas pendientes";
+        // Multa acumulada -- v7 de la carta (sept. 2026, pedido explícito de
+        // Ely): cuando hay 2 o más cargos individuales sumando, se agrega el
+        // desglose por concepto entre paréntesis junto al total (incluyendo
+        // el motivo de cada "Multa" y, si aplica, la leyenda de asamblea --
+        // ver AdeudoLuzService.buildMultaAcumuladaDesglose()). Con 0 o 1
+        // cargo el desglose no aporta nada nuevo, así que se deja solo el
+        // monto (o "Sin multas pendientes"). Pasa a renglón de ancho
+        // completo (antes compartía renglón con Mantenimiento) porque el
+        // desglose no cabe en media tabla.
+        String textoMulta;
+        if (carta.multaAcumulada() != null && carta.multaAcumulada() > 0) {
+            textoMulta = formatoMonedaTabla.format(carta.multaAcumulada());
+            if (carta.multaAcumuladaDesglose() != null && !carta.multaAcumuladaDesglose().isBlank()) {
+                textoMulta += "  (" + carta.multaAcumuladaDesglose() + ")";
+            }
+        } else {
+            textoMulta = "Sin multas pendientes";
+        }
+        agregarFilaDatos(datos, "Multa acumulada", textoMulta, fontItalicChico);
+
+        // Mantenimiento de cajón -- ahora en su propio renglón de ancho
+        // completo (antes compartía renglón con Multa acumulada, ver arriba).
         // "$100.00 - 2024 | $100.00 - 2025" (monto antes del año) --
         // desglose de mantenimiento por año cuando aplica.
         String textoMantenimiento = carta.mantenimientoPendiente() != null && carta.mantenimientoPendiente() > 0
@@ -195,10 +212,7 @@ public class AvisoAdeudoPdfService {
                                 ? " (" + carta.mantenimientoPorAnioTexto() + ")"
                                 : "")
                 : "Sin adeudo de mantenimiento";
-        agregarFilaDatosDoble(datos,
-                "Multa acumulada", textoMulta,
-                "Mantenimiento", textoMantenimiento,
-                new float[]{17f, 25f, 17f, 41f});
+        agregarFilaDatos(datos, "Mantenimiento", textoMantenimiento, fontItalicChico);
 
         // Folio y fecha del último pago, mismo criterio -- ambos son datos
         // cortos, no tiene caso que cada uno ocupe un renglón completo.

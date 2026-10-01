@@ -8,6 +8,8 @@ import com.mx.uvas.watersystem.mapping.WaterReceiptMapper;
 import com.mx.uvas.watersystem.model.*;
 import com.mx.uvas.watersystem.repositories.IWaterReceiptRepository;
 import com.mx.uvas.watersystem.repositories.IWaterUserAnnualPaymentRepository;
+import com.mx.uvas.watersystem.repositories.IWaterUserChargePaymentRepository;
+import com.mx.uvas.watersystem.repositories.IWaterUserChargeRepository;
 import com.mx.uvas.watersystem.response.WaterReceiptRestResponse;
 import com.mx.uvas.watersystem.services.IWaterReceiptService;
 import com.mx.uvas.watersystem.helpers.WaterReceiptHelper;
@@ -21,9 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 import static com.mx.uvas.watersystem.utils.Constants.*;
 
@@ -39,6 +43,8 @@ public class WaterReceiptService implements IWaterReceiptService {
     private final WaterUserHelper waterUserHelper;
     private final WaterReceiptMapper waterReceiptMapper;
     private final IWaterUserAnnualPaymentRepository waterUserAnnualPaymentRepository;
+    private final IWaterUserChargeRepository waterUserChargeRepository;
+    private final IWaterUserChargePaymentRepository waterUserChargePaymentRepository;
 
     @Override
     @Transactional
@@ -77,14 +83,74 @@ public class WaterReceiptService implements IWaterReceiptService {
         CatalogOptionsEntity concepto = waterHelper.getCatalogOptionOrThrow(request.getConceptoId());
 
         WaterReceiptEntity waterReceiptToPersist = waterReceiptHelper.buildWaterReceiptEntity(request, user,concepto);
-        createReceiptPayments(request.getWaterReceiptPayment(), waterReceiptToPersist);
+        List<WaterUserChargePaymentEntity> abonosPendientes = createReceiptPayments(request.getWaterReceiptPayment(), waterReceiptToPersist, user);
 
         WaterReceiptEntity receiptPersist = waterReceiptRepository.save(waterReceiptToPersist);
         //user = waterUserHelper.updateWaterUserEstatus(request.getWaterUser(),user);
         guardarAniosPagados(request.getAniosPagados(), user);
+        guardarAbonosACargos(abonosPendientes, receiptPersist);
         log.info("Receipt saved id:{}",receiptPersist.getAguaReciboId());
 
         return waterReceiptMapper.entityToDto(receiptPersist);
+    }
+
+    // v11 (sept. 2026, pedido explícito de Ely -- "en su caso es elegir en
+    // el pago el cargo a liquidar"): cada línea del recibo puede traer
+    // opcionalmente un cargoALiquidarId (elegido a mano en la pantalla de
+    // captura, ver select "Cargo a liquidar" en new-receipt). Se guarda el
+    // abono YA con el recibo persistido (necesita su ID para la FK
+    // recibo_id) -- por eso se arma la lista de abonos pendientes durante
+    // createReceiptPayments() y se guarda aparte, después del save() del
+    // recibo. Reemplaza el intento anterior de adivinar automáticamente por
+    // concepto+año (terminamos usando el ID de catálogo equivocado -- 108
+    // en vez de 79 -- precisamente el tipo de error que este selector
+    // evita).
+    private void guardarAbonosACargos(List<WaterUserChargePaymentEntity> abonosPendientes, WaterReceiptEntity receiptPersist) {
+        for (WaterUserChargePaymentEntity abono : abonosPendientes) {
+            abono.setWaterReceipt(receiptPersist);
+            waterUserChargePaymentRepository.save(abono);
+            log.info("Abono de {} aplicado al cargo {} desde el recibo {}",
+                    abono.getMontoAplicado(), abono.getCargo().getAguaUsuarioCargoId(), receiptPersist.getNoFolio());
+        }
+    }
+
+    // Si la línea trae cargoALiquidarId, arma (sin guardar todavía) el abono
+    // correspondiente -- validando que el cargo exista, sea de este mismo
+    // usuario, y todavía tenga saldo. Si algo no cuadra, se ignora
+    // silenciosamente (con log) y el recibo se captura igual: nunca debe
+    // bloquear el guardado del pago por un cargo mal elegido.
+    private WaterUserChargePaymentEntity construirAbonoSiAplica(WaterReceiptPaymentDto paymentDto, WaterUserEntity user) {
+        Integer cargoId = paymentDto.getCargoALiquidarId();
+        if (cargoId == null) {
+            return null;
+        }
+        Optional<WaterUserChargeEntity> cargoOpt = waterUserChargeRepository.findById(cargoId);
+        if (cargoOpt.isEmpty()) {
+            log.warn("Cargo a liquidar {} no existe -- se ignora, el recibo se captura igual", cargoId);
+            return null;
+        }
+        WaterUserChargeEntity cargo = cargoOpt.get();
+        if (cargo.getWaterUser() == null || !cargo.getWaterUser().getAguaUsuarioId().equals(user.getAguaUsuarioId())) {
+            log.warn("Cargo a liquidar {} no pertenece al usuario {} -- se ignora", cargoId, user.getNoUsuario());
+            return null;
+        }
+        double saldo = cargo.getSaldo();
+        if (saldo <= 0) {
+            log.warn("Cargo a liquidar {} ya no tiene saldo pendiente -- se ignora", cargoId);
+            return null;
+        }
+        double montoAplicado = Math.min(paymentDto.getMontoAplicado() != null ? paymentDto.getMontoAplicado() : 0d, saldo);
+        if (montoAplicado <= 0) {
+            return null;
+        }
+        return WaterUserChargePaymentEntity.builder()
+                .cargo(cargo)
+                .montoAplicado(montoAplicado)
+                .fechaPago(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))
+                .estatus(1)
+                .userIdAdd(1)
+                .dateAdd(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))
+                .build();
     }
 
     // Edita un recibo ya existente -- incluye todo lo que trae el formulario
@@ -110,7 +176,11 @@ public class WaterReceiptService implements IWaterReceiptService {
             } else {
                 existente.setWaterReceiptPayment(new HashSet<>());
             }
-            createReceiptPayments(request.getWaterReceiptPayment(), existente);
+            // Nota: al EDITAR un recibo no se aplican abonos de "cargo a
+            // liquidar" -- si se reutilizara aquí, cada vez que se vuelva a
+            // guardar la edición se duplicaría el abono. Esa reconciliación
+            // solo corre al capturar un recibo nuevo (create()).
+            createReceiptPayments(request.getWaterReceiptPayment(), existente, user);
 
             WaterReceiptEntity receiptPersist = waterReceiptRepository.save(existente);
             guardarAniosPagados(request.getAniosPagados(), user);
@@ -139,7 +209,11 @@ public class WaterReceiptService implements IWaterReceiptService {
         return waterReceiptMapper.entityToDto(receiptPersist);
     }
 
-    private void createReceiptPayments(List<WaterReceiptPaymentDto> paymentDtos, WaterReceiptEntity waterReceiptToPersist) {
+    // Devuelve los abonos a cargos pendientes de guardar (todavía sin
+    // recibo asignado -- ver guardarAbonosACargos()), armados a partir de
+    // cada línea que haya traído cargoALiquidarId.
+    private List<WaterUserChargePaymentEntity> createReceiptPayments(List<WaterReceiptPaymentDto> paymentDtos, WaterReceiptEntity waterReceiptToPersist, WaterUserEntity user) {
+        List<WaterUserChargePaymentEntity> abonosPendientes = new ArrayList<>();
         for (WaterReceiptPaymentDto paymentDto : paymentDtos) {
             CatalogOptionsEntity comite = waterHelper.getCatalogOptionOrThrow(paymentDto.getComiteId());
             CatalogOptionsEntity tipoPago = waterHelper.getCatalogOptionOrThrow(paymentDto.getTipoPagoId());
@@ -147,7 +221,13 @@ public class WaterReceiptService implements IWaterReceiptService {
             WaterReceiptPaymentEntity payment = waterReceiptHelper.buildWaterReceiptPaymentEntity(paymentDto, waterReceiptToPersist, comite, tipoPago,concepto);
             waterReceiptToPersist.addPayment(payment);
             waterReceiptToPersist.updatePayments();
+
+            WaterUserChargePaymentEntity abono = construirAbonoSiAplica(paymentDto, user);
+            if (abono != null) {
+                abonosPendientes.add(abono);
+            }
         }
+        return abonosPendientes;
     }
 
     private ResponseEntity<WaterReceiptRestResponse> findWaterReceipts(List<WaterReceiptEntity> waterReceipts, String receiptType) {

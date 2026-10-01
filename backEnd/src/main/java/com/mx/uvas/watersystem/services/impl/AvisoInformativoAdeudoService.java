@@ -104,6 +104,7 @@ public class AvisoInformativoAdeudoService {
             String periodosAdeudados = calculado != null ? calculado.getPeriodosAdeudadosTexto() : "";
             Double adeudoTotal = calculado != null ? calculado.getAdeudoTotal() : 0.0;
             Double multaAcumulada = calculado != null ? calculado.getMultaAcumulada() : 0.0;
+            String multaAcumuladaDesglose = calculado != null ? calculado.getMultaAcumuladaDesglose() : null;
             Integer noFolioUltimoPago = calculado != null ? calculado.getNoFolioUltimoPago() : null;
             LocalDateTime fechaUltimoPago = calculado != null ? calculado.getFechaUltimoPago() : null;
 
@@ -135,6 +136,7 @@ public class AvisoInformativoAdeudoService {
                     domicilioToma,
                     periodosAdeudados,
                     multaAcumulada,
+                    multaAcumuladaDesglose,
                     mantenimientoPendiente,
                     mantenimientoPorAnioTexto,
                     noFolioUltimoPago,

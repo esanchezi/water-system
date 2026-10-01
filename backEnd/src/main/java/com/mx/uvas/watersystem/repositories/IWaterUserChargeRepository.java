@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface IWaterUserChargeRepository extends JpaRepository<WaterUserChargeEntity, Integer> {
 
@@ -43,4 +44,12 @@ public interface IWaterUserChargeRepository extends JpaRepository<WaterUserCharg
     boolean existsByWaterUser_AguaUsuarioIdAndConcepto_NombreAndDescripcionAndEstatus(
             Integer aguaUsuarioId, String nombreConcepto, String descripcion, Integer estatus);
 
+    // v11 (sept. 2026, pedido explícito de Ely): para saber si el cargo
+    // "Aviso" de una carta en particular (descripción exacta, ver
+    // crearCargoAviso()) ya se saldó o sigue pendiente -- ver
+    // AvisoAdeudoService.pendientesDeAtencion(). Mismo criterio de búsqueda
+    // que el exists de arriba, pero trayendo la entidad completa para poder
+    // leer getSaldo().
+    Optional<WaterUserChargeEntity> findFirstByWaterUser_AguaUsuarioIdAndConcepto_NombreAndDescripcionAndEstatus(
+            Integer aguaUsuarioId, String nombreConcepto, String descripcion, Integer estatus);
 }

@@ -146,10 +146,20 @@ public class AvisoInformativoAdeudoPdfService {
                 fontItalicChico);
 
         NumberFormat formatoMoneda = NumberFormat.getCurrencyInstance(new Locale("es", "MX"));
-        String textoMulta = aviso.multaAcumulada() != null && aviso.multaAcumulada() > 0
-                ? formatoMoneda.format(aviso.multaAcumulada())
-                : "Sin multas pendientes";
-        agregarFilaDatos(datos, "Multa acumulada a la fecha", textoMulta);
+        // Desglose por concepto (v7, sept. 2026) -- mismo criterio y mismo
+        // campo que en Cartas de adeudo, ver
+        // AdeudoLuzUsuarioDto.multaAcumuladaDesglose /
+        // AvisoAdeudoPdfService para el detalle de la regla.
+        String textoMulta;
+        if (aviso.multaAcumulada() != null && aviso.multaAcumulada() > 0) {
+            textoMulta = formatoMoneda.format(aviso.multaAcumulada());
+            if (aviso.multaAcumuladaDesglose() != null && !aviso.multaAcumuladaDesglose().isBlank()) {
+                textoMulta += "  (" + aviso.multaAcumuladaDesglose() + ")";
+            }
+        } else {
+            textoMulta = "Sin multas pendientes";
+        }
+        agregarFilaDatos(datos, "Multa acumulada a la fecha", textoMulta, fontItalicChico);
 
         // Cooperación extraordinaria de mantenimiento de cajón (Art. 10) --
         // renglón propio, aparte de la multa, mismo criterio que Cartas de

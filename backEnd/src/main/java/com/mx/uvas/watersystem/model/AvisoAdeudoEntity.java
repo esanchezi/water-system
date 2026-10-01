@@ -50,9 +50,9 @@ public class AvisoAdeudoEntity implements Serializable {
     private String domicilioToma;
     private String periodosAdeudados;
     private Double adeudoTotal;
-    // Suma de cargos manuales pendientes (multa por falta de pago,
-    // corte/reconexión, aviso, válvulas) al momento de generar -- snapshot,
-    // ver WaterUserChargeEntity / AdeudoLuzService.CONCEPTOS_MULTA_ACUMULADA.
+    // Suma de TODOS los cargos manuales activos pendientes (excepto
+    // Mantenimiento de cajón) al momento de generar -- snapshot, ver
+    // WaterUserChargeEntity / AdeudoLuzService.CONCEPTO_MANTENIMIENTO_NOMBRE.
     // 0.0 para personas sin usuario registrado.
     private Double multaAcumulada;
     private Integer noFolioUltimoPago;
@@ -74,6 +74,12 @@ public class AvisoAdeudoEntity implements Serializable {
     private LocalDateTime dateAdd;
     private Integer userIdCancela;
     private LocalDateTime dateCancela;
+    // Motivo de la cancelación (opcional) -- pedido explícito de Ely: sobre
+    // todo cuando se cancela porque la carta NO fue entregada/recibida (se
+    // negaron, no encontraron a nadie, etc.), para no perder ese contexto
+    // una vez que el aviso queda oculto del historial por default.
+    @Column(length = 500)
+    private String comentarioCancela;
 
     // Registro de entrega -- se llena cuando se marca la carta como
     // entregada, replicando los mismos datos que se capturan a mano en la

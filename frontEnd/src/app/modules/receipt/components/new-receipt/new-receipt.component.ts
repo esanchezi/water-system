@@ -10,6 +10,8 @@ import { UserService } from 'src/app/modules/shared/services/user.service';
 import { WaterUserAnnualPaymentService } from 'src/app/modules/shared/services/water-user-annual-payment.service';
 import { AvisoAdeudoService } from 'src/app/modules/shared/services/aviso-adeudo.service';
 import { AvisoAdeudoModel } from 'src/app/modules/shared/models/AvisoAdeudo.model';
+import { UserChargeService } from 'src/app/modules/shared/services/user-charge.service';
+import { WaterUserChargeModel } from 'src/app/modules/shared/models/WaterUserCharge.model';
 import Swal from 'sweetalert2';
 
 // Cuando se abre para EDITAR (data.receipt trae el recibo completo, tal cual
@@ -43,6 +45,7 @@ export class NewReceiptComponent implements OnInit {
   private readonly usuarioService = inject(UserService);
   private readonly annualPaymentService = inject(WaterUserAnnualPaymentService);
   private readonly avisoAdeudoService = inject(AvisoAdeudoService);
+  private readonly userChargeService = inject(UserChargeService);
 
   conceptos: CatalogOptionModel[] = [];
   usuariosFiltrados: any[] = [];
@@ -67,6 +70,15 @@ export class NewReceiptComponent implements OnInit {
   // concepto, total) -- solo para consulta visual mientras se captura un
   // recibo nuevo, no se usa para nada del guardado.
   ultimoRecibo: any = null;
+
+  // Cargos pendientes (Mantenimiento, Aviso, Multa, etc.) del usuario
+  // seleccionado, con saldo > 0 -- pedido explícito de Ely (sept. 2026):
+  // en vez de que el sistema adivine automáticamente a qué cargo
+  // corresponde un pago por su concepto/año (ya nos equivocamos una vez
+  // con el ID de "Mtto"), cada línea de monto aplicado trae un select
+  // opcional para ligarla explícitamente a uno de estos cargos. Si no se
+  // elige ninguno, el pago se captura igual, sin afectar ningún cargo.
+  cargosPendientes: WaterUserChargeModel[] = [];
 
   // Si trae valor, "Guardar" edita ese recibo (PUT) en vez de crear uno
   // nuevo; también cambia el comportamiento de cierre del diálogo (editar
@@ -128,6 +140,7 @@ export class NewReceiptComponent implements OnInit {
       ? { noUsuario: receipt.waterUser.noUsuario, nombreCompleto }
       : null;
     this.cargarAniosPagados(receipt.waterUser?.noUsuario);
+    this.cargarCargosPendientes(receipt.waterUser?.noUsuario);
 
     this.receiptForm.patchValue({
       noUsuario: this.usuarioSeleccionado,
@@ -148,7 +161,10 @@ export class NewReceiptComponent implements OnInit {
       this.montoAplicadoArray.push(this.fb.group({
         montoAplicado: [pago.montoAplicado ?? 0, Validators.required],
         conceptoIdM: [pago.conceptoId ?? '', Validators.required],
-        anio: [pago.anio ?? '', Validators.required]
+        anio: [pago.anio ?? '', Validators.required],
+        // No se persiste en el recibo -- al editar siempre arranca vacío
+        // (ligar/desligar un cargo solo aplica al capturar un recibo nuevo).
+        cargoALiquidarId: [null]
       }));
     });
   }
@@ -161,6 +177,7 @@ export class NewReceiptComponent implements OnInit {
     this.cargarAniosPagados(usuario?.noUsuario);
     this.cargarAvisosPendientes(usuario?.aguaUsuarioId);
     this.cargarUltimoRecibo(usuario?.noUsuario);
+    this.cargarCargosPendientes(usuario?.noUsuario);
     this.receiptForm.patchValue({ noUsuario: usuario }, { emitEvent: false });
     this.receiptForm.get('noUsuario')?.disable();
   }
@@ -183,6 +200,22 @@ export class NewReceiptComponent implements OnInit {
         // envuelve metadata en un arreglo).
         if (resp.metadata?.code !== '00') return;
         this.avisosPendientes = resp.data || [];
+      },
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  // Cargos con saldo pendiente del usuario seleccionado -- para el select
+  // "Cargo a liquidar" de cada línea de monto aplicado.
+  private cargarCargosPendientes(noUsuario: any): void {
+    this.cargosPendientes = [];
+    if (!noUsuario) return;
+
+    this.userChargeService.getChargesByUser(noUsuario).subscribe({
+      next: (resp: any) => {
+        if (resp.metadata?.[0]?.code !== '00') return;
+        const cargos: WaterUserChargeModel[] = resp.data || [];
+        this.cargosPendientes = cargos.filter(c => (c.saldo ?? 0) > 0);
       },
       error: (e: any) => console.error(e)
     });
@@ -243,6 +276,7 @@ export class NewReceiptComponent implements OnInit {
     // aguaUsuarioId -- no hace falta una consulta aparte para tenerlo.
     this.cargarAvisosPendientes(user?.aguaUsuarioId);
     this.cargarUltimoRecibo(user?.noUsuario);
+    this.cargarCargosPendientes(user?.noUsuario);
   }
 
   // Último recibo capturado a este usuario (folio, fecha, concepto, total)
@@ -329,7 +363,9 @@ export class NewReceiptComponent implements OnInit {
     const montoGroup = this.fb.group({
       montoAplicado: [0, Validators.required],
       conceptoIdM: ['', Validators.required],
-      anio: ['', Validators.required]
+      anio: ['', Validators.required],
+      // Opcional -- a qué cargo pendiente (si alguno) liquida esta línea.
+      cargoALiquidarId: [null]
     });
     this.montoAplicadoArray.push(montoGroup);
   }
@@ -436,6 +472,7 @@ export class NewReceiptComponent implements OnInit {
     this.avisosPendientes = [];
     this.avisosSeleccionados = new Set();
     this.ultimoRecibo = null;
+    this.cargosPendientes = [];
   }
 
   onCancel(): void {
@@ -472,6 +509,7 @@ export class NewReceiptComponent implements OnInit {
         montoRecibido: this.receiptForm.get('montoRecibido')?.value,
         montoAplicado: monto.montoAplicado,
         anio: monto.anio,
+        cargoALiquidarId: monto.cargoALiquidarId || null,
       }));
 
     const aniosPagados = this.obtenerAniosMarcados();

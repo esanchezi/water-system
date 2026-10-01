@@ -28,7 +28,7 @@ export class UserChargesComponent implements OnInit {
   chargeForm: FormGroup = this.fb.group({});
   paymentForm: FormGroup = this.fb.group({});
 
-  displayColumnsCharge: string[] = ['concepto', 'descripcion', 'monto', 'fechaStr', 'montoPagado', 'montoCondonado', 'saldo', 'estatusPago'];
+  displayColumnsCharge: string[] = ['concepto', 'descripcion', 'monto', 'fechaStr', 'montoPagado', 'montoCondonado', 'saldo', 'estatusPago', 'asamblea'];
   dataSourceCharge = new MatTableDataSource<WaterUserChargeModel>();
 
   conceptosCargo: CatalogOptionModel[] = [];
@@ -46,7 +46,9 @@ export class UserChargesComponent implements OnInit {
       monto: ['', Validators.required],
       fecha: ['', Validators.required],
       descripcion: [''],
-      comentario: ['']
+      comentario: [''],
+      aprobadoAsamblea: [false],
+      fechaAsamblea: ['']
     });
     this.paymentForm = this.fb.group({
       aguaUsuarioCargoId: ['', Validators.required],
@@ -93,7 +95,9 @@ export class UserChargesComponent implements OnInit {
       descripcion: form.descripcion,
       monto: form.monto,
       fecha: form.fecha,
-      comentario: form.comentario
+      comentario: form.comentario,
+      aprobadoAsamblea: !!form.aprobadoAsamblea,
+      fechaAsamblea: form.aprobadoAsamblea ? form.fechaAsamblea : null
     };
     Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     this.userChargeService.saveCharge(data).subscribe({

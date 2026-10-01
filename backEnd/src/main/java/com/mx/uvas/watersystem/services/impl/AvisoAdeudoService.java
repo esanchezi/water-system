@@ -3,6 +3,7 @@ package com.mx.uvas.watersystem.services.impl;
 import com.lowagie.text.DocumentException;
 import com.mx.uvas.watersystem.dto.AdeudoLuzUsuarioDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoAtencionRequestDto;
+import com.mx.uvas.watersystem.dto.AvisoAdeudoCancelarRequestDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoEntregaRequestDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoGenerarRequestDto;
 import com.mx.uvas.watersystem.dto.UsuarioNoRegistradoDto;
@@ -81,8 +82,10 @@ public class AvisoAdeudoService {
     // tipo u otro: es $100 por cada uno de estos años que el usuario deba,
     // una sola vez por año (ver crearCargoMantenimiento()). Agregar más
     // años aquí si el Comité decide cobrar otros períodos más adelante.
-    private static final String CONCEPTO_MANTENIMIENTO_NOMBRE = "Mantenimiento de cajón";
-    private static final List<Integer> ANIOS_MANTENIMIENTO = List.of(2024, 2025);
+    // v11 (sept. 2026): "Mantenimiento de cajón" como cargo formal se quitó
+    // de este archivo -- ver nota donde estaba crearCargoMantenimiento().
+    // El nombre del concepto y los años siguen viviendo en AdeudoLuzService,
+    // que es quien ahora calcula este adeudo en vivo.
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     // NumberFormat no es thread-safe -- se crea una instancia nueva en cada
@@ -309,7 +312,7 @@ public class AvisoAdeudoService {
     // se puso al corriente antes de entregarla) -- se oculta del historial
     // por default pero sigue pudiéndose consultar, no se borra.
     @Transactional
-    public ResponseEntity<AvisoAdeudoRestResponse> cancelar(Integer avisoAdeudoId) {
+    public ResponseEntity<AvisoAdeudoRestResponse> cancelar(Integer avisoAdeudoId, AvisoAdeudoCancelarRequestDto request) {
         AvisoAdeudoRestResponse response = new AvisoAdeudoRestResponse();
         try {
             Optional<AvisoAdeudoEntity> avisoOpt = avisoAdeudoRepository.findById(avisoAdeudoId);
@@ -321,6 +324,8 @@ public class AvisoAdeudoService {
             aviso.setEstatus(0);
             aviso.setUserIdCancela(currentUserService.getCurrentUserId());
             aviso.setDateCancela(LocalDateTime.now());
+            String comentario = request != null ? request.getComentarioCancela() : null;
+            aviso.setComentarioCancela(comentario != null && !comentario.isBlank() ? comentario.trim() : null);
             avisoAdeudoRepository.save(aviso);
 
             response.setData(List.of(avisoAdeudoMapper.entityToDto(aviso)));
@@ -374,17 +379,51 @@ public class AvisoAdeudoService {
     // Cartas ya entregadas a este usuario que aún no se marcan como
     // atendidas -- para la alerta al consultar la ficha del usuario, "a
     // razón de realizar el cobro correspondiente".
+    //
+    // v11 (sept. 2026, pedido explícito de Ely -- "mientras no sea pagado
+    // el recibo no dejes de mostrar el archivo... el convenio es como un
+    // estatus pendiente, no que ya no se le dé seguimiento, y si es un
+    // Segundo aviso con mayor razón porque son 2 cartas las que se
+    // cobran"): antes esta alerta dejaba de mostrarse en cuanto alguien
+    // marcaba la carta como "atendida" (fechaAtencion) -- incluyendo el
+    // checkbox de la pantalla de captura de recibo, que marca
+    // resultadoAtencion='PAGADO' sin checar si el monto capturado de
+    // verdad cubre lo que se le cobró en la carta. Ahora la alerta se basa
+    // en si el cargo formal "Aviso" de ESA carta (el que se genera en
+    // crearCargoAviso(), ligado por su descripción exacta -- "Primer/
+    // Segundo aviso de adeudo -- folio N") todavía tiene saldo pendiente,
+    // sin importar qué se haya capturado en "marcarAtendida"/convenio. Si
+    // por alguna razón no existe ese cargo (ej. cartas viejas de antes de
+    // que existiera crearCargoAviso(), o el concepto no estaba en el
+    // catálogo al generarla), se usa el criterio anterior (fechaAtencion)
+    // como respaldo, para no dejar de alertar sobre esos casos.
     @Transactional(readOnly = true)
     public ResponseEntity<AvisoAdeudoRestResponse> pendientesDeAtencion(Integer aguaUsuarioId) {
         AvisoAdeudoRestResponse response = new AvisoAdeudoRestResponse();
         try {
-            List<AvisoAdeudoEntity> avisos = avisoAdeudoRepository.findPendientesDeAtencionPorUsuario(aguaUsuarioId);
-            response.setData(avisos.stream().map(avisoAdeudoMapper::entityToDto).toList());
+            List<AvisoAdeudoEntity> entregadas = avisoAdeudoRepository.findEntregadasPorUsuario(aguaUsuarioId);
+            List<AvisoAdeudoEntity> pendientes = entregadas.stream()
+                    .filter(aviso -> siguePendienteDeCobro(aguaUsuarioId, aviso))
+                    .toList();
+            response.setData(pendientes.stream().map(avisoAdeudoMapper::entityToDto).toList());
             response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, "Pendientes encontrados");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseHandler.handleInternalServerError(response, "Error al consultar avisos pendientes de atención", e);
         }
+    }
+
+    private boolean siguePendienteDeCobro(Integer aguaUsuarioId, AvisoAdeudoEntity aviso) {
+        String tipoTexto = "SEGUNDO".equalsIgnoreCase(aviso.getTipoAviso()) ? "Segundo aviso" : "Primer aviso";
+        String descripcionCargo = tipoTexto + " de adeudo -- folio " + aviso.getFolioNotificacion();
+        Optional<WaterUserChargeEntity> cargoOpt = waterUserChargeRepository
+                .findFirstByWaterUser_AguaUsuarioIdAndConcepto_NombreAndDescripcionAndEstatus(
+                        aguaUsuarioId, CONCEPTO_AVISO_NOMBRE, descripcionCargo, 1);
+        if (cargoOpt.isPresent()) {
+            return cargoOpt.get().getSaldo() > 0;
+        }
+        // Sin cargo que checar (caso raro) -- respaldo: el criterio viejo.
+        return aviso.getFechaAtencion() == null;
     }
 
     // Categorías válidas para resultadoAtencion -- igual que tipoAviso/
@@ -498,7 +537,24 @@ public class AvisoAdeudoService {
         String tipoAviso = normalizarTipoAviso(request.getTipoAviso());
         List<Integer> aguaUsuarioIds = request.getAguaUsuarioIds() != null ? request.getAguaUsuarioIds() : new ArrayList<>();
 
-        List<AdeudoLuzUsuarioDto> adeudos = adeudoLuzService.calcularParaUsuarios(aguaUsuarioIds);
+        // Usuarios manuales marcados con calcularAutomatico=true (pedido de
+        // Ely: buscarlos por nombre/número en vez de ubicarlos en la tabla
+        // de candidatos filtrada por calle es más rápido, pero el cálculo
+        // debe seguir siendo automático) -- se agregan al mismo batch de
+        // AdeudoLuzService que los candidatos elegidos por checkbox, para no
+        // hacer una llamada aparte por cada uno.
+        List<UsuarioManualAdeudoDto> manuales = request.getUsuariosManuales() != null
+                ? request.getUsuariosManuales() : new ArrayList<>();
+        List<Integer> idsManualAutomatico = manuales.stream()
+                .filter(m -> m != null && m.getAguaUsuarioId() != null && Boolean.TRUE.equals(m.getCalcularAutomatico()))
+                .map(UsuarioManualAdeudoDto::getAguaUsuarioId)
+                .filter(id -> !aguaUsuarioIds.contains(id))
+                .distinct()
+                .toList();
+        List<Integer> idsParaCalculo = new ArrayList<>(aguaUsuarioIds);
+        idsParaCalculo.addAll(idsManualAutomatico);
+
+        List<AdeudoLuzUsuarioDto> adeudos = adeudoLuzService.calcularParaUsuarios(idsParaCalculo);
         Map<Integer, AdeudoLuzUsuarioDto> adeudoPorUsuarioId = new HashMap<>();
         for (AdeudoLuzUsuarioDto dto : adeudos) {
             adeudoPorUsuarioId.put(dto.getAguaUsuarioId(), dto);
@@ -562,25 +618,19 @@ public class AvisoAdeudoService {
             multaAcumulada += crearCargoAviso(usuario, tipoAviso, folio, userIdAdd, ahora);
 
             // Cooperación extraordinaria de mantenimiento de cajón (Art.
-            // 10): $100 por cada año 2024/2025 que este usuario deba --
-            // independiente del tipo de aviso, y solo una vez por año (ver
-            // dedupe dentro del método). El cargo SÍ se sigue creando igual
-            // (se cobra, queda en Cargos/Multas de su ficha), pero desde la
-            // v5 de la carta (sept. 2026) su monto YA NO se suma a
-            // "multaAcumulada" -- se calcula aparte, en su propio renglón
-            // de la carta ("Adeudo de mantenimiento", ver
-            // AvisoAdeudoPdfService), igual que adeudo.getMantenimientoPendiente()
-            // ya trae lo pendiente de cartas anteriores.
+            // 10): $100 por cada año 2024/2025 que este usuario deba.
+            //
+            // v11 (sept. 2026, pedido explícito de Ely -- "reemplazar todo
+            // lo que se haya generado con ese concepto y usar Mtto, para mí
+            // es como tenerlo repetido"): ya NO se crea un cargo aparte
+            // aquí. AdeudoLuzService.calcularParaCalle()/calcularParaTodos()
+            // ya trae mantenimientoPendiente/mantenimientoPorAnio
+            // calculados en vivo (checando si el usuario ya dio la
+            // cooperación "Mtto" ese año), así que aquí solo se usa tal
+            // cual viene -- sin cargo formal de por medio.
             double mantenimientoPendiente = adeudo.getMantenimientoPendiente() != null ? adeudo.getMantenimientoPendiente() : 0d;
-            Map<Integer, Double> mantenimientoPorAnio = new TreeMap<>();
-            if (adeudo.getMantenimientoPorAnio() != null) {
-                mantenimientoPorAnio.putAll(adeudo.getMantenimientoPorAnio());
-            }
-            Map<Integer, Double> mantenimientoRecienAgregado = crearCargoMantenimiento(usuario, adeudo.getPeriodosAdeudados(), userIdAdd, ahora);
-            for (Map.Entry<Integer, Double> entry : mantenimientoRecienAgregado.entrySet()) {
-                mantenimientoPendiente += entry.getValue();
-                mantenimientoPorAnio.merge(entry.getKey(), entry.getValue(), Double::sum);
-            }
+            Map<Integer, Double> mantenimientoPorAnio = adeudo.getMantenimientoPorAnio() != null
+                    ? adeudo.getMantenimientoPorAnio() : new TreeMap<>();
             // "$100.00 - 2024 | $100.00 - 2025" -- monto antes del año, a
             // diferencia de desglosePorAnio (año antes del monto), por
             // pedido explícito de Ely para este renglón combinado.
@@ -608,6 +658,7 @@ public class AvisoAdeudoService {
                     request.getFechaPresentacion(),
                     false,
                     multaAcumulada,
+                    adeudo.getMultaAcumuladaDesglose(),
                     notaEntregaPrimerAviso,
                     mantenimientoPendiente,
                     mantenimientoPorAnioTexto,
@@ -669,6 +720,7 @@ public class AvisoAdeudoService {
                         true,
                         0d,
                         null,
+                        null,
                         0d,
                         "",
                         null
@@ -684,10 +736,100 @@ public class AvisoAdeudoService {
         // recalcula -- se usa tal cual lo capturado, precisamente porque el
         // cálculo automático no aplica o no lo detecta (motivo que se pide
         // dejar en observacion).
-        if (request.getUsuariosManuales() != null) {
-            for (UsuarioManualAdeudoDto manual : request.getUsuariosManuales()) {
-                if (manual == null || manual.getAguaUsuarioId() == null
-                        || manual.getMontoAdeudo() == null || manual.getMontoAdeudo() <= 0) {
+        for (UsuarioManualAdeudoDto manual : manuales) {
+            if (manual == null || manual.getAguaUsuarioId() == null) {
+                continue;
+            }
+
+            // Modo automático: mismo tratamiento que un candidato elegido
+            // por checkbox (desglose por año, multa, cargos automáticos de
+            // Aviso/Mantenimiento) -- se repite aquí en vez de fusionarlo al
+            // bucle principal de arriba, que solo itera aguaUsuarioIds, para
+            // no complicar ese flujo ya probado.
+            if (Boolean.TRUE.equals(manual.getCalcularAutomatico())) {
+                AdeudoLuzUsuarioDto adeudo = adeudoPorUsuarioId.get(manual.getAguaUsuarioId());
+                if (adeudo == null || adeudo.getAdeudoTotal() == null || adeudo.getAdeudoTotal() <= 0) {
+                    Optional<WaterUserEntity> u = waterUserRepository.findById(manual.getAguaUsuarioId());
+                    u.ifPresent(waterUserEntity -> omitidos.add(waterUserEntity.getNoUsuario()));
+                    continue;
+                }
+                Optional<WaterUserEntity> usuarioOpt = waterUserRepository.findById(manual.getAguaUsuarioId());
+                if (usuarioOpt.isEmpty()) {
+                    continue;
+                }
+                WaterUserEntity usuario = usuarioOpt.get();
+
+                Integer folio = siguienteFolio++;
+                String nombreConNumero = adeudo.getNoUsuario() + " - " + adeudo.getNombreCompleto();
+                String fechaUltimoPagoTexto = adeudo.getFechaUltimoPago() != null
+                        ? adeudo.getFechaUltimoPago().format(FORMATO_FECHA) : "";
+                String desglosePorAnio = (adeudo.getPeriodosAdeudadosTexto() != null && !adeudo.getPeriodosAdeudadosTexto().isBlank()
+                        ? adeudo.getPeriodosAdeudadosTexto() + " | " : "") + "Total " + formatoMoneda.format(adeudo.getAdeudoTotal());
+
+                double multaAcumulada = adeudo.getMultaAcumulada() != null ? adeudo.getMultaAcumulada() : 0d;
+                multaAcumulada += crearCargoAviso(usuario, tipoAviso, folio, userIdAdd, ahora);
+
+                // v11 (sept. 2026): igual que arriba, ya viene calculado en
+                // vivo desde AdeudoLuzService -- sin cargo formal aparte.
+                double mantenimientoPendiente = adeudo.getMantenimientoPendiente() != null ? adeudo.getMantenimientoPendiente() : 0d;
+                Map<Integer, Double> mantenimientoPorAnio = adeudo.getMantenimientoPorAnio() != null
+                        ? adeudo.getMantenimientoPorAnio() : new TreeMap<>();
+                String mantenimientoPorAnioTexto = mantenimientoPorAnio.entrySet().stream()
+                        .map(e -> formatoMoneda.format(e.getValue()) + " - " + e.getKey())
+                        .collect(Collectors.joining(" | "));
+
+                String notaEntregaPrimerAviso = "SEGUNDO".equalsIgnoreCase(tipoAviso)
+                        ? construirNotaEntregaPrimerAviso(manual.getAguaUsuarioId())
+                        : null;
+                String observacionAuto = manual.getObservacion() != null && !manual.getObservacion().isBlank()
+                        ? manual.getObservacion().trim() : null;
+
+                cartas.add(new CartaAdeudoDatos(
+                        folio,
+                        tipoAviso,
+                        nombreConNumero,
+                        adeudo.getCasaNoTexto(),
+                        adeudo.getDomicilioToma(),
+                        adeudo.getAdeudoTotal(),
+                        adeudo.getNoFolioUltimoPago(),
+                        fechaUltimoPagoTexto,
+                        desglosePorAnio,
+                        request.getFechaPresentacion(),
+                        false,
+                        multaAcumulada,
+                        adeudo.getMultaAcumuladaDesglose(),
+                        notaEntregaPrimerAviso,
+                        mantenimientoPendiente,
+                        mantenimientoPorAnioTexto,
+                        observacionAuto
+                ));
+
+                paraGuardar.add(AvisoAdeudoEntity.builder()
+                        .folioNotificacion(folio)
+                        .tipoAviso(tipoAviso)
+                        .nombreUsuarioTitular(adeudo.getNombreCompleto())
+                        .noCasa(adeudo.getCasaNo())
+                        .noCasaTexto(adeudo.getCasaNoTexto())
+                        .domicilioToma(adeudo.getDomicilioToma())
+                        .periodosAdeudados(adeudo.getPeriodosAdeudadosTexto())
+                        .adeudoTotal(adeudo.getAdeudoTotal())
+                        .noFolioUltimoPago(adeudo.getNoFolioUltimoPago())
+                        .fechaUltimoPago(adeudo.getFechaUltimoPago())
+                        .multaAcumulada(multaAcumulada)
+                        .fechaPresentacion(request.getFechaPresentacion())
+                        .estatus(1)
+                        .userIdAdd(userIdAdd)
+                        .dateAdd(ahora)
+                        .waterUser(usuario)
+                        .build());
+                continue;
+            }
+
+            // Modo 100% manual (comportamiento original): el monto viene
+            // capturado a mano, para el caso real donde el cálculo
+            // automático no aplica o no lo detecta.
+            {
+                if (manual.getMontoAdeudo() == null || manual.getMontoAdeudo() <= 0) {
                     continue;
                 }
 
@@ -731,6 +873,7 @@ public class AvisoAdeudoService {
                         request.getFechaPresentacion(),
                         false,
                         multaAcumulada,
+                        null,
                         notaEntregaPrimerAviso,
                         0d,
                         "",
@@ -880,68 +1023,13 @@ public class AvisoAdeudoService {
         return monto;
     }
 
-    // Cooperación extraordinaria de mantenimiento de cajón (Art. 10): $100
-    // por cada uno de ANIOS_MANTENIMIENTO que el usuario deba (se checa
-    // contra el desglose por año ya calculado -- adeudo.periodosAdeudados).
-    // Solo se crea si aún no existe un cargo con esa descripción exacta
-    // para este usuario (evita duplicar el cargo si se le genera más de
-    // una carta, ej. Primero y luego Segundo aviso). Igual que
-    // crearCargoAviso(), si falta el concepto en el catálogo o el monto
-    // vigente es $0.00, no se crea el cargo pero tampoco se detiene la
-    // carta -- solo queda constancia en el log. Devuelve un mapa año->monto
-    // con SOLO lo agregado en esta llamada (vacío si ya existía todo o no
-    // se creó nada) -- a diferencia de antes (devolvía un double), así se
-    // puede combinar con adeudo.getMantenimientoPorAnio() (lo ya existente
-    // de cartas anteriores) para armar el desglose completo por año.
-    private Map<Integer, Double> crearCargoMantenimiento(WaterUserEntity usuario, List<Integer> periodosAdeudados, Integer userIdAdd, LocalDateTime ahora) {
-        Map<Integer, Double> agregadoPorAnio = new TreeMap<>();
-        if (periodosAdeudados == null || periodosAdeudados.isEmpty()) {
-            return agregadoPorAnio;
-        }
-
-        Optional<CatalogOptionsEntity> conceptoOpt = catalogOptionsRepository
-                .findByCatalog_ClaveAndNombreAndEstatus(CATALOGO_CARGO_EXTRA_CLAVE, CONCEPTO_MANTENIMIENTO_NOMBRE, 1);
-        if (conceptoOpt.isEmpty()) {
-            log.warn("No se encontró el concepto '{}' en el catálogo {} -- no se generó el cargo de mantenimiento para el usuario {}",
-                    CONCEPTO_MANTENIMIENTO_NOMBRE, CATALOGO_CARGO_EXTRA_CLAVE, usuario.getNoUsuario());
-            return agregadoPorAnio;
-        }
-
-        for (Integer anio : ANIOS_MANTENIMIENTO) {
-            if (!periodosAdeudados.contains(anio)) {
-                continue;
-            }
-
-            String descripcion = CONCEPTO_MANTENIMIENTO_NOMBRE + " " + anio;
-            boolean yaExiste = waterUserChargeRepository.existsByWaterUser_AguaUsuarioIdAndConcepto_NombreAndDescripcionAndEstatus(
-                    usuario.getAguaUsuarioId(), CONCEPTO_MANTENIMIENTO_NOMBRE, descripcion, 1);
-            if (yaExiste) {
-                continue;
-            }
-
-            double monto = valorGeneralService.getMontoVigente(ValorGeneralClave.MANTENIMIENTO, anio);
-            if (monto <= 0) {
-                log.warn("El valor vigente de '{}' para {} es $0.00 -- no se generó el cargo para el usuario {}",
-                        CONCEPTO_MANTENIMIENTO_NOMBRE, anio, usuario.getNoUsuario());
-                continue;
-            }
-
-            WaterUserChargeEntity cargo = WaterUserChargeEntity.builder()
-                    .waterUser(usuario)
-                    .concepto(conceptoOpt.get())
-                    .descripcion(descripcion)
-                    .monto(monto)
-                    .fecha(ahora.toLocalDate())
-                    .comentario("Cooperación extraordinaria de mantenimiento (Art. 10) -- generado automáticamente al detectar adeudo de " + anio)
-                    .estatus(1)
-                    .userIdAdd(userIdAdd)
-                    .dateAdd(ahora)
-                    .build();
-            waterUserChargeRepository.save(cargo);
-            agregadoPorAnio.merge(anio, monto, Double::sum);
-        }
-        return agregadoPorAnio;
-    }
+    // v11 (sept. 2026, pedido explícito de Ely): crearCargoMantenimiento()
+    // se quitó -- el adeudo de mantenimiento ya no se registra como cargo
+    // formal aparte, se calcula en vivo en AdeudoLuzService checando los
+    // pagos "Mtto" sueltos (ver comentario ahí). CONCEPTO_MANTENIMIENTO_NOMBRE
+    // y ANIOS_MANTENIMIENTO se dejan arriba solo porque AdeudoLuzService
+    // sigue usando el nombre del concepto para EXCLUIR cargos viejos de ese
+    // tipo (si quedó alguno sin desactivar) de la suma de "multa acumulada".
 
     // Cuando esta carta es un Segundo aviso, arma un texto con cuándo y a
     // quién se le entregó el Primer aviso más reciente de este mismo

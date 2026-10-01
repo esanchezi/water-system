@@ -1,4 +1,4 @@
-<h2 mat-dialog-title>Marcar como atendida</h2>
+<h2 mat-dialog-title>{{ esEdicion ? 'Editar cobro/atención' : 'Marcar como atendida' }}</h2>
 
 <mat-dialog-content>
   <p class="hint" *ngIf="data.avisos.length === 1">

@@ -34,6 +34,12 @@ export class AvisoAdeudoEntregaDialogComponent implements OnInit {
 
   tipoEntrega = '';
   fechaEntrega = new Date().toISOString().substring(0, 10);
+  // Hora de entrega -- la carta física trae "siendo las ______ horas" en la
+  // sección RAZÓN DE NOTIFICACIÓN, así que se captura junto con la fecha en
+  // vez de solo guardar la fecha con hora en 00:00 (como antes). Se
+  // precarga con la hora actual, pero se puede ajustar a mano si se está
+  // registrando después de la visita real.
+  horaEntrega = new Date().toTimeString().substring(0, 5);
   nombreReceptor = '';
   parentescoReceptor = '';
   nombreNotificador = '';
@@ -172,8 +178,10 @@ export class AvisoAdeudoEntregaDialogComponent implements OnInit {
       // -- convertir con new Date(...).toISOString() la anclaba en UTC
       // medianoche, y al mostrarla de vuelta en la zona horaria local
       // (México, UTC-6) aparecía un día antes. Mandándola tal cual se
-      // evita esa conversión de un lado a otro.
-      fechaEntrega: this.fechaEntrega ? this.fechaEntrega + 'T00:00:00' : undefined
+      // evita esa conversión de un lado a otro. La hora ya no se deja fija
+      // en 00:00 -- se captura aparte (horaEntrega) para poder replicar el
+      // "siendo las ______ horas" de la carta física.
+      fechaEntrega: this.fechaEntrega ? this.fechaEntrega + 'T' + (this.horaEntrega || '00:00') + ':00' : undefined
     };
 
     this.avisoAdeudoService.marcarEntregada(this.data.aviso.avisoAdeudoId, datos).subscribe({

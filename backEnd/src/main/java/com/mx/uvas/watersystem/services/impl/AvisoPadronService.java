@@ -70,12 +70,15 @@ public class AvisoPadronService {
         }
     }
 
+    // v9 (sept. 2026): mismo fix que AdeudoLuzService.coincideCalle() (bug
+    // reportado por Ely, caso usuario 116) -- si ya tiene casa con calle de
+    // catálogo asignada, esa es la única fuente que se usa (se respeta
+    // aunque no coincida); el texto libre solo es respaldo cuando NO tiene
+    // casa asignada en absoluto. Antes caía al texto libre incluso teniendo
+    // casa, causando falsos positivos entre calles/zonas distintas.
     private boolean coincideCalle(WaterUserEntity user, Integer calleId, String calleNombreLower) {
-        boolean porCasa = user.getWaterHouse() != null
-                && user.getWaterHouse().getCatCalle() != null
-                && calleId.equals(user.getWaterHouse().getCatCalle().getCatalogoOpcionesId());
-        if (porCasa) {
-            return true;
+        if (user.getWaterHouse() != null && user.getWaterHouse().getCatCalle() != null) {
+            return calleId.equals(user.getWaterHouse().getCatCalle().getCatalogoOpcionesId());
         }
         if (calleNombreLower == null) {
             return false;

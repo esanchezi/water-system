@@ -31,6 +31,7 @@ public class AvisoAdeudoMapper {
         }
 
         dto.setCancelada(entity.getEstatus() != null && entity.getEstatus() == 0);
+        dto.setComentarioCancela(entity.getComentarioCancela());
         dto.setEntregado(entity.getFechaEntrega() != null);
         dto.setFechaEntrega(entity.getFechaEntrega());
         dto.setTipoEntrega(entity.getTipoEntrega());

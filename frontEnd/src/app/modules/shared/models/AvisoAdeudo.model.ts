@@ -19,6 +19,12 @@ export interface AdeudoLuzUsuarioModel {
   adeudoTotal: number;
   noFolioUltimoPago?: number;
   fechaUltimoPago?: string;
+  // Meses desde el último pago de Luz (0 = pagó este mes); valor muy alto
+  // (centinela, ver AdeudoLuzService.MESES_SIN_PAGO_NUNCA_PAGADO en el
+  // backend) cuando nunca ha pagado. Ya no decide por sí solo si el
+  // usuario sale como candidato -- se usa para el filtro ajustable
+  // "Meses sin abonar (mínimo)" de la pantalla (pedido de Ely, sept. 2026).
+  mesesSinPagoLuz?: number;
 
   // Control de Primer/Segundo aviso -- último aviso ACTIVO que se le
   // generó a este usuario (null si nunca se le ha generado ninguno).
@@ -65,6 +71,9 @@ export interface AvisoAdeudoModel {
   // Se oculta del historial por default (mismo patrón que los usuarios
   // dados de baja) pero se puede consultar explícitamente.
   cancelada?: boolean;
+  // Motivo de la cancelación (opcional) -- ej. "no fue entregada, se
+  // negaron a recibir".
+  comentarioCancela?: string;
 
   // Registro de entrega -- ver AvisoAdeudoEntregaModel/TIPOS_ENTREGA.
   entregado?: boolean;
@@ -186,6 +195,15 @@ export interface UsuarioManualAdeudoModel {
   // manda al backend (usa aguaUsuarioId).
   noUsuario?: number;
   nombreCompleto?: string;
-  montoAdeudo: number;
+  // Opcional cuando calcularAutomatico es true -- en ese caso el backend
+  // calcula el adeudo real con AdeudoLuzService, igual que un candidato
+  // normal, y este valor se ignora.
+  montoAdeudo?: number;
   observacion?: string;
+  // true (default) = buscado a mano por nombre/número para no tener que
+  // ubicarlo en la tabla de candidatos filtrada por calle, pero el adeudo
+  // SÍ se calcula automático. false = monto 100% capturado a mano (caso
+  // real donde el cálculo automático no aplica, ej. cuenta juntada con la
+  // de otro familiar).
+  calcularAutomatico?: boolean;
 }
