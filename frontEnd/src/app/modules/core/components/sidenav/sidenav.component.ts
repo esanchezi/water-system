@@ -72,9 +72,11 @@ export class SidenavComponent implements OnInit {
     // usuario), así que tenerlos juntos bajo su propio menú es más claro.
     {
       name: 'Cartas', icon: 'mark_email_unread', items: [
+        { name: 'Aviso informativo de adeudo', route: 'avisoInformativoAdeudo', icon: 'info' },
         { name: 'Cartas de adeudo', route: 'avisoAdeudo', icon: 'mark_email_unread' },
         { name: 'Aviso uso de bomba', route: 'avisoBomba', icon: 'water_damage' },
         { name: 'Actualización de padrón', route: 'avisoPadron', icon: 'assignment_ind' },
+        { name: 'Responsables de pago', route: 'avisoResponsablePago', icon: 'groups' },
       ]
     },
     {

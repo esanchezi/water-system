@@ -27,11 +27,17 @@ public class AvisoAdeudoDto implements Serializable {
     private Double multaAcumulada;
     private Integer noFolioUltimoPago;
     private LocalDateTime fechaUltimoPago;
+    // Fecha completa en la que debía presentarse en el Comité, elegida al
+    // generar la carta -- ver AvisoAdeudoEntity.fechaPresentacion.
+    private LocalDate fechaPresentacion;
     private LocalDateTime dateAdd;
 
     // Derivado de estatus (0 = cancelada) -- se oculta del historial por
     // default en el frontend, pero se puede consultar explícitamente.
     private Boolean cancelada;
+    // Motivo de la cancelación (opcional) -- ej. "no fue entregada, se
+    // negaron a recibir" o "no fue entregada, no se encontró a nadie".
+    private String comentarioCancela;
 
     // Derivado de fechaEntrega != null.
     private Boolean entregado;
@@ -43,6 +49,7 @@ public class AvisoAdeudoDto implements Serializable {
     private String nombreNotificador;
     private String nombreTestigo1;
     private String nombreTestigo2;
+    private String comentarioEntrega;
 
     // Derivado de fechaAtencion != null -- mientras sea false, la carta ya
     // entregada sigue pendiente del cobro/trámite correspondiente.

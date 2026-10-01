@@ -168,20 +168,42 @@ public class AvisoAdeudoPdfService {
         // vacío si va en su propio renglón de la tabla completa; si el
         // usuario no tiene casa capturada, el valor simplemente se deja en
         // blanco (la etiqueta se sigue mostrando).
+        // El valor de "No. Casa" es corto (o va vacío) -- la etiqueta ya
+        // trae su ancho justo, así que el valor solo necesita lo mínimo;
+        // el espacio que sobraba se lo lleva el valor de "Domicilio de la
+        // toma", que suele ser el dato más largo del renglón (v8, sept.
+        // 2026, Ely reportó espacio en blanco desperdiciado ahí).
         agregarFilaDatosDoble(datos,
                 "No. Casa", carta.noCasa() != null && !carta.noCasa().isBlank() ? carta.noCasa() : "",
                 "Domicilio de la toma", nullToVacio(carta.domicilioToma()),
-                new float[]{13f, 17f, 20f, 50f});
+                new float[]{13f, 7f, 22f, 58f});
 
         agregarFilaDatos(datos, "Desglose del adeudo por año",
                 carta.desglosePorAnio() != null && !carta.desglosePorAnio().isBlank() ? carta.desglosePorAnio() : "--",
                 fontItalicChico);
 
-        // Multa acumulada y mantenimiento de cajón, cada uno con su propia
-        // etiqueta y monto (no texto libre en 2 líneas -- eso confundía).
-        String textoMulta = carta.multaAcumulada() != null && carta.multaAcumulada() > 0
-                ? formatoMonedaTabla.format(carta.multaAcumulada())
-                : "Sin multas pendientes";
+        // Multa acumulada -- v7 de la carta (sept. 2026, pedido explícito de
+        // Ely): cuando hay 2 o más cargos individuales sumando, se agrega el
+        // desglose por concepto entre paréntesis junto al total (incluyendo
+        // el motivo de cada "Multa" y, si aplica, la leyenda de asamblea --
+        // ver AdeudoLuzService.buildMultaAcumuladaDesglose()). Con 0 o 1
+        // cargo el desglose no aporta nada nuevo, así que se deja solo el
+        // monto (o "Sin multas pendientes"). Pasa a renglón de ancho
+        // completo (antes compartía renglón con Mantenimiento) porque el
+        // desglose no cabe en media tabla.
+        String textoMulta;
+        if (carta.multaAcumulada() != null && carta.multaAcumulada() > 0) {
+            textoMulta = formatoMonedaTabla.format(carta.multaAcumulada());
+            if (carta.multaAcumuladaDesglose() != null && !carta.multaAcumuladaDesglose().isBlank()) {
+                textoMulta += "  (" + carta.multaAcumuladaDesglose() + ")";
+            }
+        } else {
+            textoMulta = "Sin multas pendientes";
+        }
+        agregarFilaDatos(datos, "Multa acumulada", textoMulta, fontItalicChico);
+
+        // Mantenimiento de cajón -- ahora en su propio renglón de ancho
+        // completo (antes compartía renglón con Multa acumulada, ver arriba).
         // "$100.00 - 2024 | $100.00 - 2025" (monto antes del año) --
         // desglose de mantenimiento por año cuando aplica.
         String textoMantenimiento = carta.mantenimientoPendiente() != null && carta.mantenimientoPendiente() > 0
@@ -190,10 +212,7 @@ public class AvisoAdeudoPdfService {
                                 ? " (" + carta.mantenimientoPorAnioTexto() + ")"
                                 : "")
                 : "Sin adeudo de mantenimiento";
-        agregarFilaDatosDoble(datos,
-                "Multa acumulada", textoMulta,
-                "Mantenimiento", textoMantenimiento,
-                new float[]{17f, 25f, 17f, 41f});
+        agregarFilaDatos(datos, "Mantenimiento", textoMantenimiento, fontItalicChico);
 
         // Folio y fecha del último pago, mismo criterio -- ambos son datos
         // cortos, no tiene caso que cada uno ocupe un renglón completo.
@@ -260,6 +279,17 @@ public class AvisoAdeudoPdfService {
                     fontItalicChico);
             notaNoRegistrado.setSpacingAfter(1.8f);
             document.add(notaNoRegistrado);
+        }
+
+        // Usuario registrado con monto de adeudo capturado A MANO (ver
+        // UsuarioManualAdeudoDto/AvisoAdeudoService) -- se deja constancia
+        // en la carta del motivo, para que quede claro por qué el monto no
+        // salió del cálculo automático (ej. cuenta juntada con la de un
+        // familiar).
+        if (carta.observacionManual() != null && !carta.observacionManual().isBlank()) {
+            Paragraph notaManual = new Paragraph("Nota del Comité: " + carta.observacionManual(), fontRojoItalica);
+            notaManual.setSpacingAfter(1.8f);
+            document.add(notaManual);
         }
 
         // La consecuencia de no presentarse (siguiente aviso, o corte) ya

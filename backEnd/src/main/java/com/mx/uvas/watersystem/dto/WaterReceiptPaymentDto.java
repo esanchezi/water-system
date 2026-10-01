@@ -19,4 +19,13 @@ public class WaterReceiptPaymentDto implements Serializable {
     private Integer tipoPagoId;
     private Integer conceptoId;
     private String concepto;
+
+    // v11 (sept. 2026, pedido explícito de Ely): si esta línea del recibo
+    // liquida un cargo pendiente del usuario (Mantenimiento, Aviso, Multa,
+    // etc.), aquí viene el id del WaterUserChargeEntity elegido a mano en
+    // la pantalla de captura -- selector explícito en vez de que el
+    // backend adivine por concepto+año (ver WaterReceiptService.
+    // conciliarCargosLiquidados()). Opcional: null si este pago no liquida
+    // ningún cargo formal.
+    private Integer cargoALiquidarId;
 }

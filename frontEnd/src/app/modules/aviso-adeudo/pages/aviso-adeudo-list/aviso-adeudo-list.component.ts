@@ -1,14 +1,17 @@
 import { Component, OnInit, ViewChild, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { FormControl } from '@angular/forms';
 import { SelectionModel } from '@angular/cdk/collections';
 import { MatDialog } from '@angular/material/dialog';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { forkJoin, Observable } from 'rxjs';
+import { MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import { debounceTime, distinctUntilChanged, forkJoin, Observable, of, switchMap } from 'rxjs';
 import Swal from 'sweetalert2';
 import { AvisoAdeudoService } from '../../../shared/services/aviso-adeudo.service';
 import { CatalogService } from '../../../shared/services/catalog.service';
+import { UserService } from '../../../shared/services/user.service';
 import { CatalogOptionModel } from '../../../shared/models/Catalog.model';
 import {
   AdeudoLuzUsuarioModel,
@@ -16,7 +19,8 @@ import {
   AvisoAdeudoModel,
   RESULTADOS_ATENCION,
   TIPOS_AVISO,
-  TIPOS_ENTREGA,
+  TIPOS_ENTREGA_ADEUDO,
+  UsuarioManualAdeudoModel,
   UsuarioNoRegistradoModel
 } from '../../../shared/models/AvisoAdeudo.model';
 import { AvisoAdeudoEntregaDialogComponent } from '../../components/aviso-adeudo-entrega-dialog/aviso-adeudo-entrega-dialog.component';
@@ -48,6 +52,14 @@ function esEstatusCorte(nombre: string | null | undefined): boolean {
   return !!nombre && nombre.toLowerCase().includes('corte');
 }
 
+// Mismo criterio -- si el estatus del Comité contiene "validar usuario"
+// (pedido de Ely), tampoco se muestra por default: su situación todavía
+// no está confirmada, no tiene caso mandarle carta de adeudo hasta que se
+// valide.
+function esEstatusValidarUsuario(nombre: string | null | undefined): boolean {
+  return !!nombre && nombre.toLowerCase().includes('validar usuario');
+}
+
 @Component({
   selector: 'app-aviso-adeudo-list',
   templateUrl: './aviso-adeudo-list.component.html',
@@ -57,6 +69,7 @@ export class AvisoAdeudoListComponent implements OnInit {
 
   private readonly avisoAdeudoService = inject(AvisoAdeudoService);
   private readonly catalogService = inject(CatalogService);
+  private readonly userService = inject(UserService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
@@ -67,8 +80,8 @@ export class AvisoAdeudoListComponent implements OnInit {
   ];
 
   historialColumns: string[] = [
-    'seleccionSegundo', 'folioNotificacion', 'tipoAviso', 'noUsuario', 'nombreUsuarioTitular', 'periodosAdeudados', 'adeudoTotal',
-    'noFolioUltimoPago', 'fechaUltimoPago', 'dateAdd', 'entrega', 'atencion', 'acciones'
+    'seleccionSegundo', 'folioNotificacion', 'tipoAviso', 'noUsuario', 'nombreUsuarioTitular', 'adeudoTotal',
+    'fechaPresentacion', 'entrega', 'atencion', 'acciones'
   ];
 
   // Checkboxes del historial para generar el Segundo aviso en lote -- solo
@@ -91,6 +104,11 @@ export class AvisoAdeudoListComponent implements OnInit {
   // para una cita el mes siguiente.
   fechaPresentacion: string | null = null;
 
+  // Fecha de hoy en formato "yyyy-MM-dd" (naive, sin hora) -- se usa como
+  // mínimo permitido en los selectores de fecha de presentación, para no
+  // dejar elegir una fecha ya pasada (Ely lo pidió: septiembre 2026).
+  readonly hoyStr = new Date().toISOString().substring(0, 10);
+
   // Cascada Zona -> Calle -- calcular el adeudo es pesado (recorre varios
   // años para cada usuario), así que ya no se calcula para TODOS los
   // usuarios activos al entrar a la pantalla. Se espera a que elijan zona
@@ -109,6 +127,20 @@ export class AvisoAdeudoListComponent implements OnInit {
   estatusComiteFiltro = '';
   estatusComiteOpciones: string[] = [];
 
+  // Filtros ajustables sobre quién sale como candidato (pedido de Ely,
+  // sept. 2026, v8 de la carta) -- antes el backend descartaba de una vez
+  // a quien hubiera abonado algo hace menos de 3 meses, sin importar
+  // cuánto debiera. Ahora el backend manda a TODOS los que deben algo de
+  // Luz (con mesesSinPagoLuz calculado), y estos 3 filtros deciden aquí
+  // quién se ve -- se pueden aflojar cuando haga falta sin pedir un
+  // cambio de código. Los valores por default (3 meses, sin mínimo de
+  // adeudo, sin exigir "nunca antes") reproducen el comportamiento que
+  // había antes, para no sorprender con una lista distinta de la noche a
+  // la mañana.
+  mesesSinAbonarMinFiltro: number | null = 3;
+  adeudoMinimoFiltro: number | null = null;
+  soloSinCartaPreviaFiltro = false;
+
   cargando = false;
   generando = false;
   // true en cuanto se elige una calle al menos una vez -- para distinguir
@@ -126,6 +158,25 @@ export class AvisoAdeudoListComponent implements OnInit {
   nuevoNoRegistradoNombre = '';
   nuevoNoRegistradoDireccion = '';
 
+  // Usuarios YA registrados que no salieron como candidatos (o cuyo
+  // cálculo automático no aplica -- ej. Ely reportó un usuario cuya cuenta
+  // se "juntó" con la de su hija, así que el saldo de Luz calculado solo
+  // queda en $0) pero a los que igual se les quiere generar la carta, con
+  // el monto de adeudo capturado a mano. Se buscan por N° de usuario/nombre
+  // (mismo autocomplete que ya se usa en la ficha de la casa).
+  usuariosManuales: UsuarioManualAdeudoModel[] = [];
+  manualUserSearchCtrl = new FormControl('');
+  manualUserSearchResults: { aguaUsuarioId: number; noUsuario: number; nombreCompleto: string }[] = [];
+  manualUsuarioSeleccionado: { aguaUsuarioId: number; noUsuario: number; nombreCompleto: string } | null = null;
+  nuevoManualMonto: number | null = null;
+  nuevoManualObservacion = '';
+  // true (default) = el adeudo se calcula automático con AdeudoLuzService
+  // igual que un candidato normal -- solo se usa esta búsqueda porque es
+  // más rápido encontrarlo por nombre/número que en la tabla de candidatos
+  // filtrada por calle. false = capturar el monto 100% a mano (caso real
+  // donde el cálculo automático no aplica).
+  nuevoManualCalcularAutomatico = true;
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   // Historial de avisos ya generados -- para no tener que adivinar quién
@@ -135,10 +186,87 @@ export class AvisoAdeudoListComponent implements OnInit {
   // Las canceladas se ocultan por default (mismo patrón que los usuarios
   // dados de baja en candidatos), pero se pueden consultar con este toggle.
   mostrarCanceladas = false;
-  tiposEntrega = TIPOS_ENTREGA;
+  // Igual que mostrarCanceladas, pero para las que ya están "cerradas" --
+  // ver esCerrado() -- pedido de Ely: con tantas cartas generadas, ya es
+  // difícil revisar a mano las que de verdad siguen abiertas si se mezclan
+  // con las que ya se pagaron o que ya tienen Segundo aviso. Las que están
+  // en Convenio NUNCA se ocultan aquí (ver esCerrado()), aunque ya estén
+  // "atendidas" -- siguen necesitando seguimiento hasta que se cumpla o se
+  // incumpla el convenio.
+  mostrarCerradas = false;
+  tiposEntrega = TIPOS_ENTREGA_ADEUDO;
+
+  // Filtros del historial por estatus -- pedido de Ely: con muchas cartas
+  // generadas, ya es complicado revisar a mano, así que se puede acotar la
+  // tabla por el estatus de las columnas "Entrega" y "Cobro/Atención" (los
+  // mismos estados que ya se muestran ahí, ver estadoEntrega()/
+  // estadoAtencion()). '' = sin filtrar (todas).
+  filtroEntrega = '';
+  filtroAtencion = '';
+
+  opcionesFiltroEntrega: { valor: string; etiqueta: string }[] = [
+    { valor: 'PENDIENTE', etiqueta: 'Pendiente' },
+    { valor: 'ENTREGADA', etiqueta: 'Entregada' },
+  ];
+
+  opcionesFiltroAtencion: { valor: string; etiqueta: string }[] = [
+    { valor: 'VENCIDO', etiqueta: 'Vencido -- procede corte' },
+    { valor: 'PENDIENTE_COBRO', etiqueta: 'Pendiente de cobro' },
+    { valor: 'PAGADO', etiqueta: 'Pagado' },
+    { valor: 'CONDONADO', etiqueta: 'Condonado' },
+    { valor: 'CONVENIO', etiqueta: 'Convenio de pago' },
+    { valor: 'OTRO', etiqueta: 'Otro' },
+    { valor: 'SUPERADO', etiqueta: 'Ya tiene Segundo aviso' },
+  ];
+
+  // Mismo criterio que ya usa la columna "Entrega" en el template.
+  estadoEntrega(aviso: AvisoAdeudoModel): string {
+    return aviso.entregado ? 'ENTREGADA' : 'PENDIENTE';
+  }
+
+  // Mismo criterio que ya usa la columna "Cobro/Atención" en el template --
+  // null cuando ni siquiera se ha entregado (esa carta se filtra por
+  // filtroEntrega, no por filtroAtencion). "VENCIDO" es un caso particular
+  // de "pendiente de cobro" (mismo criterio que procedeCorte()): ya pasó la
+  // fecha de presentación sin atenderse, así que ya aplica el corte -- se
+  // distingue del resto de pendientes para poder filtrar de un vistazo la
+  // lista de a quién ya toca cortar (pedido explícito de Ely).
+  estadoAtencion(aviso: AvisoAdeudoModel): string | null {
+    if (!aviso.entregado) return null;
+    if (aviso.atendido) return aviso.resultadoAtencion || 'OTRO';
+    if (this.tieneSegundoPosterior(aviso)) return 'SUPERADO';
+    return this.procedeCorte(aviso) ? 'VENCIDO' : 'PENDIENTE_COBRO';
+  }
+
+  // "Cerrado" = ya no necesita seguimiento: se pagó/condonó/resolvió como
+  // "otro" (atendido con un resultado que no es CONVENIO), o ya tiene un
+  // Segundo aviso posterior (el seguimiento sigue con ese, no con este).
+  // Un CONVENIO nunca cuenta como cerrado aquí -- aunque ya esté marcado
+  // como atendido, sigue siendo relevante verlo: mientras no venza la
+  // fecha comprometida se está cumpliendo, y en cuanto vence sin regularizar
+  // se incumplió el convenio, lo cual amerita seguimiento de nuevo (pedido
+  // explícito de Ely).
+  esCerrado(aviso: AvisoAdeudoModel): boolean {
+    if (this.tieneSegundoPosterior(aviso)) return true;
+    return !!aviso.atendido && aviso.resultadoAtencion !== 'CONVENIO';
+  }
 
   get historialVisible(): AvisoAdeudoModel[] {
-    return this.mostrarCanceladas ? this.historial : this.historial.filter(a => !a.cancelada);
+    let lista = this.mostrarCanceladas ? this.historial : this.historial.filter(a => !a.cancelada);
+    // La regla de "ocultar cerradas" solo aplica cuando no se está
+    // filtrando explícitamente por un estatus de atención puntual -- si Ely
+    // elige "Pagado" a propósito en el filtro de abajo, debe verlos aunque
+    // el toggle "Mostrar cerradas" siga apagado.
+    if (!this.mostrarCerradas && !this.filtroAtencion) {
+      lista = lista.filter(a => !this.esCerrado(a));
+    }
+    if (this.filtroEntrega) {
+      lista = lista.filter(a => this.estadoEntrega(a) === this.filtroEntrega);
+    }
+    if (this.filtroAtencion) {
+      lista = lista.filter(a => this.estadoAtencion(a) === this.filtroAtencion);
+    }
+    return lista;
   }
 
   // true si este Primer aviso ya quedó superado por un Segundo aviso
@@ -149,12 +277,16 @@ export class AvisoAdeudoListComponent implements OnInit {
   // ya usa el folio para todo lo demás en este módulo.
   // Link directo a la ficha completa del usuario -- misma convención que ya
   // usan Personas y Deudores (details-user vuelve a pedir todos los datos
-  // con solo el usuarioId, no hace falta mandar nada más).
+  // con solo el usuarioId, no hace falta mandar nada más). Se abre en una
+  // pestaña NUEVA (en vez de navegar en la misma) -- pedido de Ely: así no
+  // se pierde el filtro/selección/scroll de la tabla de candidatos o del
+  // historial que estaba revisando.
   irADetalleUsuario(aguaUsuarioId?: number): void {
     if (!aguaUsuarioId) return;
-    this.router.navigate(['dashboard/detailsUser'], {
+    const urlTree = this.router.createUrlTree(['dashboard/detailsUser'], {
       queryParams: { element: JSON.stringify({ usuarioId: aguaUsuarioId }) }
     });
+    window.open(this.router.serializeUrl(urlTree), '_blank');
   }
 
   tieneSegundoPosterior(aviso: AvisoAdeudoModel): boolean {
@@ -173,6 +305,19 @@ export class AvisoAdeudoListComponent implements OnInit {
   puedeGenerarSegundo(aviso: AvisoAdeudoModel): boolean {
     return !aviso.cancelada && aviso.tipoAviso === 'PRIMERO' && !!aviso.entregado
       && !aviso.atendido && !this.tieneSegundoPosterior(aviso);
+  }
+
+  // Ya pasó la fecha en que debía presentarse, la carta ya se entregó y
+  // sigue sin atenderse (sin pago/convenio) -- ya procede el corte
+  // (Art. 19/20). Si ya se le generó un Segundo aviso posterior, el
+  // seguimiento se hace con ese, no con este Primero.
+  procedeCorte(aviso: AvisoAdeudoModel): boolean {
+    return !aviso.cancelada
+      && !!aviso.entregado
+      && !aviso.atendido
+      && !this.tieneSegundoPosterior(aviso)
+      && !!aviso.fechaPresentacion
+      && aviso.fechaPresentacion.substring(0, 10) < this.hoyStr;
   }
 
   toggleSeleccionSegundo(avisoAdeudoId: number): void {
@@ -202,8 +347,42 @@ export class AvisoAdeudoListComponent implements OnInit {
     return `${dia}/${mes}/${anio}`;
   }
 
+  // Igual que formatearFechaNaive pero agregando la hora ("hh:mm") -- para
+  // fechaEntrega, que sí se captura con hora (ver
+  // AvisoAdeudoEntregaDialogComponent, campo "Hora de entrega"), replicando
+  // el mismo formato "el día ___ siendo las ___ horas" de la carta física.
+  formatearFechaHoraNaive(fechaISO: string | undefined): string {
+    if (!fechaISO) return '';
+    const fecha = this.formatearFechaNaive(fechaISO);
+    const hora = fechaISO.substring(11, 16);
+    return hora ? `${fecha} ${hora}` : fecha;
+  }
+
   ngOnInit(): void {
     this.loadZonasYCalles();
+
+    this.manualUserSearchCtrl.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(term => {
+        const value = typeof term === 'string' ? term.trim() : '';
+        if (value.length < 2) return of([]);
+        return this.userService.searchUsersByNumber(value);
+      })
+    ).subscribe({
+      next: (results: any) => this.manualUserSearchResults = results || [],
+      error: () => this.manualUserSearchResults = []
+    });
+  }
+
+  // Texto mostrado en el input del autocomplete al seleccionar un usuario
+  // (mismo criterio que ya se usa en la ficha de la casa).
+  displayManualUsuario = (usuario: { noUsuario: number; nombreCompleto: string }): string => {
+    return usuario?.nombreCompleto ? `N° ${usuario.noUsuario} - ${usuario.nombreCompleto}` : '';
+  };
+
+  onManualUsuarioSeleccionado(event: MatAutocompleteSelectedEvent): void {
+    this.manualUsuarioSeleccionado = event.option.value;
   }
 
   private loadZonasYCalles(): void {
@@ -248,6 +427,9 @@ export class AvisoAdeudoListComponent implements OnInit {
     this.dataSource = new MatTableDataSource<AdeudoLuzUsuarioModel>();
     this.estatusComiteFiltro = '';
     this.estatusComiteOpciones = [];
+    this.mesesSinAbonarMinFiltro = 3;
+    this.adeudoMinimoFiltro = null;
+    this.soloSinCartaPreviaFiltro = false;
     this.selection.clear();
     this.actualizarTotalSeleccionado();
   }
@@ -269,12 +451,23 @@ export class AvisoAdeudoListComponent implements OnInit {
             const f = JSON.parse(filter);
             const matchCasa = !f.casa || String(row.casaNo ?? '').includes(f.casa);
             // Si no se eligió un estatus específico, se ocultan los dados
-            // de baja y los que ya tienen corte por default -- solo
-            // aparecen si se filtra justo por ese estatus.
+            // de baja, los que ya tienen corte y los de "validar usuario"
+            // por default -- solo aparecen si se filtra justo por ese
+            // estatus.
             const matchEstatus = f.estatus
               ? row.estatusComiteNombre === f.estatus
-              : row.estatusComiteId !== ESTATUS_DADO_DE_BAJA_ID && !esEstatusCorte(row.estatusComiteNombre);
-            return matchCasa && matchEstatus;
+              : row.estatusComiteId !== ESTATUS_DADO_DE_BAJA_ID
+                && !esEstatusCorte(row.estatusComiteNombre)
+                && !esEstatusValidarUsuario(row.estatusComiteNombre);
+            // Filtros ajustables (ver comentario en mesesSinAbonarMinFiltro):
+            // meses sin abonar mínimo, adeudo mínimo, y "solo sin carta
+            // previa" -- los 3 son opcionales (null/vacío = sin restringir).
+            const matchMesesSinAbonar = f.mesesSinAbonarMin == null
+              || (row.mesesSinPagoLuz ?? 0) >= f.mesesSinAbonarMin;
+            const matchAdeudoMinimo = f.adeudoMinimo == null
+              || (row.adeudoTotal ?? 0) >= f.adeudoMinimo;
+            const matchSinCartaPrevia = !f.soloSinCartaPrevia || !row.ultimoTipoAviso;
+            return matchCasa && matchEstatus && matchMesesSinAbonar && matchAdeudoMinimo && matchSinCartaPrevia;
           };
 
           this.estatusComiteOpciones = [...new Set(
@@ -376,17 +569,52 @@ export class AvisoAdeudoListComponent implements OnInit {
     });
   }
 
+  // Igual que marcarAtendida(), pero para un aviso que YA tenía una
+  // atención capturada -- el dialog se abre precargado con lo que ya había
+  // (ver AvisoAdeudoAtencionDialogComponent.esEdicion) para poder corregir
+  // o actualizar, ej. el usuario incumplió el convenio y se renegoció una
+  // fecha nueva de compromiso, sin tener que volver a capturar todo desde
+  // cero. El backend ya soporta llamarse otra vez sobre el mismo aviso
+  // (AvisoAdeudoService.marcarAtendida() sobreescribe los datos).
+  editarAtencion(aviso: AvisoAdeudoModel): void {
+    const dialogRef = this.dialog.open(AvisoAdeudoAtencionDialogComponent, {
+      width: '420px',
+      data: { avisos: [aviso] }
+    });
+    dialogRef.afterClosed().subscribe((datos: AvisoAdeudoAtencionModel | null) => {
+      if (!datos) return;
+      this.avisoAdeudoService.marcarAtendida(aviso.avisoAdeudoId, datos).subscribe({
+        next: () => {
+          this.openSnackBar('Atención actualizada', 'Éxito');
+          this.cargarHistorial();
+        },
+        error: (e: any) => {
+          console.error(e);
+          const mensaje = e?.error?.metadata?.message || 'No se pudo actualizar la atención';
+          this.openSnackBar(mensaje, 'Error');
+        }
+      });
+    });
+  }
+
+  // Pide el motivo de la cancelación (opcional, pero pedido explícito de
+  // Ely) -- sobre todo útil cuando se cancela porque la carta NO fue
+  // entregada/recibida (se negaron, no encontraron a nadie, etc.), para no
+  // perder ese contexto una vez que el aviso queda oculto del historial.
   cancelarAviso(aviso: AvisoAdeudoModel): void {
     Swal.fire({
       title: `¿Cancelar el folio ${aviso.folioNotificacion}?`,
-      text: `${aviso.noUsuario} - ${aviso.nombreUsuarioTitular}. Se oculta del historial, pero se puede consultar con "Mostrar canceladas".`,
+      html: `${aviso.noUsuario} - ${aviso.nombreUsuarioTitular}. Se oculta del historial, pero se puede consultar con "Mostrar canceladas".`,
       icon: 'warning',
+      input: 'textarea',
+      inputPlaceholder: 'Motivo (opcional) -- ej. "No fue entregada, se negaron a recibir" o "No fue entregada, no se encontró a nadie"',
       showCancelButton: true,
       confirmButtonText: 'Sí, cancelar',
       cancelButtonText: 'No'
     }).then(result => {
       if (!result.isConfirmed) return;
-      this.avisoAdeudoService.cancelar(aviso.avisoAdeudoId).subscribe({
+      const comentario = (result.value || '').trim() || undefined;
+      this.avisoAdeudoService.cancelar(aviso.avisoAdeudoId, comentario).subscribe({
         next: () => {
           this.openSnackBar('Aviso cancelado', 'Éxito');
           this.cargarHistorial();
@@ -421,10 +649,17 @@ export class AvisoAdeudoListComponent implements OnInit {
     this.applyFilters();
   }
 
+  applyCandidatosAjustablesFilter(): void {
+    this.applyFilters();
+  }
+
   private applyFilters(): void {
     this.dataSource.filter = JSON.stringify({
       casa: this.casaFiltro.trim(),
-      estatus: this.estatusComiteFiltro
+      estatus: this.estatusComiteFiltro,
+      mesesSinAbonarMin: this.mesesSinAbonarMinFiltro,
+      adeudoMinimo: this.adeudoMinimoFiltro,
+      soloSinCartaPrevia: this.soloSinCartaPreviaFiltro
     });
   }
 
@@ -503,15 +738,59 @@ export class AvisoAdeudoListComponent implements OnInit {
     this.noRegistrados.splice(index, 1);
   }
 
+  // Agrega un usuario YA registrado (elegido del autocomplete) con un monto
+  // de adeudo capturado a mano -- para casos donde no salió como candidato
+  // o el cálculo automático no aplica (ej. cuenta juntada con la de otro
+  // familiar). Se valida que no se repita el mismo usuario dos veces en la
+  // lista.
+  agregarUsuarioManual(): void {
+    if (!this.manualUsuarioSeleccionado) {
+      this.openSnackBar('Busca y elige el usuario primero', 'Atención');
+      return;
+    }
+    if (!this.nuevoManualCalcularAutomatico && (!this.nuevoManualMonto || this.nuevoManualMonto <= 0)) {
+      this.openSnackBar('Captura el monto que debe', 'Atención');
+      return;
+    }
+    if (this.usuariosManuales.some(u => u.aguaUsuarioId === this.manualUsuarioSeleccionado!.aguaUsuarioId)) {
+      this.openSnackBar('Ese usuario ya está en la lista', 'Atención');
+      return;
+    }
+
+    this.usuariosManuales.push({
+      aguaUsuarioId: this.manualUsuarioSeleccionado.aguaUsuarioId,
+      noUsuario: this.manualUsuarioSeleccionado.noUsuario,
+      nombreCompleto: this.manualUsuarioSeleccionado.nombreCompleto,
+      montoAdeudo: this.nuevoManualCalcularAutomatico ? undefined : this.nuevoManualMonto!,
+      observacion: this.nuevoManualObservacion.trim() || undefined,
+      calcularAutomatico: this.nuevoManualCalcularAutomatico
+    });
+
+    this.manualUsuarioSeleccionado = null;
+    this.manualUserSearchCtrl.setValue('');
+    this.manualUserSearchResults = [];
+    this.nuevoManualMonto = null;
+    this.nuevoManualObservacion = '';
+  }
+
+  quitarUsuarioManual(index: number): void {
+    this.usuariosManuales.splice(index, 1);
+  }
+
   generarCartas(): void {
-    const totalAGenerar = this.selection.selected.length + this.noRegistrados.length;
+    const totalAGenerar = this.selection.selected.length + this.noRegistrados.length + this.usuariosManuales.length;
     if (totalAGenerar === 0) {
-      this.openSnackBar('Selecciona al menos un usuario, o agrega una persona no registrada', 'Atención');
+      this.openSnackBar('Selecciona al menos un usuario, agrega una persona no registrada, o un usuario con monto manual', 'Atención');
       return;
     }
 
     if (!this.fechaPresentacion) {
       this.openSnackBar('Indica la fecha en que debe presentarse a pagar antes de generar', 'Atención');
+      return;
+    }
+
+    if (this.fechaPresentacion < this.hoyStr) {
+      this.openSnackBar('La fecha de presentación no puede ser anterior a hoy', 'Atención');
       return;
     }
 
@@ -562,7 +841,7 @@ export class AvisoAdeudoListComponent implements OnInit {
     this.generando = true;
     const ids = this.selection.selected.map(r => r.aguaUsuarioId);
 
-    this.avisoAdeudoService.generar(ids, this.tipoAviso, this.fechaPresentacion!, this.noRegistrados).subscribe({
+    this.avisoAdeudoService.generar(ids, this.tipoAviso, this.fechaPresentacion!, this.noRegistrados, this.usuariosManuales).subscribe({
       next: (resp) => {
         this.generando = false;
         const blob = resp.body;
@@ -582,6 +861,7 @@ export class AvisoAdeudoListComponent implements OnInit {
         this.selection.clear();
         this.actualizarTotalSeleccionado();
         this.noRegistrados = [];
+        this.usuariosManuales = [];
         this.historial = [];
         this.cargarHistorial();
         this.recargarCandidatosActuales();
@@ -643,10 +923,15 @@ export class AvisoAdeudoListComponent implements OnInit {
       html: 'Indica la fecha en la que debe presentarse en el Comité:',
       input: 'date',
       inputValue: this.fechaPresentacion || '',
+      inputAttributes: { min: this.hoyStr },
       showCancelButton: true,
       confirmButtonText: 'Generar',
       cancelButtonText: 'Cancelar',
-      inputValidator: (value) => (!value ? 'Indica una fecha' : undefined)
+      inputValidator: (value) => {
+        if (!value) return 'Indica una fecha';
+        if (value < this.hoyStr) return 'La fecha no puede ser anterior a hoy';
+        return undefined;
+      }
     }).then(result => {
       if (!result.isConfirmed || !result.value) return;
 
@@ -737,10 +1022,15 @@ export class AvisoAdeudoListComponent implements OnInit {
         + (omitidos.length ? `<br><br><strong style="color:#c62828">Se omiten:</strong> ${omitidos.join(', ')}` : ''),
       input: 'date',
       inputValue: this.fechaPresentacion || '',
+      inputAttributes: { min: this.hoyStr },
       showCancelButton: true,
       confirmButtonText: 'Generar',
       cancelButtonText: 'Cancelar',
-      inputValidator: (value) => (!value ? 'Indica una fecha' : undefined)
+      inputValidator: (value) => {
+        if (!value) return 'Indica una fecha';
+        if (value < this.hoyStr) return 'La fecha no puede ser anterior a hoy';
+        return undefined;
+      }
     }).then(result => {
       if (!result.isConfirmed || !result.value) return;
 

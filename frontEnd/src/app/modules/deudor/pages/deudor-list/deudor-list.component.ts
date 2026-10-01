@@ -121,10 +121,13 @@ export class DeudorListComponent implements OnInit {
   // Lleva al detalle del usuario (misma pantalla que usa el módulo de
   // usuarios). Solo se necesita usuarioId -- details-user vuelve a pedir
   // todos los datos completos al backend con ese id.
+  // Se abre en pestaña nueva (mismo criterio que Cartas de adeudo) para no
+  // perder el filtro/selección en curso en esta pantalla.
   verDetalleUsuario(d: DeudorModel): void {
-    this.router.navigate(['dashboard/detailsUser'], {
+    const urlTree = this.router.createUrlTree(['dashboard/detailsUser'], {
       queryParams: { element: JSON.stringify({ usuarioId: d.aguaUsuarioId }) }
     });
+    window.open(this.router.serializeUrl(urlTree), '_blank');
   }
 
   applyCalleFilter(event: Event): void {

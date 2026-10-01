@@ -61,18 +61,22 @@
                     <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
                       <mat-form-field appearance="outline" fxFlex="30%">
                         <mat-label>Sección</mat-label>
-                        <mat-select formControlName="fkIdSeccion">
+                        <mat-select formControlName="fkIdSeccion" (selectionChange)="onFkIdSeccionChange($event.value)">
                           <mat-option *ngFor="let cat of secciones" [value]="cat.catalogoOpcionesId">
                             {{ cat.nombre }}
                           </mat-option>
                         </mat-select>
                       </mat-form-field>
-              
+
                       <mat-form-field appearance="outline" fxFlex="30%">
                         <mat-label>Calle</mat-label>
-                        <input matInput placeholder="calle" formControlName="calle" required />
+                        <mat-select formControlName="calle" required>
+                          <mat-option *ngFor="let cat of callesDireccionFiltradas" [value]="cat.nombre">
+                            {{ cat.nombre }}
+                          </mat-option>
+                        </mat-select>
                       </mat-form-field>
-              
+
                       <mat-form-field appearance="outline" fxFlex="20%">
                         <mat-label>Numero</mat-label>
                         <input matInput placeholder="numero" formControlName="numero" required />
@@ -103,10 +107,145 @@
                 </mat-card>
               </mat-card>
 
+            <div *ngIf="totalSaldo > 0" class="banner-cargos-pendientes"
+                 style="background-color:#fde8e8; color:#c62828; font-weight:600; padding:10px 16px; margin:12px 0; border-radius:4px;">
+                Cargos/multas pendientes: {{ totalSaldo | currency }} -- ver detalle en el panel "Cargos / Multas" de abajo.
+            </div>
+
             <app-user-receipt [usuario]="usuario"></app-user-receipt>
 
             <mat-accordion class="user-headers-align">
-                <mat-expansion-panel class="panel-oscuro" hideToggle>
+                <mat-expansion-panel class="panel-oscuro" (opened)="getCharges()" hideToggle>
+                    <mat-expansion-panel-header>
+                        <mat-panel-title>Cargos / Multas</mat-panel-title>
+                        <mat-panel-description>Cargos extra y multas aplicadas al usuario</mat-panel-description>
+                    </mat-expansion-panel-header>
+                    <table mat-table [dataSource]="dataSourceCharge" class="mat-cell">
+                        <ng-container matColumnDef="concepto">
+                            <th mat-header-cell *matHeaderCellDef>Concepto</th>
+                            <td mat-cell *matCellDef="let element">{{element.concepto?.nombre}}</td>
+                            <td mat-footer-cell *matFooterCellDef></td>
+                        </ng-container>
+                        <ng-container matColumnDef="descripcion">
+                            <th mat-header-cell *matHeaderCellDef>Descripción</th>
+                            <td mat-cell *matCellDef="let element">{{element.descripcion}}</td>
+                            <td mat-footer-cell *matFooterCellDef><strong>Totales</strong></td>
+                        </ng-container>
+                        <ng-container matColumnDef="monto">
+                            <th mat-header-cell *matHeaderCellDef>Monto</th>
+                            <td mat-cell *matCellDef="let element">{{element.monto | currency}}</td>
+                            <td mat-footer-cell *matFooterCellDef><strong>{{totalMonto | currency}}</strong></td>
+                        </ng-container>
+                        <ng-container matColumnDef="fechaStr">
+                            <th mat-header-cell *matHeaderCellDef>Fecha</th>
+                            <td mat-cell *matCellDef="let element">{{element.fechaStr}}</td>
+                            <td mat-footer-cell *matFooterCellDef></td>
+                        </ng-container>
+                        <ng-container matColumnDef="montoPagado">
+                            <th mat-header-cell *matHeaderCellDef>Pagado</th>
+                            <td mat-cell *matCellDef="let element">{{element.montoPagado | currency}}</td>
+                            <td mat-footer-cell *matFooterCellDef><strong>{{totalPagado | currency}}</strong></td>
+                        </ng-container>
+                        <ng-container matColumnDef="montoCondonado">
+                            <th mat-header-cell *matHeaderCellDef>Condonado</th>
+                            <td mat-cell *matCellDef="let element">{{element.montoCondonado | currency}}</td>
+                            <td mat-footer-cell *matFooterCellDef><strong>{{totalCondonado | currency}}</strong></td>
+                        </ng-container>
+                        <ng-container matColumnDef="saldo">
+                            <th mat-header-cell *matHeaderCellDef>Saldo</th>
+                            <td mat-cell *matCellDef="let element">{{element.saldo | currency}}</td>
+                            <td mat-footer-cell *matFooterCellDef><strong>{{totalSaldo | currency}}</strong></td>
+                        </ng-container>
+                        <ng-container matColumnDef="estatusPago">
+                            <th mat-header-cell *matHeaderCellDef>Estatus</th>
+                            <td mat-cell *matCellDef="let element">
+                                {{element.pagado ? 'Pagado' : (element.montoPagado > 0 ? 'Parcial' : 'Pendiente')}}
+                            </td>
+                            <td mat-footer-cell *matFooterCellDef></td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="displayColumnsCharge"></tr>
+                        <tr mat-row *matRowDef="let row; columns:displayColumnsCharge"></tr>
+                        <tr mat-footer-row *matFooterRowDef="displayColumnsCharge"></tr>
+                    </table>
+                    <mat-paginator [pageSizeOptions]="[10,20,30]" showFirstLastButtons></mat-paginator>
+
+                    <!-- Cada cargo puede tener varios abonos (distintos folios); se listan aquí. -->
+                    <div *ngFor="let cargo of dataSourceCharge.data" style="margin: 8px 0;">
+                        <span *ngIf="cargo.pagos?.length"><strong>{{cargo.concepto.nombre}} — abonos:</strong>
+                            <span *ngFor="let p of cargo.pagos"> folio {{p.noFolio}}: {{p.montoAplicado | currency}};</span>
+                        </span>
+                    </div>
+
+                    <h4>Nuevo cargo</h4>
+                    <form [formGroup]="chargeForm">
+                        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
+                            <mat-form-field appearance="outline" fxFlex="30%">
+                                <mat-label>Concepto</mat-label>
+                                <mat-select formControlName="conceptoId" required (selectionChange)="onConceptoCargoChange($event.value)">
+                                    <mat-option *ngFor="let cat of conceptosCargo" [value]="cat.catalogoOpcionesId">
+                                        {{ cat.nombre }}
+                                    </mat-option>
+                                </mat-select>
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" fxFlex="20%">
+                                <mat-label>Monto</mat-label>
+                                <input matInput type="number" placeholder="monto" formControlName="monto" required />
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" fxFlex="20%">
+                                <mat-label>Fecha</mat-label>
+                                <input matInput type="date" formControlName="fecha" required />
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" fxFlex="45%">
+                                <mat-label>Descripción</mat-label>
+                                <input matInput placeholder="descripción" formControlName="descripcion" />
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" class="w-100">
+                                <mat-label>Comentario</mat-label>
+                                <textarea matInput rows="2" placeholder="comentario" formControlName="comentario"></textarea>
+                            </mat-form-field>
+                        </div>
+                        <mat-card-actions align="end">
+                            <button mat-raised-button color="primary" [disabled]="chargeForm.invalid" (click)="onSaveCharge()">
+                                <mat-icon>save</mat-icon> Registrar cargo
+                            </button>
+                        </mat-card-actions>
+                    </form>
+
+                    <h4>Registrar abono</h4>
+                    <form [formGroup]="paymentForm">
+                        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
+                            <mat-form-field appearance="outline" fxFlex="45%">
+                                <mat-label>Cargo</mat-label>
+                                <mat-select formControlName="aguaUsuarioCargoId" required>
+                                    <mat-option *ngFor="let cargo of dataSourceCharge.data" [value]="cargo.aguaUsuarioCargoId" [disabled]="cargo.pagado">
+                                        {{ cargo.concepto.nombre }} — saldo: {{ cargo.saldo | currency }}
+                                    </mat-option>
+                                </mat-select>
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" fxFlex="20%">
+                                <mat-label>Folio recibo</mat-label>
+                                <input matInput type="number" placeholder="Folio" formControlName="noFolio" required />
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" fxFlex="20%">
+                                <mat-label>Monto del abono</mat-label>
+                                <input matInput type="number" placeholder="monto" formControlName="montoAplicado" required />
+                            </mat-form-field>
+                        </div>
+                        <mat-card-actions align="end">
+                            <button mat-raised-button color="accent" [disabled]="paymentForm.invalid" (click)="onAddPayment()">
+                                <mat-icon>payments</mat-icon> Registrar abono
+                            </button>
+                        </mat-card-actions>
+                    </form>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel class="panel-claro" hideToggle>
                     <mat-expansion-panel-header>
                       <mat-panel-title>Usuario</mat-panel-title>
                       <mat-panel-description>
@@ -272,7 +411,7 @@
                     </div>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel class="panel-claro" hideToggle>
+                <mat-expansion-panel class="panel-oscuro" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Censo de personas</mat-panel-title>
                         <mat-panel-description>Integrantes que habitan con este usuario (edad opcional)</mat-panel-description>
@@ -280,7 +419,7 @@
                     <app-user-censo [usuario]="usuario" [censoHabilitado]="esUsoDomestico"></app-user-censo>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel class="panel-oscuro" hideToggle>
+                <mat-expansion-panel class="panel-claro" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Calculadora de cuota (sugerencia)</mat-panel-title>
                         <mat-panel-description>Solo propone una categoría, no cambia la cuota sola</mat-panel-description>
@@ -328,7 +467,7 @@
                     </form>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel class="panel-claro" hideToggle>
+                <mat-expansion-panel class="panel-oscuro" hideToggle>
                     <mat-expansion-panel-header>
                       <mat-panel-title>Domicilio / Casa</mat-panel-title>
                       <mat-panel-description>
@@ -415,7 +554,7 @@
                     </mat-card-actions>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel class="panel-oscuro" (opened)="getNotify()" hideToggle>
+                <mat-expansion-panel class="panel-claro" (opened)="getNotify()" hideToggle>
                     <mat-expansion-panel-header>
                         <mat-panel-title>Avisos Usuario</mat-panel-title>
                         <mat-panel-description>Avisos realizados al usuario</mat-panel-description>
@@ -488,136 +627,6 @@
                         <mat-card-actions align="end">
                             <button mat-raised-button color="primary" [disabled]="noticeForm.invalid" (click)="onSaveNotice()">
                                 <mat-icon>save</mat-icon> Registrar aviso
-                            </button>
-                        </mat-card-actions>
-                    </form>
-                </mat-expansion-panel>
-
-                <mat-expansion-panel class="panel-claro" (opened)="getCharges()" hideToggle>
-                    <mat-expansion-panel-header>
-                        <mat-panel-title>Cargos / Multas</mat-panel-title>
-                        <mat-panel-description>Cargos extra y multas aplicadas al usuario</mat-panel-description>
-                    </mat-expansion-panel-header>
-                    <table mat-table [dataSource]="dataSourceCharge" class="mat-cell">
-                        <ng-container matColumnDef="concepto">
-                            <th mat-header-cell *matHeaderCellDef>Concepto</th>
-                            <td mat-cell *matCellDef="let element">{{element.concepto?.nombre}}</td>
-                            <td mat-footer-cell *matFooterCellDef></td>
-                        </ng-container>
-                        <ng-container matColumnDef="descripcion">
-                            <th mat-header-cell *matHeaderCellDef>Descripción</th>
-                            <td mat-cell *matCellDef="let element">{{element.descripcion}}</td>
-                            <td mat-footer-cell *matFooterCellDef><strong>Totales</strong></td>
-                        </ng-container>
-                        <ng-container matColumnDef="monto">
-                            <th mat-header-cell *matHeaderCellDef>Monto</th>
-                            <td mat-cell *matCellDef="let element">{{element.monto | currency}}</td>
-                            <td mat-footer-cell *matFooterCellDef><strong>{{totalMonto | currency}}</strong></td>
-                        </ng-container>
-                        <ng-container matColumnDef="fechaStr">
-                            <th mat-header-cell *matHeaderCellDef>Fecha</th>
-                            <td mat-cell *matCellDef="let element">{{element.fechaStr}}</td>
-                            <td mat-footer-cell *matFooterCellDef></td>
-                        </ng-container>
-                        <ng-container matColumnDef="montoPagado">
-                            <th mat-header-cell *matHeaderCellDef>Pagado</th>
-                            <td mat-cell *matCellDef="let element">{{element.montoPagado | currency}}</td>
-                            <td mat-footer-cell *matFooterCellDef><strong>{{totalPagado | currency}}</strong></td>
-                        </ng-container>
-                        <ng-container matColumnDef="montoCondonado">
-                            <th mat-header-cell *matHeaderCellDef>Condonado</th>
-                            <td mat-cell *matCellDef="let element">{{element.montoCondonado | currency}}</td>
-                            <td mat-footer-cell *matFooterCellDef><strong>{{totalCondonado | currency}}</strong></td>
-                        </ng-container>
-                        <ng-container matColumnDef="saldo">
-                            <th mat-header-cell *matHeaderCellDef>Saldo</th>
-                            <td mat-cell *matCellDef="let element">{{element.saldo | currency}}</td>
-                            <td mat-footer-cell *matFooterCellDef><strong>{{totalSaldo | currency}}</strong></td>
-                        </ng-container>
-                        <ng-container matColumnDef="estatusPago">
-                            <th mat-header-cell *matHeaderCellDef>Estatus</th>
-                            <td mat-cell *matCellDef="let element">
-                                {{element.pagado ? 'Pagado' : (element.montoPagado > 0 ? 'Parcial' : 'Pendiente')}}
-                            </td>
-                            <td mat-footer-cell *matFooterCellDef></td>
-                        </ng-container>
-                        <tr mat-header-row *matHeaderRowDef="displayColumnsCharge"></tr>
-                        <tr mat-row *matRowDef="let row; columns:displayColumnsCharge"></tr>
-                        <tr mat-footer-row *matFooterRowDef="displayColumnsCharge"></tr>
-                    </table>
-                    <mat-paginator [pageSizeOptions]="[10,20,30]" showFirstLastButtons></mat-paginator>
-
-                    <!-- Cada cargo puede tener varios abonos (distintos folios); se listan aquí. -->
-                    <div *ngFor="let cargo of dataSourceCharge.data" style="margin: 8px 0;">
-                        <span *ngIf="cargo.pagos?.length"><strong>{{cargo.concepto.nombre}} — abonos:</strong>
-                            <span *ngFor="let p of cargo.pagos"> folio {{p.noFolio}}: {{p.montoAplicado | currency}};</span>
-                        </span>
-                    </div>
-
-                    <h4>Nuevo cargo</h4>
-                    <form [formGroup]="chargeForm">
-                        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
-                            <mat-form-field appearance="outline" fxFlex="30%">
-                                <mat-label>Concepto</mat-label>
-                                <mat-select formControlName="conceptoId" required (selectionChange)="onConceptoCargoChange($event.value)">
-                                    <mat-option *ngFor="let cat of conceptosCargo" [value]="cat.catalogoOpcionesId">
-                                        {{ cat.nombre }}
-                                    </mat-option>
-                                </mat-select>
-                            </mat-form-field>
-
-                            <mat-form-field appearance="outline" fxFlex="20%">
-                                <mat-label>Monto</mat-label>
-                                <input matInput type="number" placeholder="monto" formControlName="monto" required />
-                            </mat-form-field>
-
-                            <mat-form-field appearance="outline" fxFlex="20%">
-                                <mat-label>Fecha</mat-label>
-                                <input matInput type="date" formControlName="fecha" required />
-                            </mat-form-field>
-
-                            <mat-form-field appearance="outline" fxFlex="45%">
-                                <mat-label>Descripción</mat-label>
-                                <input matInput placeholder="descripción" formControlName="descripcion" />
-                            </mat-form-field>
-
-                            <mat-form-field appearance="outline" class="w-100">
-                                <mat-label>Comentario</mat-label>
-                                <textarea matInput rows="2" placeholder="comentario" formControlName="comentario"></textarea>
-                            </mat-form-field>
-                        </div>
-                        <mat-card-actions align="end">
-                            <button mat-raised-button color="primary" [disabled]="chargeForm.invalid" (click)="onSaveCharge()">
-                                <mat-icon>save</mat-icon> Registrar cargo
-                            </button>
-                        </mat-card-actions>
-                    </form>
-
-                    <h4>Registrar abono</h4>
-                    <form [formGroup]="paymentForm">
-                        <div fxLayout="row wrap" fxLayoutGap="24px" fxLayoutAlign="start stretch">
-                            <mat-form-field appearance="outline" fxFlex="45%">
-                                <mat-label>Cargo</mat-label>
-                                <mat-select formControlName="aguaUsuarioCargoId" required>
-                                    <mat-option *ngFor="let cargo of dataSourceCharge.data" [value]="cargo.aguaUsuarioCargoId" [disabled]="cargo.pagado">
-                                        {{ cargo.concepto.nombre }} — saldo: {{ cargo.saldo | currency }}
-                                    </mat-option>
-                                </mat-select>
-                            </mat-form-field>
-
-                            <mat-form-field appearance="outline" fxFlex="20%">
-                                <mat-label>Folio recibo</mat-label>
-                                <input matInput type="number" placeholder="Folio" formControlName="noFolio" required />
-                            </mat-form-field>
-
-                            <mat-form-field appearance="outline" fxFlex="20%">
-                                <mat-label>Monto del abono</mat-label>
-                                <input matInput type="number" placeholder="monto" formControlName="montoAplicado" required />
-                            </mat-form-field>
-                        </div>
-                        <mat-card-actions align="end">
-                            <button mat-raised-button color="accent" [disabled]="paymentForm.invalid" (click)="onAddPayment()">
-                                <mat-icon>payments</mat-icon> Registrar abono
                             </button>
                         </mat-card-actions>
                     </form>
@@ -795,6 +804,53 @@
                         <mat-panel-description>Toma/medidor, padrón, evidencia fotográfica</mat-panel-description>
                     </mat-expansion-panel-header>
                     <app-user-revision [usuario]="usuario"></app-user-revision>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel class="panel-oscuro" (opened)="getCartasGeneradas()" hideToggle>
+                    <mat-expansion-panel-header>
+                        <mat-panel-title>Cartas generadas</mat-panel-title>
+                        <mat-panel-description>Adeudo, bomba, padrón e informativo -- entrega y presentación</mat-panel-description>
+                    </mat-expansion-panel-header>
+
+                    <p *ngIf="cargandoCartas">Cargando...</p>
+                    <p *ngIf="!cargandoCartas && dataSourceCartas.data.length === 0">No hay cartas generadas para este usuario.</p>
+
+                    <table mat-table [dataSource]="dataSourceCartas" class="mat-cell" *ngIf="dataSourceCartas.data.length > 0">
+                        <ng-container matColumnDef="tipo">
+                            <th mat-header-cell *matHeaderCellDef>Tipo de carta</th>
+                            <td mat-cell *matCellDef="let element">
+                                {{element.tipo}}
+                                <span *ngIf="element.cancelado" class="etiqueta-cancelada" style="margin-left:6px;color:#b71c1c;font-size:0.85em;">(cancelada)</span>
+                            </td>
+                        </ng-container>
+                        <ng-container matColumnDef="folioNotificacion">
+                            <th mat-header-cell *matHeaderCellDef>Folio</th>
+                            <td mat-cell *matCellDef="let element">{{element.folioNotificacion}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="dateAdd">
+                            <th mat-header-cell *matHeaderCellDef>Fecha generado</th>
+                            <td mat-cell *matCellDef="let element">{{element.dateAdd | date:'dd/MM/yyyy'}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="adeudoTotal">
+                            <th mat-header-cell *matHeaderCellDef>Adeudo</th>
+                            <td mat-cell *matCellDef="let element">{{element.adeudoTotal != null ? (element.adeudoTotal | currency) : '—'}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="fechaPresentacion">
+                            <th mat-header-cell *matHeaderCellDef>Debía presentarse</th>
+                            <td mat-cell *matCellDef="let element">{{element.fechaPresentacion ? (element.fechaPresentacion | date:'dd/MM/yyyy') : '—'}}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="entrega">
+                            <th mat-header-cell *matHeaderCellDef>Entrega</th>
+                            <td mat-cell *matCellDef="let element">
+                                <span *ngIf="element.entregado" title="{{etiquetaTipoEntregaCarta(element.tipoEntrega)}}">
+                                    Entregada el {{element.fechaEntrega | date:'dd/MM/yyyy'}}
+                                </span>
+                                <span *ngIf="!element.entregado">Pendiente de entregar</span>
+                            </td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="cartasColumns"></tr>
+                        <tr mat-row *matRowDef="let row; columns:cartasColumns"></tr>
+                    </table>
                 </mat-expansion-panel>
 
             </mat-accordion>

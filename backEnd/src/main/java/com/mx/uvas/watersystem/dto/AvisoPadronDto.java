@@ -19,6 +19,7 @@ public class AvisoPadronDto implements Serializable {
     private String domicilioToma;
 
     private LocalDate fechaPresentacion;
+    private String motivoSolicitud;
     private LocalDateTime dateAdd;
 
     // Derivado de estatus (0 = cancelado) -- se oculta del historial por
@@ -34,4 +35,5 @@ public class AvisoPadronDto implements Serializable {
     private String nombreNotificador;
     private String nombreTestigo1;
     private String nombreTestigo2;
+    private String comentarioEntrega;
 }

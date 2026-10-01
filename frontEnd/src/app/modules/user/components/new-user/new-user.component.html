@@ -37,7 +37,7 @@
         <mat-card-content>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Sección</mat-label>
-            <mat-select formControlName="fkIdSeccion">
+            <mat-select formControlName="fkIdSeccion" (selectionChange)="onSeccionChange($event.value)">
               <mat-option *ngFor="let cat of secciones" [value]="cat.catalogoOpcionesId">
                 {{ cat.nombre }}
               </mat-option>
@@ -45,7 +45,11 @@
           </mat-form-field>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Calle</mat-label>
-            <input matInput formControlName="calle" required />
+            <mat-select formControlName="calle" required>
+              <mat-option *ngFor="let cat of callesFiltradas" [value]="cat.nombre">
+                {{ cat.nombre }}
+              </mat-option>
+            </mat-select>
           </mat-form-field>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Número</mat-label>

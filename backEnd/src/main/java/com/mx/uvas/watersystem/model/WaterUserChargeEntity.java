@@ -30,6 +30,19 @@ public class WaterUserChargeEntity implements Serializable {
     private Double monto;
     private LocalDate fecha;
     private String comentario;
+
+    // Solo se captura a mano cuando aplica (ej. multas por manipular
+    // válvulas o reconexión no autorizada) -- ver
+    // WaterUserChargeHelper.buildEntity(). Cuando aprobadoAsamblea es true,
+    // la carta de adeudo imprime "(aprobado por asamblea el dd/mm/aaaa)" en
+    // el desglose de "Multa acumulada" junto a este cargo -- ver
+    // AdeudoLuzService (multaAcumuladaDesglose). fechaAsamblea puede quedar
+    // en null aunque aprobadoAsamblea sea true (ej. se sabe que se aprobó
+    // pero no se capturó la fecha exacta de esa asamblea), en cuyo caso la
+    // carta imprime la leyenda sin fecha.
+    private Boolean aprobadoAsamblea;
+    private LocalDate fechaAsamblea;
+
     private Integer estatus;
     private Integer userIdAdd;
     private LocalDateTime dateAdd;

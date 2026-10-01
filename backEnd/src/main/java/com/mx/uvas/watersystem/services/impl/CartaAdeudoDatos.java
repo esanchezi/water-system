@@ -33,9 +33,9 @@ public record CartaAdeudoDatos(
         // "presente sus recibos de un comité anterior", que no aplica a
         // usuarios ya registrados y con historial de pagos en el sistema.
         boolean esNoRegistrado,
-        // Suma de cargos manuales pendientes (multa por falta de pago,
-        // corte/reconexión, aviso, válvulas -- ver WaterUserChargeEntity /
-        // AdeudoLuzService.CONCEPTOS_MULTA_ACUMULADA), NO incluida en
+        // Suma de TODOS los cargos manuales activos pendientes excepto
+        // Mantenimiento de cajón (ver WaterUserChargeEntity /
+        // AdeudoLuzService.CONCEPTO_MANTENIMIENTO_NOMBRE), NO incluida en
         // adeudoTotal. Imprime la fila "Multa acumulada a la fecha",
         // separada del adeudo de Luz/CFE. Ya incluye el cargo automático de
         // Aviso recién generado para ESTA MISMA carta -- ver
@@ -44,6 +44,11 @@ public record CartaAdeudoDatos(
         // abajo). 0.0 para personas sin usuario registrado (no tienen
         // cargos capturados en el sistema).
         Double multaAcumulada,
+        // Desglose de multaAcumulada por concepto (ver
+        // AdeudoLuzUsuarioDto.multaAcumuladaDesglose) -- null cuando no
+        // aplica (0 o 1 cargo contribuyendo), en cuyo caso el PDF imprime
+        // solo el monto total sin el detalle entre paréntesis.
+        String multaAcumuladaDesglose,
         // Solo cuando tipoAviso = "SEGUNDO": texto con cuándo y a quién se
         // le entregó el Primer aviso más reciente de este usuario, para
         // mostrarlo en vez de las notas genéricas de mantenimiento/Art. 22
@@ -60,6 +65,12 @@ public record CartaAdeudoDatos(
         Double mantenimientoPendiente,
         // "$100.00 - 2024 | $100.00 - 2025" -- desglose de
         // mantenimientoPendiente por año, "" si no hay ninguno pendiente.
-        String mantenimientoPorAnioTexto
+        String mantenimientoPorAnioTexto,
+        // Solo para usuarios registrados con monto de adeudo capturado A
+        // MANO (ver UsuarioManualAdeudoDto/AvisoAdeudoService) -- motivo por
+        // el que no se dejó calcular solo (ej. cuenta juntada con la de un
+        // familiar). Se imprime como nota del Comité en la carta. Null en
+        // cualquier otro caso.
+        String observacionManual
 ) {
 }

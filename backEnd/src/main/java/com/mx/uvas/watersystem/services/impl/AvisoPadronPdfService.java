@@ -64,6 +64,9 @@ public class AvisoPadronPdfService {
     // Párrafo de consecuencia (Art. 15 Ter) -- en rojo y negrita, igual que
     // se hace con las consecuencias/multas en las demás cartas.
     private final Font fontAdvertencia = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9f, Font.BOLD, Color.RED);
+    // Motivo de la solicitud -- negrita y un poco más grande que el texto
+    // normal (v3, sept. 2026, pedido de Ely: que resalte de un vistazo).
+    private final Font fontMotivo = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10.5f);
 
     public byte[] generarLote(List<CartaPadronDatos> cartas) throws IOException, DocumentException {
         Document document = new Document(PageSize.LETTER, MARGEN_LR, MARGEN_LR, MARGEN_TB, MARGEN_TB);
@@ -136,6 +139,17 @@ public class AvisoPadronPdfService {
         agregarFilaDatos(datos, "Domicilio de la toma", nullToVacio(carta.domicilioToma()));
         datos.setSpacingAfter(3f);
         document.add(datos);
+
+        // Motivo de la solicitud -- opcional, capturado al generar (pedido
+        // de Ely: quiere dejar constancia de la razón concreta, no solo el
+        // texto genérico del reglamento que sigue abajo).
+        if (carta.motivoSolicitud() != null && !carta.motivoSolicitud().isBlank()) {
+            Paragraph motivo = new Paragraph();
+            motivo.add(new Chunk("Motivo de la solicitud: ", fontMotivo));
+            motivo.add(new Chunk(carta.motivoSolicitud(), fontMotivo));
+            motivo.setSpacingAfter(4f);
+            document.add(motivo);
+        }
 
         agregarParrafoChicoItalico(document, "Este aviso se emite conforme a los Artículos 5, 15 Bis y 15 Ter del Reglamento Interno (ver "
                 + "artículos completos al reverso), con el fin de mantener actualizado el padrón de personas y negocios que habitan o hacen uso "

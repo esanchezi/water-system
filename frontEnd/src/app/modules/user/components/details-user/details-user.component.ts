@@ -37,7 +37,30 @@ import { RenunciaTemporalService } from 'src/app/modules/shared/services/renunci
 import { RenunciaTemporalModel } from 'src/app/modules/shared/models/RenunciaTemporal.model';
 import { RenunciaTemporalDialogComponent } from '../renuncia-temporal-dialog/renuncia-temporal-dialog.component';
 import { RenunciaTemporalReconexionDialogComponent } from '../renuncia-temporal-reconexion-dialog/renuncia-temporal-reconexion-dialog.component';
+import { AvisoBombaService } from 'src/app/modules/shared/services/aviso-bomba.service';
+import { AvisoPadronService } from 'src/app/modules/shared/services/aviso-padron.service';
+import { AvisoInformativoAdeudoService } from 'src/app/modules/shared/services/aviso-informativo-adeudo.service';
+import { TIPOS_ENTREGA_ADEUDO } from 'src/app/modules/shared/models/AvisoAdeudo.model';
 import Swal from 'sweetalert2';
+
+// Fila unificada del acordeón "Cartas generadas" -- combina el historial
+// de los 4 módulos de carta ligados directamente a un usuario (Cartas de
+// adeudo, Aviso informativo de adeudo, Aviso de bomba, Actualización de
+// padrón; Responsables de pago queda fuera porque está ligado a la CASA,
+// no al usuario -- ya tiene su propio acordeón en house-details). No todos
+// los campos aplican a todos los tipos (ej. adeudoTotal/fechaPresentacion
+// solo en Adeudo/InformativoAdeudo), quedan undefined cuando no aplica.
+interface CartaGeneradaRow {
+  tipo: string;
+  folioNotificacion: number;
+  dateAdd: string;
+  adeudoTotal?: number;
+  fechaPresentacion?: string;
+  entregado?: boolean;
+  fechaEntrega?: string;
+  tipoEntrega?: string;
+  cancelado?: boolean;
+}
 
 @Component({
   selector: 'app-details-user',
@@ -62,6 +85,9 @@ export class DetailsUserComponent implements OnInit {
   private readonly groupService     = inject(GroupService);
   private readonly annualPaymentService = inject(WaterUserAnnualPaymentService);
   private readonly avisoAdeudoService = inject(AvisoAdeudoService);
+  private readonly avisoBombaService = inject(AvisoBombaService);
+  private readonly avisoPadronService = inject(AvisoPadronService);
+  private readonly avisoInformativoAdeudoService = inject(AvisoInformativoAdeudoService);
   private readonly valorGeneralService = inject(ValorGeneralService);
   private readonly renunciaTemporalService = inject(RenunciaTemporalService);
   private readonly dialog           = inject(MatDialog);
@@ -98,6 +124,13 @@ export class DetailsUserComponent implements OnInit {
   // usa para mostrar el aviso arriba del historial y decidir si se
   // ofrece "Solicitar renuncia" o "Registrar reconexión".
   renunciaActiva: RenunciaTemporalModel | null = null;
+
+  // "Cartas generadas" -- combina el historial de los 4 módulos de carta
+  // ligados directamente a este usuario, ver getCartasGeneradas().
+  dataSourceCartas = new MatTableDataSource<CartaGeneradaRow>();
+  cargandoCartas = false;
+  cartasColumns: string[] = ['tipo', 'folioNotificacion', 'dateAdd', 'adeudoTotal', 'fechaPresentacion', 'entrega'];
+  private readonly tiposEntregaCartas = TIPOS_ENTREGA_ADEUDO;
 
   usuario!: WaterUserModel;
   user!:    WaterUserDetailModel;
@@ -141,6 +174,16 @@ export class DetailsUserComponent implements OnInit {
   casasDeCalle:     WaterHouseModel[] = [];
   casaSeleccionada: WaterHouseModel | null = null;
   callesDeSeccionDomicilio: CatalogOptionModel[] = [];
+
+  // Dirección (texto libre, campo "calle" de la sección de arriba): la
+  // Sección aquí es la misma catalogo SECCIONES_COLONIA que usa la cascada
+  // de Domicilio/Casa, así que se reutiliza el mismo catálogo de calles
+  // (this.calles) filtrado por zonaId, solo como sugerencia -- al elegir
+  // "calle" (Dirección) es un select amarrado directo a este catálogo -- ya
+  // no texto libre. El catálogo se completó y se normalizó el dato
+  // existente en direccion.calle para que coincidiera exacto (auditoría de
+  // sept. 2026 con Ely). Calle nueva = darla de alta primero en Catálogos.
+  callesDireccionFiltradas: CatalogOptionModel[] = [];
 
   readonly DEFAULT_COORDS: google.maps.LatLngLiteral = { lat: 21.04386, lng: -101.56864 };
   mapCenter: google.maps.LatLngLiteral = this.DEFAULT_COORDS;
@@ -291,6 +334,7 @@ export class DetailsUserComponent implements OnInit {
       next: (opts) => {
         this.calles = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre));
         this.callesDeSeccionDomicilio = this.calles;
+        this.onFkIdSeccionChange(this.detailsForm.get('fkIdSeccion')?.value ?? null);
       },
       error: (e: any) => console.error(e)
     });
@@ -360,6 +404,17 @@ export class DetailsUserComponent implements OnInit {
     const house = casaId != null ? this.allHouses.find(h => h.casaId === casaId) || null : null;
     this.detailsForm.patchValue({ casaNo: casaId });
     this.selectCasa(house);
+  }
+
+  // Filtra el catálogo de calles (mismo catálogo que usa Domicilio/Casa)
+  // por la Sección elegida en la Dirección de texto libre, para sugerir
+  // calles ya dadas de alta en Catálogos en vez de dejar el campo "Calle"
+  // sin ninguna ayuda al capturar.
+  onFkIdSeccionChange(seccionId: number | string | null): void {
+    const id = seccionId != null ? Number(seccionId) : null;
+    this.callesDireccionFiltradas = id != null
+      ? this.calles.filter(c => c.zonaId === id)
+      : this.calles;
   }
 
   private selectCasa(house: WaterHouseModel | null): void {
@@ -857,6 +912,11 @@ export class DetailsUserComponent implements OnInit {
         this.usuario = u;
         this.person = { personaId: u.personaId, nombre: u.nombre, nombre2: u.nombre2, app: u.app, apm: u.apm };
         this.revisarAvisosAdeudoPendientes(u.aguaUsuarioId, u.noUsuario);
+        // Se carga aqui (no solo al abrir el panel "Cargos / Multas") para
+        // poder mostrar el aviso de saldo pendiente arriba en la ficha
+        // apenas se abre, sin que la usuaria tenga que entrar al panel para
+        // enterarse -- ver banner "Cargos/multas pendientes" en el html.
+        this.getCharges();
         this.detailsForm.patchValue({
           fkIdCuota:          u.cuotaId,
           fkFrecuenciaPagoId: u.frecuenciaPagoId,
@@ -889,6 +949,7 @@ export class DetailsUserComponent implements OnInit {
           entrecalle1:        u.entrecalle1,
           entrecalle2:        u.entrecalle2
         });
+        this.onFkIdSeccionChange(u.seccionId ?? null);
         this.syncDomicilio();
       },
       error: (e: any) => console.error('Error al cargar usuario', e)
@@ -1019,6 +1080,86 @@ export class DetailsUserComponent implements OnInit {
       },
       error: (e: any) => console.error('Error al consultar avisos/notas pendientes', e)
     });
+  }
+
+  // --- Cartas generadas (unifica los 4 módulos ligados a este usuario) ---
+  // AvisoResponsablePago queda fuera a propósito: está ligado a casaId, no
+  // a aguaUsuarioId, y ya tiene su propio acordeón en house-details.
+
+  getCartasGeneradas(): void {
+    if (!this.usuario?.aguaUsuarioId) return;
+    this.cargandoCartas = true;
+    forkJoin({
+      adeudo: this.avisoAdeudoService.getPorUsuario(this.usuario.aguaUsuarioId),
+      bomba: this.avisoBombaService.getPorUsuario(this.usuario.aguaUsuarioId),
+      padron: this.avisoPadronService.getPorUsuario(this.usuario.aguaUsuarioId),
+      informativo: this.avisoInformativoAdeudoService.getPorUsuario(this.usuario.aguaUsuarioId)
+    }).subscribe({
+      next: (resp: any) => {
+        this.cargandoCartas = false;
+        const filas: CartaGeneradaRow[] = [];
+
+        (resp.adeudo?.data || []).forEach((a: any) => filas.push({
+          tipo: a.tipoAviso === 'SEGUNDO' ? 'Carta de adeudo (2do aviso)' : 'Carta de adeudo (1er aviso)',
+          folioNotificacion: a.folioNotificacion,
+          dateAdd: a.dateAdd,
+          adeudoTotal: a.adeudoTotal,
+          fechaPresentacion: a.fechaPresentacion,
+          entregado: a.entregado,
+          fechaEntrega: a.fechaEntrega,
+          tipoEntrega: a.tipoEntrega,
+          cancelado: a.cancelada
+        }));
+
+        (resp.informativo?.data || []).forEach((a: any) => filas.push({
+          tipo: 'Aviso informativo de adeudo',
+          folioNotificacion: a.folioNotificacion,
+          dateAdd: a.dateAdd,
+          adeudoTotal: a.adeudoTotal,
+          fechaPresentacion: a.fechaPresentacion,
+          entregado: a.entregado,
+          fechaEntrega: a.fechaEntrega,
+          tipoEntrega: a.tipoEntrega,
+          cancelado: a.cancelado
+        }));
+
+        (resp.padron?.data || []).forEach((a: any) => filas.push({
+          tipo: 'Actualización de padrón',
+          folioNotificacion: a.folioNotificacion,
+          dateAdd: a.dateAdd,
+          adeudoTotal: undefined,
+          fechaPresentacion: a.fechaPresentacion,
+          entregado: a.entregado,
+          fechaEntrega: a.fechaEntrega,
+          tipoEntrega: a.tipoEntrega,
+          cancelado: a.cancelado
+        }));
+
+        (resp.bomba?.data || []).forEach((a: any) => filas.push({
+          tipo: 'Aviso de uso de bomba',
+          folioNotificacion: a.folioNotificacion,
+          dateAdd: a.dateAdd,
+          adeudoTotal: undefined,
+          fechaPresentacion: undefined,
+          entregado: a.entregado,
+          fechaEntrega: a.fechaEntrega,
+          tipoEntrega: a.tipoEntrega,
+          cancelado: a.cancelado
+        }));
+
+        filas.sort((a, b) => (b.dateAdd || '').localeCompare(a.dateAdd || ''));
+        this.dataSourceCartas = new MatTableDataSource<CartaGeneradaRow>(filas);
+      },
+      error: (e: any) => {
+        this.cargandoCartas = false;
+        console.error('Error al consultar cartas generadas', e);
+      }
+    });
+  }
+
+  etiquetaTipoEntregaCarta(tipoEntrega?: string): string {
+    if (!tipoEntrega) return '';
+    return this.tiposEntregaCartas.find(t => t.valor === tipoEntrega)?.etiqueta || tipoEntrega;
   }
 
   // --- Renuncia temporal al servicio (Art. 6 Bis) ---

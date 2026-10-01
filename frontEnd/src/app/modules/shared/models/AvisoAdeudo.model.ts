@@ -19,6 +19,12 @@ export interface AdeudoLuzUsuarioModel {
   adeudoTotal: number;
   noFolioUltimoPago?: number;
   fechaUltimoPago?: string;
+  // Meses desde el último pago de Luz (0 = pagó este mes); valor muy alto
+  // (centinela, ver AdeudoLuzService.MESES_SIN_PAGO_NUNCA_PAGADO en el
+  // backend) cuando nunca ha pagado. Ya no decide por sí solo si el
+  // usuario sale como candidato -- se usa para el filtro ajustable
+  // "Meses sin abonar (mínimo)" de la pantalla (pedido de Ely, sept. 2026).
+  mesesSinPagoLuz?: number;
 
   // Control de Primer/Segundo aviso -- último aviso ACTIVO que se le
   // generó a este usuario (null si nunca se le ha generado ninguno).
@@ -57,11 +63,17 @@ export interface AvisoAdeudoModel {
   adeudoTotal: number;
   noFolioUltimoPago?: number;
   fechaUltimoPago?: string;
+  // Fecha completa en la que debía presentarse en el Comité, elegida al
+  // generar la carta.
+  fechaPresentacion?: string;
   dateAdd: string;
 
   // Se oculta del historial por default (mismo patrón que los usuarios
   // dados de baja) pero se puede consultar explícitamente.
   cancelada?: boolean;
+  // Motivo de la cancelación (opcional) -- ej. "no fue entregada, se
+  // negaron a recibir".
+  comentarioCancela?: string;
 
   // Registro de entrega -- ver AvisoAdeudoEntregaModel/TIPOS_ENTREGA.
   entregado?: boolean;
@@ -72,6 +84,10 @@ export interface AvisoAdeudoModel {
   nombreNotificador?: string;
   nombreTestigo1?: string;
   nombreTestigo2?: string;
+  // Comentario libre para explicar qué sucedió al momento de la entrega
+  // (opcional) -- distinto de comentarioAtencion, que es de la etapa
+  // posterior de cobro/trámite.
+  comentarioEntrega?: string;
 
   // true en cuanto se hace el cobro/trámite correspondiente tras la
   // entrega -- mientras sea false, la ficha del usuario sigue alertando.
@@ -107,16 +123,31 @@ export interface AvisoAdeudoEntregaModel {
   nombreNotificador?: string;
   nombreTestigo1?: string;
   nombreTestigo2?: string;
+  comentarioEntrega?: string;
+  // Solo aplica cuando tipoEntrega = ABONO -- folio del recibo ya
+  // capturado, como soporte. Si viene, también cierra automáticamente la
+  // alerta de "pendiente de atención" del lado del backend.
+  folioReciboVinculado?: number;
   fechaEntrega?: string;
 }
 
 // Las 4 opciones "marcar lo que corresponda" de la carta física, en el
-// mismo orden en que aparecen ahí.
+// mismo orden en que aparecen ahí. Se reutiliza igual en Aviso de Bomba,
+// Actualización de Padrón y Responsables de Pago.
 export const TIPOS_ENTREGA: { valor: string; etiqueta: string }[] = [
   { valor: 'TITULAR', etiqueta: 'Entregué el documento a la persona titular de la toma, quien firmó de recibido' },
   { valor: 'OTRA_PERSONA', etiqueta: 'Entregué el documento a otra persona, quien dijo ser del titular y firmó de recibido' },
   { valor: 'SE_NEGO', etiqueta: 'La persona que atendió se negó a recibir o a firmar' },
   { valor: 'NO_ENCONTRADO', etiqueta: 'No se encontró a persona alguna' },
+];
+
+// Igual que TIPOS_ENTREGA, más una 5ta opción exclusiva de Cartas de
+// adeudo: el usuario pagó un abono en el momento, así que no se le deja el
+// aviso físico. No aplica a los demás tipos de carta (no tratan sobre
+// dinero), por eso vive aparte y no en TIPOS_ENTREGA.
+export const TIPOS_ENTREGA_ADEUDO: { valor: string; etiqueta: string }[] = [
+  ...TIPOS_ENTREGA,
+  { valor: 'ABONO', etiqueta: 'El usuario dio un abono en el momento y no se dejó el aviso' },
 ];
 
 // Datos que se capturan al marcar un aviso como atendido -- cómo se
@@ -150,4 +181,29 @@ export const RESULTADOS_ATENCION: { valor: string; etiqueta: string }[] = [
 export interface UsuarioNoRegistradoModel {
   nombre: string;
   direccion?: string;
+}
+
+// Usuario YA registrado que no salió como candidato (o cuyo cálculo
+// automático no aplica -- ej. cuenta "juntada" con la de otro familiar,
+// caso reportado por Ely) pero al que igual se le quiere generar la carta,
+// con el monto de adeudo capturado a mano en vez de calculado. A diferencia
+// de UsuarioNoRegistradoModel, SÍ tiene aguaUsuarioId real y SÍ queda en el
+// historial.
+export interface UsuarioManualAdeudoModel {
+  aguaUsuarioId: number;
+  // Solo para mostrarlo en la tabla mientras se arma la lista -- no se
+  // manda al backend (usa aguaUsuarioId).
+  noUsuario?: number;
+  nombreCompleto?: string;
+  // Opcional cuando calcularAutomatico es true -- en ese caso el backend
+  // calcula el adeudo real con AdeudoLuzService, igual que un candidato
+  // normal, y este valor se ignora.
+  montoAdeudo?: number;
+  observacion?: string;
+  // true (default) = buscado a mano por nombre/número para no tener que
+  // ubicarlo en la tabla de candidatos filtrada por calle, pero el adeudo
+  // SÍ se calcula automático. false = monto 100% capturado a mano (caso
+  // real donde el cálculo automático no aplica, ej. cuenta juntada con la
+  // de otro familiar).
+  calcularAutomatico?: boolean;
 }

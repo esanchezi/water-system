@@ -32,6 +32,8 @@ public class WaterUserChargeHelper {
                 .monto(request.getMonto())
                 .fecha(request.getFecha())
                 .comentario(request.getComentario())
+                .aprobadoAsamblea(request.getAprobadoAsamblea())
+                .fechaAsamblea(request.getFechaAsamblea())
                 .estatus(1)
                 .userIdAdd(1) // TODO: Keycloak
                 .dateAdd(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))

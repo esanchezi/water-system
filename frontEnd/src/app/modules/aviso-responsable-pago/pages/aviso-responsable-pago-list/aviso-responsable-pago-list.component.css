@@ -1,0 +1,98 @@
+.contenedor {
+  padding: 16px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.subtitulo {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.9em;
+}
+
+.w-100 {
+  width: 100%;
+}
+
+.buscador-casa {
+  margin-bottom: 16px;
+}
+
+.casa-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 1.05em;
+}
+
+.campos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.campos-fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.campos-fila mat-form-field {
+  flex: 1;
+  min-width: 160px;
+}
+
+.cuota-preview {
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.agregar-persona {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.hint {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.9em;
+}
+
+.chip-usuario {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #e3f2fd;
+  color: #1565c0;
+  font-size: 0.8em;
+}
+
+.tabla-personas,
+.tabla-historial {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+.tabla-personas th,
+.tabla-personas td,
+.tabla-historial th,
+.tabla-historial td {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 0.9em;
+}
+
+.tabla-historial tr.cancelada {
+  opacity: 0.5;
+}
+
+.acciones-generar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 16px 0;
+}

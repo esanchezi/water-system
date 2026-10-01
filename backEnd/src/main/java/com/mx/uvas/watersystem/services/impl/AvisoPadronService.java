@@ -70,12 +70,15 @@ public class AvisoPadronService {
         }
     }
 
+    // v9 (sept. 2026): mismo fix que AdeudoLuzService.coincideCalle() (bug
+    // reportado por Ely, caso usuario 116) -- si ya tiene casa con calle de
+    // catálogo asignada, esa es la única fuente que se usa (se respeta
+    // aunque no coincida); el texto libre solo es respaldo cuando NO tiene
+    // casa asignada en absoluto. Antes caía al texto libre incluso teniendo
+    // casa, causando falsos positivos entre calles/zonas distintas.
     private boolean coincideCalle(WaterUserEntity user, Integer calleId, String calleNombreLower) {
-        boolean porCasa = user.getWaterHouse() != null
-                && user.getWaterHouse().getCatCalle() != null
-                && calleId.equals(user.getWaterHouse().getCatCalle().getCatalogoOpcionesId());
-        if (porCasa) {
-            return true;
+        if (user.getWaterHouse() != null && user.getWaterHouse().getCatCalle() != null) {
+            return calleId.equals(user.getWaterHouse().getCatCalle().getCatalogoOpcionesId());
         }
         if (calleNombreLower == null) {
             return false;
@@ -127,7 +130,10 @@ public class AvisoPadronService {
             String domicilioToma = buildDomicilio(usuario);
             String nombreConNumero = usuario.getNoUsuario() + " - " + buildNombreCompleto(usuario.getPerson());
 
-            cartas.add(new CartaPadronDatos(folio, nombreConNumero, casaNoTexto, domicilioToma, request.getFechaPresentacion()));
+            String motivoSolicitud = request.getMotivoSolicitud() != null && !request.getMotivoSolicitud().isBlank()
+                    ? request.getMotivoSolicitud().trim() : null;
+
+            cartas.add(new CartaPadronDatos(folio, nombreConNumero, casaNoTexto, domicilioToma, request.getFechaPresentacion(), motivoSolicitud));
 
             paraGuardar.add(AvisoPadronEntity.builder()
                     .folioNotificacion(folio)
@@ -136,6 +142,7 @@ public class AvisoPadronService {
                     .noCasaTexto(casaNoTexto)
                     .domicilioToma(domicilioToma)
                     .fechaPresentacion(request.getFechaPresentacion())
+                    .motivoSolicitud(motivoSolicitud)
                     .estatus(1)
                     .userIdAdd(userIdAdd)
                     .dateAdd(ahora)
@@ -169,6 +176,22 @@ public class AvisoPadronService {
         }
     }
 
+    // Historial completo (activos + cancelados) de un usuario específico --
+    // para el acordeón "Cartas generadas" en su ficha (details-user).
+    @Transactional(readOnly = true)
+    public ResponseEntity<AvisoPadronRestResponse> porUsuario(Integer aguaUsuarioId) {
+        AvisoPadronRestResponse response = new AvisoPadronRestResponse();
+        try {
+            List<AvisoPadronEntity> avisos = avisoPadronRepository
+                    .findByWaterUser_AguaUsuarioIdAndEstatusInOrderByFolioNotificacionDesc(aguaUsuarioId, List.of(1, 0));
+            response.setData(avisos.stream().map(avisoPadronMapper::entityToDto).toList());
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, "Avisos encontrados");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, "Error al consultar los avisos del usuario", e);
+        }
+    }
+
     @Transactional
     public ResponseEntity<AvisoPadronRestResponse> marcarEntregada(Integer avisoPadronId, AvisoPadronEntregaRequestDto request) {
         AvisoPadronRestResponse response = new AvisoPadronRestResponse();
@@ -186,6 +209,7 @@ public class AvisoPadronService {
             aviso.setNombreNotificador(request.getNombreNotificador());
             aviso.setNombreTestigo1(request.getNombreTestigo1());
             aviso.setNombreTestigo2(request.getNombreTestigo2());
+            aviso.setComentarioEntrega(request.getComentarioEntrega());
             avisoPadronRepository.save(aviso);
 
             response.setData(List.of(avisoPadronMapper.entityToDto(aviso)));

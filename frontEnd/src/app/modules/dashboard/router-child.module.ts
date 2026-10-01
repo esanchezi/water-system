@@ -36,7 +36,9 @@ import { ReciboRevisionListComponent } from '../recibo-revision/pages/recibo-rev
 import { AvisoAdeudoListComponent } from '../aviso-adeudo/pages/aviso-adeudo-list/aviso-adeudo-list.component';
 import { AvisoBombaListComponent } from '../aviso-bomba/pages/aviso-bomba-list/aviso-bomba-list.component';
 import { AvisoPadronListComponent } from '../aviso-padron/pages/aviso-padron-list/aviso-padron-list.component';
+import { AvisoResponsablePagoListComponent } from '../aviso-responsable-pago/pages/aviso-responsable-pago-list/aviso-responsable-pago-list.component';
 import { ValorGeneralListComponent } from '../valor-general/pages/valor-general-list/valor-general-list.component';
+import { AvisoInformativoAdeudoListComponent } from '../aviso-informativo-adeudo/pages/aviso-informativo-adeudo-list/aviso-informativo-adeudo-list.component';
 
 export const childRoutes: Routes = [
     { path: '', component: HomeComponent },
@@ -75,7 +77,9 @@ export const childRoutes: Routes = [
     { path: 'avisoAdeudo', component: AvisoAdeudoListComponent },
     { path: 'avisoBomba', component: AvisoBombaListComponent },
     { path: 'avisoPadron', component: AvisoPadronListComponent },
+    { path: 'avisoResponsablePago', component: AvisoResponsablePagoListComponent },
     { path: 'valorGeneral', component: ValorGeneralListComponent },
+    { path: 'avisoInformativoAdeudo', component: AvisoInformativoAdeudoListComponent },
 ];
 
 @NgModule({

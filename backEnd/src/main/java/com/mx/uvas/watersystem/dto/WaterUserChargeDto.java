@@ -21,6 +21,9 @@ public class WaterUserChargeDto implements Serializable {
     private LocalDate fecha;
     private String fechaStr;
     private String comentario;
+    private Boolean aprobadoAsamblea;
+    private LocalDate fechaAsamblea;
+    private String fechaAsambleaStr;
     private List<WaterUserChargePaymentDto> pagos;
     private Double montoPagado;
     private Double montoCondonado;

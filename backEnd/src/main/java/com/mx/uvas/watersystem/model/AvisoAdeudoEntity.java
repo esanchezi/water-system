@@ -50,13 +50,21 @@ public class AvisoAdeudoEntity implements Serializable {
     private String domicilioToma;
     private String periodosAdeudados;
     private Double adeudoTotal;
-    // Suma de cargos manuales pendientes (multa por falta de pago,
-    // corte/reconexión, aviso, válvulas) al momento de generar -- snapshot,
-    // ver WaterUserChargeEntity / AdeudoLuzService.CONCEPTOS_MULTA_ACUMULADA.
+    // Suma de TODOS los cargos manuales activos pendientes (excepto
+    // Mantenimiento de cajón) al momento de generar -- snapshot, ver
+    // WaterUserChargeEntity / AdeudoLuzService.CONCEPTO_MANTENIMIENTO_NOMBRE.
     // 0.0 para personas sin usuario registrado.
     private Double multaAcumulada;
     private Integer noFolioUltimoPago;
     private LocalDateTime fechaUltimoPago;
+
+    // Fecha completa en la que el usuario debía presentarse en el Comité
+    // (día+mes+año elegidos al generar, ver AvisoAdeudoService.generar()) --
+    // antes solo se usaba para imprimir el párrafo "Debe presentarse el día
+    // ___" en el PDF (CartaAdeudoDatos.fechaPresentacion) pero no se
+    // guardaba en el historial; se agrega aquí para poder mostrarla en el
+    // acordeón "Cartas generadas" de la ficha de usuario.
+    private LocalDate fechaPresentacion;
 
     // 1 = activa, 0 = cancelada (se oculta del historial por default, pero
     // se puede seguir consultando -- ver AvisoAdeudoService.historial()).
@@ -66,6 +74,12 @@ public class AvisoAdeudoEntity implements Serializable {
     private LocalDateTime dateAdd;
     private Integer userIdCancela;
     private LocalDateTime dateCancela;
+    // Motivo de la cancelación (opcional) -- pedido explícito de Ely: sobre
+    // todo cuando se cancela porque la carta NO fue entregada/recibida (se
+    // negaron, no encontraron a nadie, etc.), para no perder ese contexto
+    // una vez que el aviso queda oculto del historial por default.
+    @Column(length = 500)
+    private String comentarioCancela;
 
     // Registro de entrega -- se llena cuando se marca la carta como
     // entregada, replicando los mismos datos que se capturan a mano en la
@@ -80,6 +94,8 @@ public class AvisoAdeudoEntity implements Serializable {
     private String nombreNotificador;
     private String nombreTestigo1;
     private String nombreTestigo2;
+    @Column(length = 500)
+    private String comentarioEntrega;
 
     // Se llena cuando, tras entregar la carta, ya se hizo el cobro (o se
     // atendió de otra forma) correspondiente -- mientras esté en null, el

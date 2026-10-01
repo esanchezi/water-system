@@ -69,6 +69,8 @@ public class AvisoBombaEntity implements Serializable {
     private String nombreNotificador;
     private String nombreTestigo1;
     private String nombreTestigo2;
+    @Column(length = 500)
+    private String comentarioEntrega;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)

@@ -141,6 +141,17 @@
                 <input matInput placeholder="Año" formControlName="anio" />
               </mat-form-field>
 
+              <mat-form-field *ngIf="cargosPendientes.length">
+                <mat-label>Cargo a liquidar (opcional)</mat-label>
+                <mat-select formControlName="cargoALiquidarId">
+                  <mat-option [value]="null">Ninguno</mat-option>
+                  <mat-option *ngFor="let cargo of cargosPendientes" [value]="cargo.aguaUsuarioCargoId">
+                    {{ cargo.concepto.nombre }} -- {{ cargo.descripcion }} (saldo {{ cargo.saldo | currency }})
+                  </mat-option>
+                </mat-select>
+                <mat-hint>Si este pago liquida un cargo pendiente, elígelo aquí</mat-hint>
+              </mat-form-field>
+
             </div>
           </div>
            <button mat-raised-button color="primary" (click)="addMonto()">

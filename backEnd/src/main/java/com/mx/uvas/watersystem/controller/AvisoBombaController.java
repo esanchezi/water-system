@@ -32,6 +32,13 @@ public class AvisoBombaController {
         return avisoBombaService.historial();
     }
 
+    // Historial completo de un usuario específico -- para el acordeón
+    // "Cartas generadas" en su ficha.
+    @GetMapping("/porUsuario/{aguaUsuarioId}")
+    public ResponseEntity<AvisoBombaRestResponse> porUsuario(@PathVariable Integer aguaUsuarioId) {
+        return avisoBombaService.porUsuario(aguaUsuarioId);
+    }
+
     @PutMapping("/{avisoBombaId}/entregar")
     public ResponseEntity<AvisoBombaRestResponse> marcarEntregada(
             @PathVariable Integer avisoBombaId,

@@ -173,6 +173,10 @@
                   title="Marcar como entregado" (click)="registrarEntrega(a)">
             <mat-icon>mark_email_read</mat-icon>
           </button>
+          <button mat-icon-button color="accent" *ngIf="a.entregado && (a.tipoEntrega === 'NO_ENCONTRADO' || a.tipoEntrega === 'SE_NEGO')"
+                  title="Ver evidencia fotográfica" (click)="verEvidenciaFotografica(a)">
+            <mat-icon>photo_library</mat-icon>
+          </button>
           <button mat-icon-button color="warn" *ngIf="!a.cancelado"
                   title="Cancelar" (click)="cancelarAviso(a)">
             <mat-icon>cancel</mat-icon>

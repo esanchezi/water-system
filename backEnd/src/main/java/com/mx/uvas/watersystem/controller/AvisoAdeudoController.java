@@ -1,6 +1,7 @@
 package com.mx.uvas.watersystem.controller;
 
 import com.mx.uvas.watersystem.dto.AvisoAdeudoAtencionRequestDto;
+import com.mx.uvas.watersystem.dto.AvisoAdeudoCancelarRequestDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoEntregaRequestDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoGenerarRequestDto;
 import com.mx.uvas.watersystem.response.AdeudoLuzUsuarioRestResponse;
@@ -43,6 +44,13 @@ public class AvisoAdeudoController {
         return avisoAdeudoService.historial();
     }
 
+    // Historial completo (activas + canceladas) de un usuario específico --
+    // para el acordeón "Cartas generadas" en su ficha.
+    @GetMapping("/porUsuario/{aguaUsuarioId}")
+    public ResponseEntity<AvisoAdeudoRestResponse> porUsuario(@PathVariable Integer aguaUsuarioId) {
+        return avisoAdeudoService.porUsuario(aguaUsuarioId);
+    }
+
     // Para el botón "Generar Segundo aviso" directo desde una fila del
     // historial -- recalcula el estado ACTUAL de este usuario (no la fila
     // del historial, que es un snapshot viejo) y regresa si de verdad le
@@ -61,9 +69,13 @@ public class AvisoAdeudoController {
         return avisoAdeudoService.marcarEntregada(avisoAdeudoId, request);
     }
 
+    // Body opcional -- @RequestBody(required = false) para no romper
+    // llamadas viejas del frontend que cancelaban sin mandar nada.
     @PutMapping("/{avisoAdeudoId}/cancelar")
-    public ResponseEntity<AvisoAdeudoRestResponse> cancelar(@PathVariable Integer avisoAdeudoId) {
-        return avisoAdeudoService.cancelar(avisoAdeudoId);
+    public ResponseEntity<AvisoAdeudoRestResponse> cancelar(
+            @PathVariable Integer avisoAdeudoId,
+            @RequestBody(required = false) AvisoAdeudoCancelarRequestDto request) {
+        return avisoAdeudoService.cancelar(avisoAdeudoId, request);
     }
 
     @PutMapping("/{avisoAdeudoId}/reactivar")

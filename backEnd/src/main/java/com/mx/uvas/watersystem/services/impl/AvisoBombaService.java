@@ -71,12 +71,15 @@ public class AvisoBombaService {
         }
     }
 
+    // v9 (sept. 2026): mismo fix que AdeudoLuzService.coincideCalle() (bug
+    // reportado por Ely, caso usuario 116) -- si ya tiene casa con calle de
+    // catálogo asignada, esa es la única fuente que se usa (se respeta
+    // aunque no coincida); el texto libre solo es respaldo cuando NO tiene
+    // casa asignada en absoluto. Antes caía al texto libre incluso teniendo
+    // casa, causando falsos positivos entre calles/zonas distintas.
     private boolean coincideCalle(WaterUserEntity user, Integer calleId, String calleNombreLower) {
-        boolean porCasa = user.getWaterHouse() != null
-                && user.getWaterHouse().getCatCalle() != null
-                && calleId.equals(user.getWaterHouse().getCatCalle().getCatalogoOpcionesId());
-        if (porCasa) {
-            return true;
+        if (user.getWaterHouse() != null && user.getWaterHouse().getCatCalle() != null) {
+            return calleId.equals(user.getWaterHouse().getCatCalle().getCatalogoOpcionesId());
         }
         if (calleNombreLower == null) {
             return false;
@@ -170,6 +173,22 @@ public class AvisoBombaService {
         }
     }
 
+    // Historial completo (activos + cancelados) de un usuario específico --
+    // para el acordeón "Cartas generadas" en su ficha (details-user).
+    @Transactional(readOnly = true)
+    public ResponseEntity<AvisoBombaRestResponse> porUsuario(Integer aguaUsuarioId) {
+        AvisoBombaRestResponse response = new AvisoBombaRestResponse();
+        try {
+            List<AvisoBombaEntity> avisos = avisoBombaRepository
+                    .findByWaterUser_AguaUsuarioIdAndEstatusInOrderByFolioNotificacionDesc(aguaUsuarioId, List.of(1, 0));
+            response.setData(avisos.stream().map(avisoBombaMapper::entityToDto).toList());
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, "Avisos encontrados");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, "Error al consultar los avisos del usuario", e);
+        }
+    }
+
     @Transactional
     public ResponseEntity<AvisoBombaRestResponse> marcarEntregada(Integer avisoBombaId, AvisoBombaEntregaRequestDto request) {
         AvisoBombaRestResponse response = new AvisoBombaRestResponse();
@@ -187,6 +206,7 @@ public class AvisoBombaService {
             aviso.setNombreNotificador(request.getNombreNotificador());
             aviso.setNombreTestigo1(request.getNombreTestigo1());
             aviso.setNombreTestigo2(request.getNombreTestigo2());
+            aviso.setComentarioEntrega(request.getComentarioEntrega());
             avisoBombaRepository.save(aviso);
 
             response.setData(List.of(avisoBombaMapper.entityToDto(aviso)));

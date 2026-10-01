@@ -23,9 +23,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -51,39 +54,51 @@ public class AdeudoLuzService {
     // las consultas SQL que ya se usaban a mano para este mismo cálculo.
     private static final int ANIO_INICIO = 2021;
 
-    // Regla para ser candidato a carta de adeudo: no basta con deber algo --
-    // tiene que llevar al menos este número de meses SIN dar ningún pago de
-    // luz (igual que ya dice el texto de la carta: "La multa por falta de
-    // pago aplica cuando se tienen al menos 3 meses sin realizar el pago").
-    // Si abonó algo hace menos de 3 meses (aunque su saldo siga positivo),
-    // no se le manda carta todavía.
-    private static final long MESES_SIN_PAGO_PARA_CANDIDATO = 3;
+    // v8 (sept. 2026, pedido de Ely): antes había una regla fija aquí mismo
+    // ("no es candidato si abonó algo hace menos de 3 meses, aunque su
+    // saldo siga positivo") que descartaba por completo a quien pagara
+    // poco pero seguido, ocultando casos donde ya debía más de una cuota
+    // completa aunque hubiera abonado hace poco. Esa regla se quitó de
+    // aquí -- ver mesesSinPagoLuz más abajo -- y ahora vive como un filtro
+    // AJUSTABLE en la pantalla de candidatos (AvisoAdeudoListComponent),
+    // para no tener que pedir un cambio de código cada vez que el criterio
+    // cambie. Este valor centinela es el que se usa cuando el usuario
+    // NUNCA ha pagado (no hay fecha de la cual contar meses) -- así
+    // cualquier filtro de "mínimo de meses sin abonar" lo sigue incluyendo,
+    // sin tener que tratar null como caso aparte en el frontend.
+    private static final int MESES_SIN_PAGO_NUNCA_PAGADO = 9999;
 
-    // Conceptos del catálogo CONCEPTO_CARGO_EXTRA (mismo catálogo que usa
-    // el panel "Cargos/Multas" de la ficha del usuario, ver
-    // WaterUserChargeEntity) que cuentan como "multa acumulada" en la carta
-    // de adeudo -- se identifican por nombre porque el catálogo lo
-    // administra el Comité desde la pantalla de Catálogos, no hay un ID
-    // fijo. Deben escribirse EXACTAMENTE igual a como se dieron de alta ahí
-    // (ver CLAVES_VALOR_GENERAL en el frontend, que sugiere el mismo texto).
-    // Excluye a propósito los conceptos ya existentes de mano de obra,
-    // insumos, bastón, llave azul y reparaciones -- esos no son parte de
-    // los montos que la carta de adeudo debe reflejar. "Mantenimiento de
-    // cajón" también se excluye a propósito (v5 de la carta, sept. 2026):
-    // ese adeudo ya NO se incluye en el monto de la carta -- se le informa
-    // al usuario aparte cuando se presenta (ver nota1 en
-    // AvisoAdeudoPdfService). El cargo se sigue generando igual (tarea
-    // #153) y sigue contando para el total de otros módulos (ficha de
-    // usuario, Deudores) -- este Set solo controla qué entra en el número
-    // que se imprime en ESTA carta específica.
-    private static final Set<String> CONCEPTOS_MULTA_ACUMULADA = Set.of(
-            "Multa por falta de pago", "Corte y reconexión", "Aviso", "Multa por manipular válvulas"
-    );
-
-    // Mismo nombre exacto que usa AvisoAdeudoService.CONCEPTO_MANTENIMIENTO_NOMBRE
-    // al crear el cargo -- se calcula aparte de CONCEPTOS_MULTA_ACUMULADA
-    // para mostrarse en su propio renglón de la carta (ver mantenimientoPendiente).
+    // v6 de la carta (sept. 2026, pedido explícito de Ely): "Multa acumulada
+    // a la fecha" ya NO es una lista fija de nombres de concepto -- ahora
+    // cuenta CUALQUIER cargo activo del panel "Cargos/Multas" de la ficha
+    // del usuario (WaterUserChargeEntity), sin importar el nombre exacto que
+    // tenga el concepto en el catálogo (antes se excluían por accidente
+    // cargos reales como "Llave azul", "Mano de obra corte" o "Multa"
+    // genérica, porque su nombre no coincidía exactamente con la lista fija
+    // que existía antes -- Ely reportó varios usuarios con este problema).
+    // El único que se excluye a propósito es "Mantenimiento de cajón"
+    // (CONCEPTO_MANTENIMIENTO_NOMBRE, ver abajo): ese adeudo se muestra
+    // aparte, en su propio renglón de la carta, con su propio desglose por
+    // año (ver mantenimientoPendiente / AvisoAdeudoPdfService).
     private static final String CONCEPTO_MANTENIMIENTO_NOMBRE = "Mantenimiento de cajón";
+
+    // v11 (sept. 2026, pedido explícito de Ely: "reemplazar todo lo que se
+    // haya generado con ese concepto y usar Mtto -- para mí es como tenerlo
+    // repetido"): el adeudo de mantenimiento ya NO se lee de cargos
+    // formales creados aparte (WaterUserChargeEntity "Mantenimiento de
+    // cajón") -- se calcula en vivo igual que la cuota anual de Luz, viendo
+    // si el usuario ya dio la cooperación "Mtto" (concepto_id = 79, "Mtto
+    // red", pago suelto dentro de un recibo normal) para cada año que debe.
+    // Ver más abajo donde se arma mantenimientoPorAnio.
+    //
+    // CORRECCIÓN (confirmado por Ely con datos reales de catalogo_opciones):
+    // el id correcto de "Mtto red" es 79, NO 108 -- 108 es "Multa por
+    // corte", un concepto totalmente distinto. El 108 venía de un
+    // comentario en un SQL guardado que resultó estar mal, nunca se validó
+    // contra el catálogo real. Revisar con cuidado antes de confiar en
+    // comentarios de queries viejos para IDs de catálogo.
+    private static final Integer CONCEPTO_MTTO_ID = 79;
+    private static final List<Integer> ANIOS_MANTENIMIENTO = List.of(2024, 2025);
 
     private final IWaterUserRepository waterUserRepository;
     private final IWaterUserAnnualPaymentRepository waterUserAnnualPaymentRepository;
@@ -123,11 +138,13 @@ public class AdeudoLuzService {
     // ANTES de correr el cálculo, no después, para que el ahorro sea real.
     //
     // No todos los usuarios están asignados a una casa del catastro todavía
-    // (censo en proceso) -- por eso un usuario cuenta como de esta calle si
-    // CUALQUIERA de estos dos aplica (mismo criterio que ya usa el módulo de
-    // Usuarios para su cascada Sección->Calle): su casa tiene esta calle de
-    // catálogo asignada, O su dirección libre (agua_direccion.calle, texto
-    // capturado a mano) contiene el nombre de esta calle.
+    // (censo en proceso) -- ver coincideCalle() para la regla exacta: si YA
+    // tiene casa con calle de catálogo asignada, esa es la única fuente que
+    // se usa (se respeta aunque no coincida); el texto libre de la
+    // dirección (agua_direccion.calle) solo se usa como respaldo cuando NO
+    // tiene casa asignada en absoluto. Antes se usaba el texto libre como
+    // respaldo incluso teniendo casa, lo que causaba falsos positivos entre
+    // zonas -- ver comentario de coincideCalle() (caso usuario 116).
     @Transactional(readOnly = true)
     public List<AdeudoLuzUsuarioDto> calcularParaCalle(Integer calleId) {
         int anioActual = LocalDate.now().getYear();
@@ -168,18 +185,43 @@ public class AdeudoLuzService {
                 .collect(Collectors.toList());
     }
 
+    // v9 (sept. 2026, bug reportado por Ely -- caso usuario 116, Jorge
+    // Alberto Ramos Buzo): antes, si el usuario YA tenía casa con calle de
+    // catálogo asignada pero esa calle NO era la buscada, el código de
+    // todos modos caía a comparar contra el texto libre de
+    // agua_direccion.calle -- y ese texto libre puede ser un registro viejo
+    // que ya no refleja la realidad (Jorge Alberto tiene su casa bien
+    // migrada en "Buenavista", pero le quedó una dirección libre vieja con
+    // calle "Principal" y sección "Los Lopez" de antes de la migración).
+    // Como también existe una calle "Principal" catalogada en la zona Los
+    // López, hacía falso match y aparecía como candidato de una calle/zona
+    // que ya no es la suya.
+    //
+    // Ahora la regla es: si el usuario YA tiene casa con calle de catálogo
+    // asignada, esa es la fuente autoritativa y se respeta tal cual
+    // (coincide o no, sin excepción) -- el texto libre SOLO se usa como
+    // respaldo cuando el usuario no tiene casa asignada en absoluto (censo
+    // todavía no migrado para él).
+    //
+    // v10 (sept. 2026, bug reportado por Ely -- "Principal" traía también
+    // "Andador Principal"/"Andador principal"): el respaldo de texto libre
+    // usaba contains(), que hace match parcial -- cualquier calle que
+    // incluyera el texto buscado como substring entraba, aunque fuera una
+    // calle distinta. Desde que el formulario de usuario dejó de tener
+    // texto libre para "calle" (ahora es un select amarrado al catálogo, ver
+    // new-user/details-user) y se normalizó agua_direccion.calle para que
+    // coincidiera exacto con el catálogo, ya no hace falta (ni es correcto)
+    // el match parcial: se compara exacto (solo mayúsculas/espacios, con
+    // trim+lowercase, por datos capturados antes de la normalización).
     private boolean coincideCalle(WaterUserEntity user, Integer calleId, String calleNombreLower) {
-        boolean porCasa = user.getWaterHouse() != null
-                && user.getWaterHouse().getCatCalle() != null
-                && calleId.equals(user.getWaterHouse().getCatCalle().getCatalogoOpcionesId());
-        if (porCasa) {
-            return true;
+        if (user.getWaterHouse() != null && user.getWaterHouse().getCatCalle() != null) {
+            return calleId.equals(user.getWaterHouse().getCatCalle().getCatalogoOpcionesId());
         }
         if (calleNombreLower == null) {
             return false;
         }
         String direccionLibre = user.getAddress() != null ? user.getAddress().getCalle() : null;
-        return direccionLibre != null && direccionLibre.toLowerCase().contains(calleNombreLower);
+        return direccionLibre != null && direccionLibre.trim().equalsIgnoreCase(calleNombreLower.trim());
     }
 
     private List<AdeudoLuzUsuarioDto> calcular(List<WaterUserEntity> usuarios, int anioDesde, int anioHasta) {
@@ -300,16 +342,13 @@ public class AdeudoLuzService {
                 dto.setFechaUltimoPago(fechaUltimoPago);
             }
 
-            // Regla: solo es candidato a carta si lleva al menos
-            // MESES_SIN_PAGO_PARA_CANDIDATO meses sin dar NINGÚN pago de luz.
-            // Si nunca ha pagado (fechaUltimoPago == null), sí califica de
-            // inmediato -- no hay pago reciente que lo excuse.
-            if (fechaUltimoPago != null) {
-                long mesesSinPago = ChronoUnit.MONTHS.between(fechaUltimoPago.toLocalDate(), LocalDate.now());
-                if (mesesSinPago < MESES_SIN_PAGO_PARA_CANDIDATO) {
-                    continue;
-                }
-            }
+            // v8 (sept. 2026): ya no se descarta aquí a quien pagó hace
+            // poco -- solo se calcula y se expone mesesSinPagoLuz, para que
+            // la pantalla de candidatos decida con su propio filtro
+            // ajustable (ver comentario de MESES_SIN_PAGO_NUNCA_PAGADO).
+            dto.setMesesSinPagoLuz(fechaUltimoPago != null
+                    ? (int) ChronoUnit.MONTHS.between(fechaUltimoPago.toLocalDate(), LocalDate.now())
+                    : MESES_SIN_PAGO_NUNCA_PAGADO);
 
             // Interés moratorio (Art. 22): $ por día de atraso, calculado
             // automáticamente y sumado al adeudo total. Los días de atraso
@@ -334,16 +373,17 @@ public class AdeudoLuzService {
 
         // Multa acumulada -- reutiliza el sistema de "Cargos/Multas" que ya
         // existe por usuario (WaterUserChargeEntity, panel en la ficha del
-        // usuario), filtrando solo los conceptos de CONCEPTOS_MULTA_ACUMULADA
-        // y sumando el saldo pendiente (monto - pagado - condonado) de cada
-        // uno. Un solo query por lote en vez de uno por usuario.
+        // usuario), sumando el saldo pendiente (monto - pagado - condonado)
+        // de TODOS los cargos activos excepto Mantenimiento de cajón (que
+        // tiene su propio renglón aparte). Un solo query por lote en vez de
+        // uno por usuario.
         if (!resultado.isEmpty()) {
             List<Integer> ids = resultado.stream().map(AdeudoLuzUsuarioDto::getAguaUsuarioId).toList();
             List<WaterUserChargeEntity> cargosActivos = waterUserChargeRepository
                     .findByEstatusAndWaterUser_AguaUsuarioIdIn(1, ids);
 
             Map<Integer, Double> multaAcumuladaPorUsuario = cargosActivos.stream()
-                    .filter(c -> c.getConcepto() != null && CONCEPTOS_MULTA_ACUMULADA.contains(c.getConcepto().getNombre()))
+                    .filter(c -> c.getConcepto() != null && !CONCEPTO_MANTENIMIENTO_NOMBRE.equals(c.getConcepto().getNombre()))
                     .filter(c -> c.getSaldo() > 0)
                     .collect(Collectors.groupingBy(
                             c -> c.getWaterUser().getAguaUsuarioId(),
@@ -353,39 +393,62 @@ public class AdeudoLuzService {
                 dto.setMultaAcumulada(multaAcumuladaPorUsuario.getOrDefault(dto.getAguaUsuarioId(), 0d));
             }
 
+            // Desglose de "Multa acumulada" (v7 de la carta, sept. 2026,
+            // pedido explícito de Ely): solo cuando hay 2 o más cargos
+            // distintos sumando (con 1 solo cargo, el monto ya es
+            // autoexplicativo y no vale la pena el detalle). Agrupa por
+            // nombre de concepto, colapsando repetidos en "Concepto (xN)
+            // $suma" pero sin perder el motivo (descripcion) de cada cargo
+            // individual -- importante sobre todo para "Multa" genérica,
+            // donde el monto solo no dice de qué se trata. Cuando el cargo
+            // se marcó como aprobado por asamblea al capturarlo (ver
+            // WaterUserChargeEntity.aprobadoAsamblea/fechaAsamblea), se le
+            // agrega la leyenda "(aprobado por asamblea el dd/mm/aaaa)" --
+            // o sin fecha si no se capturó una fecha exacta de esa asamblea.
+            Map<Integer, List<WaterUserChargeEntity>> cargosMultaPorUsuario = cargosActivos.stream()
+                    .filter(c -> c.getConcepto() != null && !CONCEPTO_MANTENIMIENTO_NOMBRE.equals(c.getConcepto().getNombre()))
+                    .filter(c -> c.getSaldo() > 0)
+                    .collect(Collectors.groupingBy(c -> c.getWaterUser().getAguaUsuarioId()));
+            for (AdeudoLuzUsuarioDto dto : resultado) {
+                List<WaterUserChargeEntity> cargosUsuario = cargosMultaPorUsuario.get(dto.getAguaUsuarioId());
+                if (cargosUsuario != null && cargosUsuario.size() >= 2) {
+                    dto.setMultaAcumuladaDesglose(buildMultaAcumuladaDesglose(cargosUsuario));
+                }
+            }
+
             // Mantenimiento de cajón, pendiente de pago -- calculado aparte
             // de multaAcumulada a propósito (v5 de la carta, sept. 2026): ya
             // no se suma al monto de "multa acumulada" de la carta, se
             // muestra junto en el mismo renglón pero con su propio desglose
             // por año (ver AvisoAdeudoPdfService), igual que el desglose de
             // adeudo de Luz.
-            List<WaterUserChargeEntity> cargosMantenimiento = cargosActivos.stream()
-                    .filter(c -> c.getConcepto() != null && CONCEPTO_MANTENIMIENTO_NOMBRE.equals(c.getConcepto().getNombre()))
-                    .filter(c -> c.getSaldo() > 0)
-                    .toList();
-
-            Map<Integer, Double> mantenimientoPorUsuario = cargosMantenimiento.stream()
-                    .collect(Collectors.groupingBy(
-                            c -> c.getWaterUser().getAguaUsuarioId(),
-                            Collectors.summingDouble(WaterUserChargeEntity::getSaldo)
-                    ));
-
-            // Agrupa además por año (parseado del final de la descripción,
-            // ej. "Mantenimiento de cajón 2025" -> 2025 -- así se generó en
-            // AvisoAdeudoService.crearCargoMantenimiento(), es el único
-            // lugar donde se crea este concepto) para armar el texto
-            // "$100.00 - 2024 | $100.00 - 2025".
-            Map<Integer, Map<Integer, Double>> mantenimientoPorAnioPorUsuario = cargosMantenimiento.stream()
-                    .collect(Collectors.groupingBy(
-                            c -> c.getWaterUser().getAguaUsuarioId(),
-                            Collectors.groupingBy(this::anioDeDescripcionMantenimiento,
-                                    TreeMap::new,
-                                    Collectors.summingDouble(WaterUserChargeEntity::getSaldo))
-                    ));
-
+            //
+            // v11 (sept. 2026): ya NO se lee de cargos formales -- se
+            // calcula en vivo, año por año, checando si el usuario ya dio
+            // la cooperación "Mtto" (pago suelto en un recibo normal) para
+            // cada año de ANIOS_MANTENIMIENTO que tenga en su desglose de
+            // adeudo. Si ya existe ese pago, se da por cubierto; si no,
+            // debe el monto vigente de ese año. Mismo criterio que la cuota
+            // anual de Luz (findByConceptoAndAnio), sin cargo de por medio.
             for (AdeudoLuzUsuarioDto dto : resultado) {
-                dto.setMantenimientoPendiente(mantenimientoPorUsuario.getOrDefault(dto.getAguaUsuarioId(), 0d));
-                dto.setMantenimientoPorAnio(mantenimientoPorAnioPorUsuario.getOrDefault(dto.getAguaUsuarioId(), new TreeMap<>()));
+                Map<Integer, Double> mantenimientoPorAnio = new TreeMap<>();
+                List<Integer> periodos = dto.getPeriodosAdeudados();
+                for (Integer anio : ANIOS_MANTENIMIENTO) {
+                    if (periodos == null || !periodos.contains(anio)) {
+                        continue;
+                    }
+                    boolean yaPagoMtto = waterReceiptPaymentRepository
+                            .existsByConceptoAndAnioAndUsuario(CONCEPTO_MTTO_ID, anio, dto.getAguaUsuarioId());
+                    if (yaPagoMtto) {
+                        continue;
+                    }
+                    double monto = valorGeneralService.getMontoVigente(ValorGeneralClave.MANTENIMIENTO, anio);
+                    if (monto > 0) {
+                        mantenimientoPorAnio.put(anio, monto);
+                    }
+                }
+                dto.setMantenimientoPorAnio(mantenimientoPorAnio);
+                dto.setMantenimientoPendiente(mantenimientoPorAnio.values().stream().mapToDouble(Double::doubleValue).sum());
             }
         }
 
@@ -407,17 +470,73 @@ public class AdeudoLuzService {
     // lugar donde se crea este concepto. Si algún día la descripción viene
     // distinta (ej. capturada a mano desde Cargos/Multas), se agrupa como
     // año 0 en vez de tronar, para no perder el monto del desglose.
-    private Integer anioDeDescripcionMantenimiento(WaterUserChargeEntity cargo) {
-        String descripcion = cargo.getDescripcion();
-        if (descripcion == null || descripcion.length() < 4) {
-            return 0;
+    // Ver comentario donde se llama (calcular()) para el porqué de cada
+    // regla. Orden estable (por fecha del cargo, luego por id) para que la
+    // carta no cambie el orden de los conceptos entre una generación y otra
+    // si nada cambió.
+    private String buildMultaAcumuladaDesglose(List<WaterUserChargeEntity> cargos) {
+        NumberFormat formatoMoneda = NumberFormat.getCurrencyInstance(new Locale("es", "MX"));
+        DateTimeFormatter fechaFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        List<WaterUserChargeEntity> ordenados = cargos.stream()
+                .sorted(Comparator
+                        .comparing(WaterUserChargeEntity::getFecha, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(WaterUserChargeEntity::getAguaUsuarioCargoId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+
+        Map<String, List<WaterUserChargeEntity>> porConcepto = new LinkedHashMap<>();
+        for (WaterUserChargeEntity cargo : ordenados) {
+            String nombre = cargo.getConcepto() != null && cargo.getConcepto().getNombre() != null
+                    ? cargo.getConcepto().getNombre()
+                    : "Cargo";
+            porConcepto.computeIfAbsent(nombre, k -> new ArrayList<>()).add(cargo);
         }
-        String posibleAnio = descripcion.substring(descripcion.length() - 4);
-        try {
-            return Integer.parseInt(posibleAnio);
-        } catch (NumberFormatException e) {
-            return 0;
+
+        List<String> partes = new ArrayList<>();
+        for (Map.Entry<String, List<WaterUserChargeEntity>> entry : porConcepto.entrySet()) {
+            String nombre = entry.getKey();
+            List<WaterUserChargeEntity> grupo = entry.getValue();
+            double suma = grupo.stream().mapToDouble(WaterUserChargeEntity::getSaldo).sum();
+
+            if (grupo.size() == 1) {
+                WaterUserChargeEntity unico = grupo.get(0);
+                String parte = nombre + " " + formatoMoneda.format(suma);
+                String nota = notaAsamblea(unico, fechaFormatter);
+                if (nota != null) {
+                    parte += " " + nota;
+                }
+                partes.add(parte);
+            } else {
+                // Repetidos del mismo concepto (típicamente "Multa" genérica):
+                // se colapsan en un solo renglón "(xN) $suma" pero cada
+                // motivo (descripcion) se conserva, para no perder de qué
+                // fue cada uno.
+                String motivos = grupo.stream()
+                        .map(cargo -> {
+                            String motivo = cargo.getDescripcion() != null && !cargo.getDescripcion().isBlank()
+                                    ? cargo.getDescripcion()
+                                    : nombre;
+                            String nota = notaAsamblea(cargo, fechaFormatter);
+                            return nota != null ? motivo + " " + nota : motivo;
+                        })
+                        .collect(Collectors.joining("; "));
+                partes.add(nombre + " (x" + grupo.size() + ") " + formatoMoneda.format(suma) + ": " + motivos);
+            }
         }
+        return String.join(" | ", partes);
+    }
+
+    // "(aprobado por asamblea el dd/mm/aaaa)" -- o sin fecha si el cargo se
+    // marcó como aprobado pero no se capturó la fecha exacta de esa
+    // asamblea. Null si el cargo no se marcó como aprobado por asamblea.
+    private String notaAsamblea(WaterUserChargeEntity cargo, DateTimeFormatter fechaFormatter) {
+        if (!Boolean.TRUE.equals(cargo.getAprobadoAsamblea())) {
+            return null;
+        }
+        if (cargo.getFechaAsamblea() != null) {
+            return "(aprobado por asamblea el " + cargo.getFechaAsamblea().format(fechaFormatter) + ")";
+        }
+        return "(aprobado por asamblea)";
     }
 
     // "2023 - $840.00 | 2024 - $1,200.00 | ..." -- desglose del adeudo total

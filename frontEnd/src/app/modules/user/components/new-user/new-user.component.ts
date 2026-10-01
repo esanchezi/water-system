@@ -50,6 +50,15 @@ export class NewUserComponent implements OnInit {
   frecuencias:   CatalogOptionModel[] = [];
   estatusPago:   CatalogOptionModel[] = [];
 
+  // Catálogo de calles (catálogo id 15, mismo que usa Nueva casa), filtrado
+  // por la Sección elegida. "calle" es un select amarrado directo a este
+  // catálogo (ya no texto libre) -- el catálogo se completó y se normalizó
+  // el dato existente en `direccion.calle` para que coincidiera exacto
+  // (ver auditoría de sept. 2026 con Ely). Si en el futuro se abre una
+  // calle nueva, hay que darla de alta primero en Catálogos.
+  calles:           CatalogOptionModel[] = [];
+  callesFiltradas:  CatalogOptionModel[] = [];
+
   private readonly anioActual = new Date().getFullYear();
   private readonly ID_FRECUENCIA_DEFAULT = '54';
   private readonly ID_SECCION_DEFAULT   = '1';
@@ -76,7 +85,7 @@ export class NewUserComponent implements OnInit {
       observaciones:      [''],
       email:              [''],
       nombre:             ['', Validators.required],
-      nombre2:            ['', Validators.required],
+      nombre2:            [''],
       app:                ['', Validators.required],
       apm:                ['', Validators.required],
       fkIdSeccion:        [this.ID_SECCION_DEFAULT, Validators.required],
@@ -144,6 +153,22 @@ export class NewUserComponent implements OnInit {
       next: (opts) => this.estatusPago = opts,
       error: (e: any) => console.error(e)
     });
+    this.catalogService.getOptions(15).subscribe({
+      next: (opts) => {
+        this.calles = [...opts].sort((a, b) => a.nombre.localeCompare(b.nombre));
+        this.onSeccionChange(this.userForm.get('fkIdSeccion')?.value ?? null);
+      },
+      error: (e: any) => console.error(e)
+    });
+  }
+
+  // Filtra el catálogo de calles por la Sección elegida (mismo catálogo y
+  // mismo criterio -- zonaId -- que usa Nueva casa).
+  onSeccionChange(seccionId: number | string | null): void {
+    const id = seccionId != null ? Number(seccionId) : null;
+    this.callesFiltradas = id != null
+      ? this.calles.filter(c => c.zonaId === id)
+      : this.calles;
   }
 
   // Se selecciona la categoría de cuota (uso + tipo de usuario), no un monto de

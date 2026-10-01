@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, OnInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { AvisoAdeudoAtencionModel, AvisoAdeudoModel, RESULTADOS_ATENCION } from '../../models/AvisoAdeudo.model';
 
@@ -23,7 +23,7 @@ export interface AvisoAdeudoAtencionDialogData {
   templateUrl: './aviso-adeudo-atencion-dialog.component.html',
   styleUrls: ['./aviso-adeudo-atencion-dialog.component.css']
 })
-export class AvisoAdeudoAtencionDialogComponent {
+export class AvisoAdeudoAtencionDialogComponent implements OnInit {
 
   resultados = RESULTADOS_ATENCION;
 
@@ -41,6 +41,30 @@ export class AvisoAdeudoAtencionDialogComponent {
   // requerirse el Segundo aviso automáticamente; si cumple, un adeudo
   // futuro se trata como uno nuevo (Primer aviso otra vez).
   fechaCompromiso = '';
+
+  // true si ya se está editando un aviso que YA tenía una atención
+  // capturada (ej. actualizar la fecha de un convenio renegociado) -- solo
+  // aplica cuando viene un solo aviso (nunca al marcar varios en lote desde
+  // la alerta de la ficha de usuario). Controla el título del dialog y si
+  // se precargan los campos.
+  get esEdicion(): boolean {
+    return this.data.avisos.length === 1 && !!this.data.avisos[0].atendido;
+  }
+
+  ngOnInit(): void {
+    // Precarga los campos con lo que ya se había capturado, para poder
+    // corregir/actualizar (ej. el usuario incumplió el convenio y se
+    // renegoció una fecha nueva) en vez de tener que volver a llenar todo
+    // desde cero.
+    if (this.esEdicion) {
+      const aviso = this.data.avisos[0];
+      this.resultadoAtencion = aviso.resultadoAtencion || '';
+      this.comentarioAtencion = aviso.comentarioAtencion || '';
+      this.folioReciboVinculado = aviso.folioReciboVinculado || null;
+      this.folioConvenioVinculado = aviso.folioConvenioVinculado || null;
+      this.fechaCompromiso = aviso.fechaCompromiso ? aviso.fechaCompromiso.substring(0, 10) : '';
+    }
+  }
 
   get esConvenio(): boolean {
     return this.resultadoAtencion === 'CONVENIO';

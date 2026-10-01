@@ -16,5 +16,6 @@ public class AvisoPadronEntregaRequestDto implements Serializable {
     private String nombreNotificador;
     private String nombreTestigo1;
     private String nombreTestigo2;
+    private String comentarioEntrega;
     private LocalDateTime fechaEntrega;
 }

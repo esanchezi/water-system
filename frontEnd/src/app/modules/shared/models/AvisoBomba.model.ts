@@ -41,6 +41,7 @@ export interface AvisoBombaModel {
   nombreNotificador?: string;
   nombreTestigo1?: string;
   nombreTestigo2?: string;
+  comentarioEntrega?: string;
 }
 
 // Datos que se capturan al marcar un aviso de bomba como entregado -- mismo
@@ -52,5 +53,6 @@ export interface AvisoBombaEntregaModel {
   nombreNotificador?: string;
   nombreTestigo1?: string;
   nombreTestigo2?: string;
+  comentarioEntrega?: string;
   fechaEntrega?: string;
 }

@@ -43,7 +43,7 @@ export class AvisoPadronListComponent implements OnInit {
 
   historialColumns: string[] = [
     'folioNotificacion', 'noUsuario', 'nombreUsuarioTitular', 'noCasaTexto', 'domicilioToma',
-    'fechaPresentacion', 'dateAdd', 'entrega', 'acciones'
+    'fechaPresentacion', 'motivoSolicitud', 'dateAdd', 'entrega', 'acciones'
   ];
 
   tiposEntrega = TIPOS_ENTREGA;
@@ -54,6 +54,11 @@ export class AvisoPadronListComponent implements OnInit {
   // Fecha en la que debe presentarse -- se pide siempre antes de generar,
   // se llena en la carta ("Debe presentarse el día ___ de ___ de 20__").
   fechaPresentacion: string | null = null;
+
+  // Motivo por el que se solicita la actualización -- opcional, se imprime
+  // en la carta cuando se captura (pedido de Ely: quiere dejar constancia
+  // de la razón concreta de cada solicitud).
+  motivoSolicitud = '';
 
   zonas: CatalogOptionModel[] = [];
   private todasLasCalles: CatalogOptionModel[] = [];
@@ -233,13 +238,15 @@ export class AvisoPadronListComponent implements OnInit {
     this.selection.toggle(row);
   }
 
-  // Link directo a la ficha completa del usuario -- misma convención que ya
-  // usan Personas, Deudores, Cartas de adeudo y Aviso de bomba.
+  // Link directo a la ficha completa del usuario -- se abre en pestaña nueva
+  // (mismo criterio que Cartas de adeudo) para no perder el filtro/selección
+  // en curso en esta pantalla.
   irADetalleUsuario(aguaUsuarioId?: number): void {
     if (!aguaUsuarioId) return;
-    this.router.navigate(['dashboard/detailsUser'], {
+    const urlTree = this.router.createUrlTree(['dashboard/detailsUser'], {
       queryParams: { element: JSON.stringify({ usuarioId: aguaUsuarioId }) }
     });
+    window.open(this.router.serializeUrl(urlTree), '_blank');
   }
 
   generarAvisos(): void {
@@ -270,7 +277,7 @@ export class AvisoPadronListComponent implements OnInit {
     this.generando = true;
     const ids = this.selection.selected.map(r => r.aguaUsuarioId);
 
-    this.avisoPadronService.generar(ids, this.fechaPresentacion!).subscribe({
+    this.avisoPadronService.generar(ids, this.fechaPresentacion!, this.motivoSolicitud.trim() || undefined).subscribe({
       next: (resp) => {
         this.generando = false;
         const blob = resp.body;
@@ -282,6 +289,7 @@ export class AvisoPadronListComponent implements OnInit {
         this.openSnackBar('Avisos generados correctamente', 'Éxito');
 
         this.selection.clear();
+        this.motivoSolicitud = '';
         this.historial = [];
         this.cargarHistorial();
         this.recargarCandidatosActuales();
@@ -305,6 +313,16 @@ export class AvisoPadronListComponent implements OnInit {
         this.openSnackBar('Entrega registrada', 'Éxito');
         this.cargarHistorial();
       }
+    });
+  }
+
+  // Reabre el mismo dialog solo para consultar/agregar/quitar las fotos de
+  // respaldo de una entrega ya registrada -- ver AvisoAdeudoListComponent,
+  // mismo patrón.
+  verEvidenciaFotografica(aviso: AvisoPadronModel): void {
+    this.dialog.open(AvisoPadronEntregaDialogComponent, {
+      width: '480px',
+      data: { aviso, soloVerFotos: true }
     });
   }
 
