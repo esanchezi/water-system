@@ -66,6 +66,18 @@ public class AvisoAdeudoEntity implements Serializable {
     // acordeón "Cartas generadas" de la ficha de usuario.
     private LocalDate fechaPresentacion;
 
+    // Bitácora de cambios de fechaPresentacion (pedido de Ely, oct. 2026:
+    // reprogramar cartas ya firmadas que no alcanzaron a entregarse). La
+    // carta impresa conserva la fecha con la que se generó, así que se
+    // guarda la fecha ORIGINAL (solo la primera vez que se cambia, nunca se
+    // sobrescribe), cuándo/quién la cambió y por qué -- para poder
+    // demostrar después qué decía el papel vs. cuál es la fecha vigente.
+    private LocalDate fechaPresentacionOriginal;
+    private LocalDateTime dateCambioFechaPresentacion;
+    private Integer userIdCambioFechaPresentacion;
+    @Column(length = 500)
+    private String comentarioCambioFechaPresentacion;
+
     // 1 = activa, 0 = cancelada (se oculta del historial por default, pero
     // se puede seguir consultando -- ver AvisoAdeudoService.historial()).
     @Builder.Default

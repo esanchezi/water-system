@@ -26,4 +26,8 @@ import java.io.Serializable;
         private String calleNombre;
         private String calleTexto;
         private String numeroTexto;
+        // Sección (catálogo) capturada en la dirección del usuario -- sirve
+        // para desambiguar calles con el mismo nombre en secciones distintas
+        // cuando el usuario aún no tiene casa asignada (solo texto libre).
+        private Integer seccionTextoId;
     }

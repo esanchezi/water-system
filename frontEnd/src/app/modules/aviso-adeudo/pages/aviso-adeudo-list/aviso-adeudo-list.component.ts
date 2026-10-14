@@ -211,6 +211,7 @@ export class AvisoAdeudoListComponent implements OnInit {
 
   opcionesFiltroAtencion: { valor: string; etiqueta: string }[] = [
     { valor: 'VENCIDO', etiqueta: 'Vencido -- procede corte' },
+    { valor: 'VENCIDO_PROCEDE_SEGUNDO', etiqueta: 'Vencido -- procede Segundo aviso' },
     { valor: 'PENDIENTE_COBRO', etiqueta: 'Pendiente de cobro' },
     { valor: 'PAGADO', etiqueta: 'Pagado' },
     { valor: 'CONDONADO', etiqueta: 'Condonado' },
@@ -226,16 +227,19 @@ export class AvisoAdeudoListComponent implements OnInit {
 
   // Mismo criterio que ya usa la columna "Cobro/Atención" en el template --
   // null cuando ni siquiera se ha entregado (esa carta se filtra por
-  // filtroEntrega, no por filtroAtencion). "VENCIDO" es un caso particular
-  // de "pendiente de cobro" (mismo criterio que procedeCorte()): ya pasó la
-  // fecha de presentación sin atenderse, así que ya aplica el corte -- se
-  // distingue del resto de pendientes para poder filtrar de un vistazo la
-  // lista de a quién ya toca cortar (pedido explícito de Ely).
+  // filtroEntrega, no por filtroAtencion). "VENCIDO" (procede corte, Art.
+  // 19/20) es exclusivo del SEGUNDO aviso vencido -- ver procedeCorte().
+  // Un PRIMER aviso vencido NO implica corte todavía: lo que procede ahí es
+  // generar el Segundo aviso (corrección pedida por Ely, oct. 2026 -- antes
+  // se marcaba "procede corte" también para el Primero, lo cual era
+  // incorrecto). Ver procedeSegundoAviso().
   estadoAtencion(aviso: AvisoAdeudoModel): string | null {
     if (!aviso.entregado) return null;
     if (aviso.atendido) return aviso.resultadoAtencion || 'OTRO';
     if (this.tieneSegundoPosterior(aviso)) return 'SUPERADO';
-    return this.procedeCorte(aviso) ? 'VENCIDO' : 'PENDIENTE_COBRO';
+    if (this.procedeCorte(aviso)) return 'VENCIDO';
+    if (this.procedeSegundoAviso(aviso)) return 'VENCIDO_PROCEDE_SEGUNDO';
+    return 'PENDIENTE_COBRO';
   }
 
   // "Cerrado" = ya no necesita seguimiento: se pagó/condonó/resolvió como
@@ -309,10 +313,26 @@ export class AvisoAdeudoListComponent implements OnInit {
 
   // Ya pasó la fecha en que debía presentarse, la carta ya se entregó y
   // sigue sin atenderse (sin pago/convenio) -- ya procede el corte
-  // (Art. 19/20). Si ya se le generó un Segundo aviso posterior, el
-  // seguimiento se hace con ese, no con este Primero.
+  // (Art. 19/20). Esto SOLO aplica al SEGUNDO aviso: un Primer aviso vencido
+  // no autoriza el corte por sí solo, lo que procede ahí es generar el
+  // Segundo aviso (ver procedeSegundoAviso()) -- corrección explícita de
+  // Ely, oct. 2026, antes esto no distinguía tipoAviso.
   procedeCorte(aviso: AvisoAdeudoModel): boolean {
-    return !aviso.cancelada
+    return aviso.tipoAviso === 'SEGUNDO'
+      && !aviso.cancelada
+      && !!aviso.entregado
+      && !aviso.atendido
+      && !!aviso.fechaPresentacion
+      && aviso.fechaPresentacion.substring(0, 10) < this.hoyStr;
+  }
+
+  // Un PRIMER aviso ya venció (pasó su fecha de presentación) sin atenderse
+  // y todavía no se le genera un Segundo aviso -- lo que procede es generar
+  // ese Segundo, no el corte (el corte es Art. 19/20, exclusivo del
+  // Segundo aviso vencido, ver procedeCorte()).
+  procedeSegundoAviso(aviso: AvisoAdeudoModel): boolean {
+    return aviso.tipoAviso === 'PRIMERO'
+      && !aviso.cancelada
       && !!aviso.entregado
       && !aviso.atendido
       && !this.tieneSegundoPosterior(aviso)
@@ -601,6 +621,67 @@ export class AvisoAdeudoListComponent implements OnInit {
   // Ely) -- sobre todo útil cuando se cancela porque la carta NO fue
   // entregada/recibida (se negaron, no encontraron a nadie, etc.), para no
   // perder ese contexto una vez que el aviso queda oculto del historial.
+  // Reprograma el día de presentación (ej. cartas ya firmadas que no
+  // alcanzaron a entregarse). La carta impresa conserva la fecha original,
+  // por eso se pide motivo y se avisa que hay que corregirla en el papel.
+  // Reimprime la carta con el MISMO folio (no genera uno nuevo ni cancela),
+  // con la fecha de presentación vigente.
+  reimprimirAviso(aviso: AvisoAdeudoModel): void {
+    this.avisoAdeudoService.reimprimir(aviso.avisoAdeudoId).subscribe({
+      next: (resp) => {
+        if (resp.body) {
+          this.descargarBlob(resp.body, `aviso_folio_${aviso.folioNotificacion}.pdf`);
+        }
+      },
+      error: (e) => {
+        console.error(e);
+        this.openSnackBar(e.headers?.get('X-Error-Message') || 'No se pudo reimprimir la carta', 'Error');
+      }
+    });
+  }
+
+  cambiarFechaPresentacion(aviso: AvisoAdeudoModel): void {
+    const actual = aviso.fechaPresentacion ? this.formatearFechaNaive(aviso.fechaPresentacion) : '--';
+    Swal.fire({
+      title: `Cambiar fecha de presentación -- folio ${aviso.folioNotificacion}`,
+      html:
+        `<p style="font-size:0.9em">${aviso.noUsuario} - ${aviso.nombreUsuarioTitular}<br>Fecha actual: <b>${actual}</b></p>` +
+        `<input id="swal-fecha" type="date" class="swal2-input" min="${this.hoyStr}">` +
+        `<textarea id="swal-motivo" class="swal2-textarea" placeholder="Motivo (obligatorio) -- ej. no se alcanzó a entregar"></textarea>` +
+        `<p style="font-size:0.8em;color:#856404">La carta ya impresa conserva la fecha anterior: corrígela a mano (con tu firma/iniciales) o reimprímela antes de entregarla.</p>`,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      focusConfirm: false,
+      preConfirm: () => {
+        const fecha = (document.getElementById('swal-fecha') as HTMLInputElement).value;
+        const motivo = (document.getElementById('swal-motivo') as HTMLTextAreaElement).value.trim();
+        if (!fecha || !motivo) {
+          Swal.showValidationMessage('Indica la nueva fecha y el motivo');
+          return false;
+        }
+        return { fecha, motivo };
+      }
+    }).then(result => {
+      if (!result.isConfirmed || !result.value) return;
+      const { fecha, motivo } = result.value as { fecha: string; motivo: string };
+      this.avisoAdeudoService.cambiarFechaPresentacion(aviso.avisoAdeudoId, fecha, motivo).subscribe({
+        next: (resp: any) => {
+          if (resp.metadata?.code === '00') {
+            this.openSnackBar('Fecha de presentación actualizada', 'Éxito');
+            this.cargarHistorial();
+          } else {
+            this.openSnackBar(resp.metadata?.message || 'No se pudo cambiar la fecha', 'Error');
+          }
+        },
+        error: (e: any) => {
+          console.error(e);
+          this.openSnackBar('No se pudo cambiar la fecha', 'Error');
+        }
+      });
+    });
+  }
+
   cancelarAviso(aviso: AvisoAdeudoModel): void {
     Swal.fire({
       title: `¿Cancelar el folio ${aviso.folioNotificacion}?`,

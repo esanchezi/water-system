@@ -7,6 +7,11 @@ import org.springframework.http.ResponseEntity;
 public interface IWaterReceiptService {
     ResponseEntity<WaterReceiptRestResponse> findAllByEstatus();
 
+    // Recibos activos en un rango de fechas (inclusivo). Si no hay ninguno
+    // regresa 200 con lista vacía (no 404), porque aquí "sin resultados" es
+    // un caso normal del filtro.
+    ResponseEntity<WaterReceiptRestResponse> findByRangoFechas(java.time.LocalDate desde, java.time.LocalDate hasta);
+
     ResponseEntity<WaterReceiptRestResponse> findByNoFolioOrNoUsuario(Integer noFolio);
 
     ResponseEntity<WaterReceiptRestResponse> findByNoUsuario(Integer noFolio);

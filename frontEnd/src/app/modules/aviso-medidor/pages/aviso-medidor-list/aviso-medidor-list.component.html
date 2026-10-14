@@ -1,0 +1,147 @@
+<mat-card class="tarjeta-encabezado">
+  <h2>Aviso de Instalación de Medidor (prueba de consumo)</h2>
+  <p class="hint">
+    Conforme al Artículo 7 del Reglamento Interno. No depende de ningún cálculo de adeudo -- elige a mano el
+    domicilio de prueba, captura los datos de la instalación y descarga el PDF listo para imprimir (folio
+    consecutivo incluido).
+  </p>
+
+  <mat-card-content>
+    <div class="fila-filtros">
+      <mat-form-field appearance="fill" class="campo-usuario">
+        <mat-label>N° de usuario o nombre</mat-label>
+        <input matInput placeholder="Escribe el N° de usuario o nombre"
+               [formControl]="usuarioSearchCtrl"
+               [matAutocomplete]="usuarioAuto" />
+        <mat-autocomplete #usuarioAuto="matAutocomplete" [displayWith]="displayUsuario" (optionSelected)="onUsuarioSeleccionado($event)">
+          <mat-option *ngFor="let u of usuarioSearchResults" [value]="u">
+            N° {{ u.noUsuario }} - {{ u.nombreCompleto }}
+          </mat-option>
+        </mat-autocomplete>
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Fecha de instalación</mat-label>
+        <input matInput type="date" [(ngModel)]="fechaInstalacion" required>
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>No. de serie del medidor</mat-label>
+        <input matInput [(ngModel)]="noSerieMedidor" placeholder="Ej. 0012345" required>
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Lectura inicial del medidor</mat-label>
+        <input matInput [(ngModel)]="lecturaInicialMedidor" placeholder="Ej. 000000">
+      </mat-form-field>
+
+      <button mat-raised-button color="primary" (click)="generarAviso()" [disabled]="generando || !formularioValido">
+        <mat-icon>picture_as_pdf</mat-icon>
+        {{ generando ? 'Generando...' : 'Generar aviso' }}
+      </button>
+    </div>
+
+    <p class="hint" *ngIf="usuarioSeleccionado">
+      Usuario seleccionado: N° {{ usuarioSeleccionado.noUsuario }} - {{ usuarioSeleccionado.nombreCompleto }}
+    </p>
+  </mat-card-content>
+</mat-card>
+
+<mat-accordion class="acordeon-historial">
+  <mat-expansion-panel class="panel-claro" expanded="true">
+    <mat-expansion-panel-header>
+      <mat-panel-title>Historial de avisos generados</mat-panel-title>
+    </mat-expansion-panel-header>
+
+    <p class="hint" *ngIf="cargandoHistorial">Cargando historial...</p>
+
+    <mat-checkbox *ngIf="!cargandoHistorial" [(ngModel)]="mostrarCanceladas" class="chk-canceladas">
+      Mostrar cancelados
+    </mat-checkbox>
+
+    <table mat-table [dataSource]="historialVisible" class="tabla-historial" *ngIf="!cargandoHistorial">
+      <ng-container matColumnDef="folioNotificacion">
+        <th mat-header-cell *matHeaderCellDef>Folio</th>
+        <td mat-cell *matCellDef="let a">{{ a.folioNotificacion }}</td>
+      </ng-container>
+      <ng-container matColumnDef="noUsuario">
+        <th mat-header-cell *matHeaderCellDef>N° Usuario</th>
+        <td mat-cell *matCellDef="let a">
+          <a *ngIf="a.aguaUsuarioId; else soloNoUsuario"
+             (click)="irADetalleUsuario(a.aguaUsuarioId)"
+             style="text-decoration: underline; cursor: pointer;"
+             title="Ver ficha completa del usuario">{{ a.noUsuario }}</a>
+          <ng-template #soloNoUsuario>{{ a.noUsuario }}</ng-template>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="nombreUsuarioTitular">
+        <th mat-header-cell *matHeaderCellDef>Usuario</th>
+        <td mat-cell *matCellDef="let a">{{ a.noUsuario }} - {{ a.nombreUsuarioTitular }}</td>
+      </ng-container>
+      <ng-container matColumnDef="noCasaTexto">
+        <th mat-header-cell *matHeaderCellDef>N° Casa</th>
+        <td mat-cell *matCellDef="let a">{{ a.noCasaTexto || a.noCasa || '--' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="domicilioToma">
+        <th mat-header-cell *matHeaderCellDef>Domicilio</th>
+        <td mat-cell *matCellDef="let a">{{ a.domicilioToma || '--' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="fechaInstalacion">
+        <th mat-header-cell *matHeaderCellDef>Fecha instalación</th>
+        <td mat-cell *matCellDef="let a">{{ a.fechaInstalacion ? formatearFechaNaive(a.fechaInstalacion) : '--' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="noSerieMedidor">
+        <th mat-header-cell *matHeaderCellDef>No. de serie</th>
+        <td mat-cell *matCellDef="let a">{{ a.noSerieMedidor || '--' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="lecturaInicialMedidor">
+        <th mat-header-cell *matHeaderCellDef>Lectura inicial</th>
+        <td mat-cell *matCellDef="let a">{{ a.lecturaInicialMedidor || '--' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="dateAdd">
+        <th mat-header-cell *matHeaderCellDef>Generado</th>
+        <td mat-cell *matCellDef="let a">{{ a.dateAdd | date:'dd/MM/yyyy HH:mm' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="entrega">
+        <th mat-header-cell *matHeaderCellDef>Entrega</th>
+        <td mat-cell *matCellDef="let a">
+          <span *ngIf="a.cancelado" class="etiqueta etiqueta-cancelada">Cancelado</span>
+          <span *ngIf="!a.cancelado && a.entregado"
+                class="etiqueta etiqueta-entregada"
+                [title]="etiquetaTipoEntrega(a.tipoEntrega) + (a.nombreReceptor ? (' -- Recibió: ' + a.nombreReceptor + ' (' + a.parentescoReceptor + ')') : '')">
+            Entregado {{ formatearFechaNaive(a.fechaEntrega) }}
+          </span>
+          <span *ngIf="!a.cancelado && !a.entregado" class="etiqueta etiqueta-pendiente">Pendiente</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="acciones">
+        <th mat-header-cell *matHeaderCellDef>Acciones</th>
+        <td mat-cell *matCellDef="let a">
+          <button mat-icon-button color="primary" *ngIf="!a.cancelado && !a.entregado"
+                  title="Marcar como entregado" (click)="registrarEntrega(a)">
+            <mat-icon>mark_email_read</mat-icon>
+          </button>
+          <button mat-icon-button color="accent" *ngIf="a.entregado && (a.tipoEntrega === 'NO_ENCONTRADO' || a.tipoEntrega === 'SE_NEGO')"
+                  title="Ver evidencia fotográfica" (click)="verEvidenciaFotografica(a)">
+            <mat-icon>photo_library</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" *ngIf="!a.cancelado"
+                  title="Cancelar" (click)="cancelarAviso(a)">
+            <mat-icon>cancel</mat-icon>
+          </button>
+          <button mat-icon-button color="primary" *ngIf="a.cancelado"
+                  title="Reactivar" (click)="reactivarAviso(a)">
+            <mat-icon>restore</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="historialColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: historialColumns" [class.fila-cancelada]="row.cancelado"></tr>
+    </table>
+
+    <p class="hint" *ngIf="!cargandoHistorial && historialVisible.length === 0">Sin avisos generados todavía.</p>
+  </mat-expansion-panel>
+</mat-accordion>

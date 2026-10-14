@@ -221,7 +221,24 @@ public class AdeudoLuzService {
             return false;
         }
         String direccionLibre = user.getAddress() != null ? user.getAddress().getCalle() : null;
-        return direccionLibre != null && direccionLibre.trim().equalsIgnoreCase(calleNombreLower.trim());
+        if (direccionLibre == null || !direccionLibre.trim().equalsIgnoreCase(calleNombreLower.trim())) {
+            return false;
+        }
+        // v12 (oct. 2026, pedido de Ely: "Principal" de Buenavista y de Los
+        // López son calles distintas y van por separado): el nombre solo no
+        // basta porque se repite entre secciones, así que sin casa asignada
+        // también debe coincidir la sección de su dirección con la sección
+        // (zona) de la calle elegida.
+        Integer zonaCalle = zonaIdDeCalle(calleId);
+        Integer seccionUsuario = user.getAddress().getCatSeccion() != null
+                ? user.getAddress().getCatSeccion().getCatalogoOpcionesId() : null;
+        return zonaCalle == null || seccionUsuario == null || zonaCalle.equals(seccionUsuario);
+    }
+
+    private Integer zonaIdDeCalle(Integer calleId) {
+        return catalogOptionsRepository.findById(calleId)
+                .map(c -> c.getZona() != null ? c.getZona().getCatalogoOpcionesId() : null)
+                .orElse(null);
     }
 
     private List<AdeudoLuzUsuarioDto> calcular(List<WaterUserEntity> usuarios, int anioDesde, int anioHasta) {

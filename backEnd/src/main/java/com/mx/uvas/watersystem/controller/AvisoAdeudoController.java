@@ -1,6 +1,7 @@
 package com.mx.uvas.watersystem.controller;
 
 import com.mx.uvas.watersystem.dto.AvisoAdeudoAtencionRequestDto;
+import com.mx.uvas.watersystem.dto.AvisoAdeudoCambiarFechaPresentacionRequestDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoCancelarRequestDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoEntregaRequestDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoGenerarRequestDto;
@@ -78,6 +79,13 @@ public class AvisoAdeudoController {
         return avisoAdeudoService.cancelar(avisoAdeudoId, request);
     }
 
+    @PutMapping("/{avisoAdeudoId}/fechaPresentacion")
+    public ResponseEntity<AvisoAdeudoRestResponse> cambiarFechaPresentacion(
+            @PathVariable Integer avisoAdeudoId,
+            @RequestBody AvisoAdeudoCambiarFechaPresentacionRequestDto request) {
+        return avisoAdeudoService.cambiarFechaPresentacion(avisoAdeudoId, request);
+    }
+
     @PutMapping("/{avisoAdeudoId}/reactivar")
     public ResponseEntity<AvisoAdeudoRestResponse> reactivar(@PathVariable Integer avisoAdeudoId) {
         return avisoAdeudoService.reactivar(avisoAdeudoId);
@@ -102,6 +110,24 @@ public class AvisoAdeudoController {
     // motivo de un error) van en headers propios en vez de en el cuerpo. Ver
     // SecurityConfig.corsConfigurationSource() para que el navegador los deje
     // leer desde el frontend.
+    // Reimprime una carta ya generada (mismo folio, no crea ni cancela nada).
+    @GetMapping("/{avisoAdeudoId}/reimprimir")
+    public ResponseEntity<byte[]> reimprimir(@PathVariable Integer avisoAdeudoId) {
+        try {
+            byte[] pdf = avisoAdeudoService.reimprimir(avisoAdeudoId);
+            if (pdf == null) {
+                return errorResponse("El aviso no existe o está cancelado");
+            }
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(ContentDisposition.attachment().filename("aviso_adeudo_reimpresion.pdf").build());
+            return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error al reimprimir aviso de adeudo", e);
+            return errorResponse("Error al reimprimir la carta");
+        }
+    }
+
     @PostMapping("/generar")
     public ResponseEntity<byte[]> generar(@RequestBody AvisoAdeudoGenerarRequestDto request) {
         try {

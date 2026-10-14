@@ -25,6 +25,7 @@ import { AvisoPadronModule } from './modules/aviso-padron/aviso-padron.module';
 import { AvisoResponsablePagoModule } from './modules/aviso-responsable-pago/aviso-responsable-pago.module';
 import { ValorGeneralModule } from './modules/valor-general/valor-general.module';
 import { AvisoInformativoAdeudoModule } from './modules/aviso-informativo-adeudo/aviso-informativo-adeudo.module';
+import { AvisoMedidorModule } from './modules/aviso-medidor/aviso-medidor.module';
 
 registerLocaleData(localeEsMx);
 
@@ -51,7 +52,8 @@ registerLocaleData(localeEsMx);
     AvisoPadronModule,
     AvisoResponsablePagoModule,
     ValorGeneralModule,
-    AvisoInformativoAdeudoModule
+    AvisoInformativoAdeudoModule,
+    AvisoMedidorModule
 ],
   providers: [
     CurrencyPipe,

@@ -29,10 +29,11 @@ public interface IWaterUserRepository extends JpaRepository<WaterUserEntity,Inte
             "wu.noUsuario,wu.aguaUsuarioId, p.personaId,a.direccionId,h.casaId, " +
             "p.nombre, COALESCE(p.nombre2, ''), p.app, COALESCE(p.apm, ''), COALESCE(wu.alias, ''), " +
             "CONCAT(a.calle, ' #', a.numero),h.nombre, " +
-            "cc.catalogoOpcionesId, h.casaNo, cc.nombre, a.calle, a.numero) " +
+            "cc.catalogoOpcionesId, h.casaNo, cc.nombre, a.calle, a.numero, sec.catalogoOpcionesId) " +
             "FROM  WaterUserEntity wu " +
             "JOIN  wu.person p " +
             "JOIN  wu.address a " +
+            "LEFT JOIN a.catSeccion sec " +
             "LEFT JOIN wu.waterHouse h " +
             "LEFT JOIN h.catCalle cc " +
             "WHERE wu.estatus = 1 " +

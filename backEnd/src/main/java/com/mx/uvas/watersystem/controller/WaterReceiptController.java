@@ -20,6 +20,15 @@ public class WaterReceiptController {
         return waterReceiptService.findAllByEstatus();
     }
 
+    // Fechas en formato yyyy-MM-dd, ambas opcionales (sin ellas = todo el
+    // historial).
+    @GetMapping("/filtrar")
+    public ResponseEntity<WaterReceiptRestResponse> findByRangoFechas(
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate desde,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate hasta) {
+        return waterReceiptService.findByRangoFechas(desde, hasta);
+    }
+
     @GetMapping("/findByNoFolioOrNoUsuario/{no}")
     public ResponseEntity<WaterReceiptRestResponse> findByNoFolioOrNoUsuario(@PathVariable Integer no) {
         return waterReceiptService.findByNoFolioOrNoUsuario(no);

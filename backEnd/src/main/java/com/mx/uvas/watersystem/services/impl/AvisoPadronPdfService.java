@@ -169,7 +169,9 @@ public class AvisoPadronPdfService {
         Paragraph plazo = new Paragraph();
         plazo.add(new Chunk("Debe presentarse el día ", fontNormal));
         if (carta.fechaPresentacion() != null) {
-            plazo.add(new Chunk(String.valueOf(carta.fechaPresentacion().getDayOfMonth()), fontDatoLlenado));
+            // Día en blanco, se llena a mano al entregar (solo mes y año
+            // impresos) -- pedido de Ely, oct. 2026.
+            plazo.add(new Chunk("______", fontNormal));
             plazo.add(new Chunk(" de ", fontNormal));
             plazo.add(new Chunk(mesDe(carta.fechaPresentacion()), fontDatoLlenado));
             plazo.add(new Chunk(" de 20", fontNormal));

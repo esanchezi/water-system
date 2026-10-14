@@ -24,6 +24,9 @@ public class AvisoAdeudoMapper {
         dto.setNoFolioUltimoPago(entity.getNoFolioUltimoPago());
         dto.setFechaUltimoPago(entity.getFechaUltimoPago());
         dto.setFechaPresentacion(entity.getFechaPresentacion());
+        dto.setFechaPresentacionOriginal(entity.getFechaPresentacionOriginal());
+        dto.setDateCambioFechaPresentacion(entity.getDateCambioFechaPresentacion());
+        dto.setComentarioCambioFechaPresentacion(entity.getComentarioCambioFechaPresentacion());
         dto.setDateAdd(entity.getDateAdd());
         if (entity.getWaterUser() != null) {
             dto.setAguaUsuarioId(entity.getWaterUser().getAguaUsuarioId());

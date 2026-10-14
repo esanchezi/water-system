@@ -1,83 +1,151 @@
 <mat-card>
     <h2 class="alinear">Listado de Recibos de Pago</h2>
-    <mat-card-header>
-        <div>
-            <mat-form-field hintLabel="Busque folio" appearance="fill">
-                <mat-label>Buscar Folio</mat-label>
-                <input matInput #input (keyup)="buscar(input.value)">
-            </mat-form-field>
-        </div>
-    </mat-card-header>
-    <mat-card-header >
-        <div class="right">
-            <ul>
-                <li>
-                    <button mat-raised-button color="primary" (click)="openReceiptCancelledDialog();"> Agregar Recibo Cancelado</button> 
-                 </li>
-                <li>
-                   <button mat-raised-button color="primary" (click)="openReciboDialog();"> Agregar Recibo</button> 
-                </li>
-                <li>
-                    <button mat-button color="primary" (click)="exportExcel();"> Exportar excel</button> 
-                 </li>
-            </ul>
-        </div>
-    </mat-card-header>
-    <div mat-card-image></div>
-  
+
+    <div class="barra-acciones">
+        <button mat-raised-button color="primary" (click)="openReceiptCancelledDialog();">Agregar Recibo Cancelado</button>
+        <button mat-raised-button color="primary" (click)="openReciboDialog();">Agregar Recibo</button>
+        <button mat-button color="primary" (click)="exportExcel();" [disabled]="dataSource.filteredData.length === 0">
+            <mat-icon>download</mat-icon> Exportar a Excel
+        </button>
+    </div>
+
+    <div class="fila-filtros">
+        <mat-form-field appearance="fill" class="campo-ancho">
+            <mat-label>Buscar</mat-label>
+            <input matInput #input (keyup)="buscar(input.value)" placeholder="Folio, N° usuario, nombre, concepto...">
+        </mat-form-field>
+
+        <mat-form-field appearance="fill">
+            <mat-label>Desde</mat-label>
+            <input matInput type="date" [(ngModel)]="desde" (change)="getReceipt()">
+        </mat-form-field>
+
+        <mat-form-field appearance="fill">
+            <mat-label>Hasta</mat-label>
+            <input matInput type="date" [(ngModel)]="hasta" (change)="getReceipt()">
+        </mat-form-field>
+
+        <button mat-stroked-button (click)="verTodo()">Ver todo el historial</button>
+    </div>
+
+    <div class="fila-filtros">
+        <mat-form-field appearance="fill">
+            <mat-label>Concepto</mat-label>
+            <mat-select [(ngModel)]="conceptoFiltro" (selectionChange)="aplicarFiltros()">
+                <mat-option value="">Todos</mat-option>
+                <mat-option *ngFor="let c of conceptosOpciones" [value]="c">{{ c }}</mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="fill">
+            <mat-label>Año</mat-label>
+            <mat-select [(ngModel)]="anioFiltro" (selectionChange)="aplicarFiltros()">
+                <mat-option value="">Todos</mat-option>
+                <mat-option *ngFor="let a of aniosOpciones" [value]="'' + a">{{ a }}</mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="fill">
+            <mat-label>Tipo de pago</mat-label>
+            <mat-select [(ngModel)]="tipoPagoFiltro" (selectionChange)="aplicarFiltros()">
+                <mat-option value="">Todos</mat-option>
+                <mat-option *ngFor="let t of tiposPago" [value]="'' + t.id">{{ t.nombre }}</mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <mat-checkbox [(ngModel)]="mostrarCancelados" (change)="aplicarFiltros()">
+            Mostrar folios cancelados ({{ totalCancelados }})
+        </mat-checkbox>
+
+        <button mat-button (click)="limpiarFiltros(input)">Limpiar filtros</button>
+    </div>
+
+    <p class="resumen" *ngIf="!cargando">
+        {{ dataSource.filteredData.length }} recibo(s)
+    </p>
+    <p class="resumen" *ngIf="cargando">Cargando recibos...</p>
+
     <mat-card-content>
-        <table mat-table [dataSource]="dataSource" class="mat-cell">
-            <ng-container matColumnDef="noFolio">
-                <th mat-header-cell *matHeaderCellDef> N° Folio</th>
-                <td mat-cell *matCellDef="let element" >{{element.noFolio}}</td>
-            </ng-container>
-            <ng-container matColumnDef="concepto">
-                <th mat-header-cell *matHeaderCellDef> Concepto</th>
-                <td mat-cell *matCellDef="let element" >{{element.conceptoReceipt}} </td>
-            </ng-container>
-            <ng-container matColumnDef="observaciones">
-                <th mat-header-cell *matHeaderCellDef> Observaciones</th>
-                <td mat-cell *matCellDef="let element" >{{element.observaciones}} </td>
-            </ng-container>
-             <ng-container matColumnDef="total">
-                <th mat-header-cell *matHeaderCellDef> Total</th>
-                <td mat-cell *matCellDef="let element" >{{element.total}}</td>
-            </ng-container>
-            <ng-container matColumnDef="usuario">
-                <th mat-header-cell *matHeaderCellDef> Usuario</th>
-                <td mat-cell *matCellDef="let element">{{element.waterUser.noUsuario}} - {{element.waterUser.person.nombre}} {{element.waterUser.person.nombre2}} {{element.waterUser.person.app}} {{element.waterUser.person.apm}}</td>
-            </ng-container>
-            <ng-container matColumnDef="conceptoPayment">
-                <th mat-header-cell *matHeaderCellDef> Concepto </th>
-                <td mat-cell *matCellDef="let element"> {{element.concepto}} </td>
-            </ng-container>
-            <ng-container matColumnDef="montoRecibido">
-                <th mat-header-cell *matHeaderCellDef> Monto Recibido </th>
-                <td mat-cell *matCellDef="let element"> {{element.montoRecibido}} </td>
-            </ng-container>
-            <ng-container matColumnDef="montoAplicado">
-                <th mat-header-cell *matHeaderCellDef> Monto Aplicado </th>
-                <td mat-cell *matCellDef="let element"> {{element.montoAplicado}} </td>  
-            </ng-container>
-            <ng-container matColumnDef="anio">
-                <th mat-header-cell *matHeaderCellDef> Año </th>
-                <td mat-cell *matCellDef="let element"> {{element.anio}} </td>
-              </ng-container>
-            <!--actions column-->
-            <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef> Acciones</th>
-                <td mat-cell *matCellDef="let element; let i = index;" >
-                    <button mat-icon-button color="accent" (click)="editarRecibo(element)" matTooltip="Editar">
-                        <mat-icon aria-label="Edit">edit</mat-icon>
-                    </button>
-                    <button mat-icon-button color="accent">
-                        <mat-icon aria-label="Delete">delete</mat-icon>
+        <table mat-table [dataSource]="dataSource" multiTemplateDataRows>
+            <ng-container matColumnDef="expand">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let element">
+                    <button mat-icon-button (click)="toggleDetalle(element); $event.stopPropagation()"
+                            [title]="expandido === element ? 'Ocultar aplicación' : 'Ver aplicación del recibo'">
+                        <mat-icon>{{ expandido === element ? 'expand_less' : 'expand_more' }}</mat-icon>
                     </button>
                 </td>
             </ng-container>
+            <ng-container matColumnDef="noFolio">
+                <th mat-header-cell *matHeaderCellDef> N° Folio</th>
+                <td mat-cell *matCellDef="let element">{{ element.noFolio }}</td>
+            </ng-container>
+            <ng-container matColumnDef="fecha">
+                <th mat-header-cell *matHeaderCellDef> Fecha</th>
+                <td mat-cell *matCellDef="let element">{{ formatearFecha(element.fecha) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="usuario">
+                <th mat-header-cell *matHeaderCellDef> Usuario</th>
+                <td mat-cell *matCellDef="let element">{{ element.waterUser?.noUsuario ? element.waterUser.noUsuario + ' - ' + nombreCompleto(element) : '--' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="concepto">
+                <th mat-header-cell *matHeaderCellDef> Concepto</th>
+                <td mat-cell *matCellDef="let element">{{ element.concepto }}</td>
+            </ng-container>
+            <ng-container matColumnDef="observaciones">
+                <th mat-header-cell *matHeaderCellDef> Observaciones</th>
+                <td mat-cell *matCellDef="let element">{{ element.observaciones }}</td>
+            </ng-container>
+            <ng-container matColumnDef="total">
+                <th mat-header-cell *matHeaderCellDef class="num"> Total</th>
+                <td mat-cell *matCellDef="let element" class="num">{{ element.total | currency }}</td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef> Acciones</th>
+                <td mat-cell *matCellDef="let element">
+                    <button mat-icon-button color="accent" (click)="editarRecibo(element)" matTooltip="Editar">
+                        <mat-icon aria-label="Editar">edit</mat-icon>
+                    </button>
+                </td>
+            </ng-container>
+
+            <!-- Detalle desplegable: cómo se aplicó el recibo, línea por línea -->
+            <ng-container matColumnDef="detalle">
+                <td mat-cell *matCellDef="let element" [attr.colspan]="displayColumns.length" class="celda-detalle">
+                    <div class="detalle" *ngIf="expandido === element">
+                        <p class="hint" *ngIf="lineasDe(element).length === 0">Este recibo no tiene líneas de aplicación.</p>
+                        <table class="tabla-detalle" *ngIf="lineasDe(element).length > 0">
+                            <thead>
+                                <tr>
+                                    <th>Concepto</th>
+                                    <th>Año</th>
+                                    <th>Tipo de pago</th>
+                                    <th class="num">Monto recibido</th>
+                                    <th class="num">Monto aplicado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let p of lineasDe(element)">
+                                    <td>{{ p.concepto }}</td>
+                                    <td>{{ p.anio }}</td>
+                                    <td>{{ nombreTipoPago(p.tipoPagoId) }}</td>
+                                    <td class="num">{{ p.montoRecibido | currency }}</td>
+                                    <td class="num">{{ p.montoAplicado | currency }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </td>
+            </ng-container>
+
             <tr mat-header-row *matHeaderRowDef="displayColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns:displayColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayColumns" class="fila-recibo"
+                [class.fila-expandida]="expandido === row" [class.fila-cancelada]="esCancelado(row)"
+                (click)="toggleDetalle(row)"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['detalle']" class="fila-detalle"
+                [class.oculta]="expandido !== row"></tr>
         </table>
-        <mat-paginator [pageSizeOptions]="[5,10,20]" showFirstLastButtons=""></mat-paginator>
+        <p class="hint" *ngIf="!cargando && dataSource.filteredData.length === 0">No hay recibos con esos filtros.</p>
+        <mat-paginator [pageSizeOptions]="[10,25,50,100]" [pageSize]="25" showFirstLastButtons></mat-paginator>
     </mat-card-content>
 </mat-card>

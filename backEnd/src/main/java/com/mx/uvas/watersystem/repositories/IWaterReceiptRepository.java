@@ -24,7 +24,17 @@ public interface IWaterReceiptRepository extends JpaRepository <WaterReceiptEnti
             "WHERE wr.estatus = 1 AND  u.noUsuario =:noUser " +
             "ORDER BY wr.fecha desc,wr.noFolio desc")
     List<WaterReceiptEntity> findByNoUsuario(Integer noUser);
-    @Query("SELECT wr FROM WaterReceiptEntity wr WHERE wr.estatus = 1 ORDER BY wr.noFolio")
+    // Más reciente primero (fecha y luego folio) -- antes salía del más viejo
+    // al más nuevo y los recientes quedaban hasta la última página.
+    @Query("SELECT wr FROM WaterReceiptEntity wr WHERE wr.estatus = 1 ORDER BY wr.fecha DESC, wr.noFolio DESC")
     List<WaterReceiptEntity> findAllByEstatus();
+
+    // Listado por rango de fechas (ambas inclusivas) -- para no traer todo el
+    // historial de golpe a la pantalla de recibos. El servicio siempre manda
+    // las dos fechas (si no vienen, usa un rango abierto).
+    @Query("SELECT wr FROM WaterReceiptEntity wr " +
+            "WHERE wr.estatus = 1 AND wr.fecha >= :desde AND wr.fecha <= :hasta " +
+            "ORDER BY wr.fecha DESC, wr.noFolio DESC")
+    List<WaterReceiptEntity> findByRangoFechas(java.time.LocalDate desde, java.time.LocalDate hasta);
 
 }
