@@ -67,12 +67,26 @@ export class AvisoAdeudoService {
     });
   }
 
+  // Reimprime una carta ya generada (mismo folio, no crea ni cancela nada).
+  reimprimir(avisoAdeudoId: number): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.baseUrl}/${avisoAdeudoId}/reimprimir`, {
+      observe: 'response',
+      responseType: 'blob'
+    });
+  }
+
   marcarEntregada(avisoAdeudoId: number, datos: AvisoAdeudoEntregaModel): Observable<any> {
     return this.http.put(`${this.baseUrl}/${avisoAdeudoId}/entregar`, datos);
   }
 
   // comentarioCancela es opcional -- sobre todo para dejar constancia del
   // motivo cuando se cancela porque la carta no fue entregada/recibida.
+  // Reprograma el día de presentación de una carta ya generada -- el motivo
+  // es obligatorio (queda como constancia junto con la fecha original).
+  cambiarFechaPresentacion(avisoAdeudoId: number, fechaPresentacion: string, comentario: string): Observable<any> {
+    return this.http.put(`${this.baseUrl}/${avisoAdeudoId}/fechaPresentacion`, { fechaPresentacion, comentario });
+  }
+
   cancelar(avisoAdeudoId: number, comentarioCancela?: string): Observable<any> {
     return this.http.put(`${this.baseUrl}/${avisoAdeudoId}/cancelar`, { comentarioCancela });
   }

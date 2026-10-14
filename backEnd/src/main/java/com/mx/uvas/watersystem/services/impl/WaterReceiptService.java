@@ -53,6 +53,24 @@ public class WaterReceiptService implements IWaterReceiptService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ResponseEntity<WaterReceiptRestResponse> findByRangoFechas(java.time.LocalDate desde, java.time.LocalDate hasta) {
+        WaterReceiptRestResponse response = new WaterReceiptRestResponse();
+        try {
+            java.time.LocalDate d = desde != null ? desde : java.time.LocalDate.of(1900, 1, 1);
+            java.time.LocalDate h = hasta != null ? hasta : java.time.LocalDate.of(2999, 12, 31);
+            List<WaterReceiptEntity> recibos = waterReceiptRepository.findByRangoFechas(d, h);
+            response.setData(recibos.stream().map(waterReceiptMapper::entityToDto).toList());
+            response.addMetadata(OK_RESPONSE_MESSAGE, CODIGO_OO, RECIBOS + " - " + ENCONTRADOS);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            response.addMetadata(ERROR_RESPONSE_MESSAGE, CODIGO_MENOS_O1, ERROR_AL_CONSULTAR + " - " + RECIBOS);
+            log.error("Error al consultar: {}", e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Override
     @Transactional
     public ResponseEntity<WaterReceiptRestResponse> findByNoFolioOrNoUsuario(Integer noFolio) {
         return findWaterReceipts(waterReceiptRepository.findByNoFolioOrNoUsuario(noFolio), RECIBOS);

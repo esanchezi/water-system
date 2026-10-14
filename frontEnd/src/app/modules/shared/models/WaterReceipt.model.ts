@@ -22,4 +22,5 @@ export interface WaterReceiptPaymentModel {
   concepto: string;
   anio: number;
   fechaPago: string;
+  tipoPagoId?: number;
 }

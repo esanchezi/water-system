@@ -84,7 +84,16 @@ public class AvisoPadronService {
             return false;
         }
         String direccionLibre = user.getAddress() != null ? user.getAddress().getCalle() : null;
-        return direccionLibre != null && direccionLibre.toLowerCase().contains(calleNombreLower);
+        if (direccionLibre == null || !direccionLibre.trim().equalsIgnoreCase(calleNombreLower.trim())) {
+            return false;
+        }
+        // Exacto (no "contiene") y de la misma sección: las calles se repiten
+        // entre secciones y van por separado -- ver AdeudoLuzService.
+        Integer zonaCalle = catalogOptionsRepository.findById(calleId)
+                .map(c -> c.getZona() != null ? c.getZona().getCatalogoOpcionesId() : null).orElse(null);
+        Integer seccionUsuario = user.getAddress().getCatSeccion() != null
+                ? user.getAddress().getCatSeccion().getCatalogoOpcionesId() : null;
+        return zonaCalle == null || seccionUsuario == null || zonaCalle.equals(seccionUsuario);
     }
 
     private AvisoPadronCandidatoDto usuarioACandidatoDto(WaterUserEntity user) {

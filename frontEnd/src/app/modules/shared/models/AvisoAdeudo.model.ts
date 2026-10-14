@@ -66,6 +66,10 @@ export interface AvisoAdeudoModel {
   // Fecha completa en la que debía presentarse en el Comité, elegida al
   // generar la carta.
   fechaPresentacion?: string;
+  // Si la fecha se reprogramó: la que traía impresa la carta original.
+  fechaPresentacionOriginal?: string;
+  dateCambioFechaPresentacion?: string;
+  comentarioCambioFechaPresentacion?: string;
   dateAdd: string;
 
   // Se oculta del historial por default (mismo patrón que los usuarios

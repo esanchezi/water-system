@@ -67,9 +67,20 @@ export class UserComponent implements OnInit{
       // La calle puede venir de dos lugares: la casa asignada en el catálogo
       // (calleId) o, si el usuario aún no tiene casa asignada, del texto libre
       // de su domicilio (calleTexto). Por eso se acepta cualquiera de los dos.
+      // Las calles se repiten entre secciones, así que si el usuario YA tiene
+      // casa con calle de catálogo, manda solo calleId (nunca el texto, que
+      // traía falsos positivos de otra sección). El texto solo es respaldo
+      // sin casa: coincidencia exacta del nombre y, para no mezclar
+      // secciones, que la sección de su dirección sea la de la calle elegida.
+      const tieneCasaConCalle = !!data.calleId;
+      const zonaCalleFiltro = searchTerms.calleId
+        ? this.zonaPorCalleId.get(Number(searchTerms.calleId))
+        : undefined;
       const matchCalle = !searchTerms.calleId ||
-        calleId === searchTerms.calleId ||
-        calleTexto.includes(searchTerms.calleNombre);
+        (tieneCasaConCalle
+          ? calleId === searchTerms.calleId
+          : calleTexto.trim() === searchTerms.calleNombre &&
+            (zonaCalleFiltro == null || data.seccionTextoId == null || data.seccionTextoId === zonaCalleFiltro));
 
       // Mismo caso para el número de casa: casaNo (catálogo) o numeroTexto (domicilio libre).
       const matchCasa = !searchTerms.casaNo ||
@@ -81,10 +92,13 @@ export class UserComponent implements OnInit{
       // de su dirección (calleTexto) contra los nombres de calle de esa
       // sección -- si no, los usuarios sin casa desaparecían del filtro.
       const matchSeccion = !searchTerms.seccionId ||
-        String(this.zonaPorCalleId.get(data.calleId as number)) === searchTerms.seccionId ||
-        this.todasLasCalles.some(c =>
-          String(c.zonaId) === searchTerms.seccionId && calleTexto.includes(c.nombre.toLowerCase())
-        );
+        (tieneCasaConCalle
+          ? String(this.zonaPorCalleId.get(data.calleId as number)) === searchTerms.seccionId
+          : (data.seccionTextoId != null
+              ? String(data.seccionTextoId) === searchTerms.seccionId
+              : this.todasLasCalles.some(c =>
+                  String(c.zonaId) === searchTerms.seccionId && calleTexto.trim() === c.nombre.toLowerCase()
+                )));
 
       const palabrasNombre: string[] = searchTerms.nombre
         ? searchTerms.nombre.split(' ').filter((w: string) => w.length > 0)

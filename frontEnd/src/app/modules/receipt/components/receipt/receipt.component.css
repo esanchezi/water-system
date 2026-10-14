@@ -1,29 +1,96 @@
-table{
-    width: 100%;
-}
-
-ul{
-  display: flex;  
-}
-
-ul li{
-    list-style: none;
+table {
+  width: 100%;
 }
 
 .alinear {
-    text-align: center;
-    margin-top: 20px;
+  text-align: center;
+  margin-top: 20px;
 }
 
-.right{
-    margin-left: auto;
+.barra-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 0 16px;
 }
 
-mat-form-field{
-    width: 140%;
+.fila-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
 }
 
-.mat-cell:nth-child(1),
-.mat-header-cell:nth-child(1){
-    flex: 0 0 6%;
+.campo-ancho {
+  min-width: 300px;
+}
+
+.resumen {
+  padding: 0 16px;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.hint {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.9em;
+}
+
+.num {
+  text-align: right;
+}
+
+.fila-cancelada {
+  opacity: 0.6;
+}
+
+.fila-recibo {
+  cursor: pointer;
+}
+
+.fila-recibo:hover,
+.fila-expandida {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* La fila de detalle no ocupa espacio mientras está cerrada */
+.fila-detalle.oculta {
+  height: 0;
+}
+
+.celda-detalle {
+  padding: 0 !important;
+  border-bottom-width: 0;
+}
+
+.fila-detalle:not(.oculta) .celda-detalle {
+  border-bottom-width: 1px;
+}
+
+.detalle {
+  margin: 4px 16px 12px 56px;
+}
+
+.tabla-detalle {
+  width: auto;
+  min-width: 480px;
+  border-collapse: collapse;
+}
+
+.tabla-detalle th,
+.tabla-detalle td {
+  padding: 4px 16px 4px 0;
+  text-align: left;
+  font-size: 0.9em;
+}
+
+.tabla-detalle th.num,
+.tabla-detalle td.num {
+  text-align: right;
+}
+
+.tabla-detalle thead th {
+  color: rgba(0, 0, 0, 0.6);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }

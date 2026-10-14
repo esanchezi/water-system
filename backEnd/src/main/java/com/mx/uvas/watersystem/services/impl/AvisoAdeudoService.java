@@ -3,6 +3,7 @@ package com.mx.uvas.watersystem.services.impl;
 import com.lowagie.text.DocumentException;
 import com.mx.uvas.watersystem.dto.AdeudoLuzUsuarioDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoAtencionRequestDto;
+import com.mx.uvas.watersystem.dto.AvisoAdeudoCambiarFechaPresentacionRequestDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoCancelarRequestDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoEntregaRequestDto;
 import com.mx.uvas.watersystem.dto.AvisoAdeudoGenerarRequestDto;
@@ -333,6 +334,56 @@ public class AvisoAdeudoService {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseHandler.handleInternalServerError(response, "Error al cancelar el aviso", e);
+        }
+    }
+
+    // Reprograma el día en que el usuario debe presentarse (pedido de Ely,
+    // oct. 2026: cartas ya firmadas que no alcanzaron a entregarse a tiempo).
+    // No se permite si la carta ya está atendida (pagada/condonada/convenio)
+    // o cancelada -- ya no tiene caso. Se conserva la fecha ORIGINAL (solo
+    // la primera vez) y el motivo, porque la carta impresa sigue diciendo la
+    // fecha con la que se generó.
+    @Transactional
+    public ResponseEntity<AvisoAdeudoRestResponse> cambiarFechaPresentacion(Integer avisoAdeudoId,
+                                                                            AvisoAdeudoCambiarFechaPresentacionRequestDto request) {
+        AvisoAdeudoRestResponse response = new AvisoAdeudoRestResponse();
+        try {
+            if (request == null || request.getFechaPresentacion() == null) {
+                response.addMetadata(Constants.ERROR_RESPONSE_MESSAGE, Constants.ERROR_RESPONSE_CODE, "Indica la nueva fecha de presentación");
+                return ResponseEntity.badRequest().body(response);
+            }
+            if (request.getComentario() == null || request.getComentario().isBlank()) {
+                response.addMetadata(Constants.ERROR_RESPONSE_MESSAGE, Constants.ERROR_RESPONSE_CODE, "Indica el motivo del cambio");
+                return ResponseEntity.badRequest().body(response);
+            }
+            Optional<AvisoAdeudoEntity> avisoOpt = avisoAdeudoRepository.findById(avisoAdeudoId);
+            if (avisoOpt.isEmpty()) {
+                response.addMetadata(Constants.ERROR_RESPONSE_MESSAGE, Constants.ERROR_RESPONSE_CODE, "Aviso no encontrado");
+                return ResponseEntity.badRequest().body(response);
+            }
+            AvisoAdeudoEntity aviso = avisoOpt.get();
+            if (aviso.getEstatus() != null && aviso.getEstatus() == 0) {
+                response.addMetadata(Constants.ERROR_RESPONSE_MESSAGE, Constants.ERROR_RESPONSE_CODE, "El aviso está cancelado");
+                return ResponseEntity.badRequest().body(response);
+            }
+            if (aviso.getFechaAtencion() != null) {
+                response.addMetadata(Constants.ERROR_RESPONSE_MESSAGE, Constants.ERROR_RESPONSE_CODE, "El aviso ya fue atendido, no se puede reprogramar");
+                return ResponseEntity.badRequest().body(response);
+            }
+            if (aviso.getFechaPresentacionOriginal() == null) {
+                aviso.setFechaPresentacionOriginal(aviso.getFechaPresentacion());
+            }
+            aviso.setFechaPresentacion(request.getFechaPresentacion());
+            aviso.setDateCambioFechaPresentacion(LocalDateTime.now());
+            aviso.setUserIdCambioFechaPresentacion(currentUserService.getCurrentUserId());
+            aviso.setComentarioCambioFechaPresentacion(request.getComentario().trim());
+            avisoAdeudoRepository.save(aviso);
+
+            response.setData(List.of(avisoAdeudoMapper.entityToDto(aviso)));
+            response.addMetadata(Constants.OK_RESPONSE_MESSAGE, Constants.OK_RESPONSE_CODE, "Fecha de presentación actualizada");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseHandler.handleInternalServerError(response, "Error al cambiar la fecha de presentación", e);
         }
     }
 
@@ -909,6 +960,50 @@ public class AvisoAdeudoService {
         avisoAdeudoRepository.saveAll(paraGuardar);
 
         return new GenerarAvisosResultado(pdf, cartas.size(), omitidos);
+    }
+
+    // Reimprime una carta YA generada: mismo folio, sin crear registro nuevo
+    // ni cancelar nada. Se arma a partir del snapshot guardado al generarla,
+    // con la fecha de presentación vigente (incluye reprogramaciones). El
+    // renglón de mantenimiento de cajón no se guarda en el snapshot, por lo
+    // que no se reimprime. Devuelve null si no existe o está cancelada.
+    public byte[] reimprimir(Integer avisoAdeudoId) throws IOException, DocumentException {
+        Optional<AvisoAdeudoEntity> opt = avisoAdeudoRepository.findById(avisoAdeudoId);
+        if (opt.isEmpty()) {
+            return null;
+        }
+        AvisoAdeudoEntity a = opt.get();
+        if (a.getEstatus() != null && a.getEstatus() == 0) {
+            return null;
+        }
+        NumberFormat formatoMoneda = NumberFormat.getCurrencyInstance(new Locale("es", "MX"));
+        double total = a.getAdeudoTotal() != null ? a.getAdeudoTotal() : 0d;
+        String desglose = (a.getPeriodosAdeudados() != null && !a.getPeriodosAdeudados().isBlank()
+                ? a.getPeriodosAdeudados() + " | " : "") + "Total " + formatoMoneda.format(total);
+        Integer noUsuario = a.getWaterUser() != null ? a.getWaterUser().getNoUsuario() : null;
+        String nombre = (noUsuario != null ? noUsuario + " - " : "") + a.getNombreUsuarioTitular();
+        String nota = "SEGUNDO".equalsIgnoreCase(a.getTipoAviso()) && a.getWaterUser() != null
+                ? construirNotaEntregaPrimerAviso(a.getWaterUser().getAguaUsuarioId())
+                : null;
+        CartaAdeudoDatos carta = new CartaAdeudoDatos(
+                a.getFolioNotificacion(),
+                a.getTipoAviso(),
+                nombre,
+                a.getNoCasaTexto(),
+                a.getDomicilioToma(),
+                total,
+                a.getNoFolioUltimoPago(),
+                a.getFechaUltimoPago() != null ? a.getFechaUltimoPago().format(FORMATO_FECHA) : "",
+                desglose,
+                a.getFechaPresentacion(),
+                false,
+                a.getMultaAcumulada() != null ? a.getMultaAcumulada() : 0d,
+                null,
+                nota,
+                0d,
+                "",
+                null);
+        return avisoAdeudoPdfService.generarLote(List.of(carta));
     }
 
     // "Calle #número" -- mismo criterio que AdeudoLuzService.buildDomicilio()

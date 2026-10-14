@@ -340,7 +340,11 @@ public class AvisoAdeudoPdfService {
         Paragraph plazo = new Paragraph();
         plazo.add(new Chunk("Debe presentarse el día ", fontNormal));
         if (carta.fechaPresentacion() != null) {
-            plazo.add(new Chunk(String.valueOf(carta.fechaPresentacion().getDayOfMonth()), fontDatoLlenado));
+            // Oct. 2026 (pedido de Ely): el día se deja en blanco para
+            // llenarlo a mano al momento de la entrega -- solo se imprime
+            // el mes y el año, así la carta firmada sirve aunque no se
+            // alcance a entregar el día planeado.
+            plazo.add(new Chunk("______", fontNormal));
             plazo.add(new Chunk(" de ", fontNormal));
             plazo.add(new Chunk(mesDe(carta.fechaPresentacion()), fontDatoLlenado));
             plazo.add(new Chunk(" de 20", fontNormal));

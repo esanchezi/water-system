@@ -77,6 +77,7 @@ export class SidenavComponent implements OnInit {
         { name: 'Aviso uso de bomba', route: 'avisoBomba', icon: 'water_damage' },
         { name: 'Actualización de padrón', route: 'avisoPadron', icon: 'assignment_ind' },
         { name: 'Responsables de pago', route: 'avisoResponsablePago', icon: 'groups' },
+        { name: 'Instalación de medidor', route: 'avisoMedidor', icon: 'speed' },
       ]
     },
     {

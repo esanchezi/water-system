@@ -92,6 +92,16 @@
   font-weight: 600;
 }
 
+/* Primer aviso del historial ya vencido sin atenderse y sin Segundo
+   generado -- procede generar el Segundo, NO el corte. Ámbar a propósito
+   (mismo tono que fila-requiere-segundo), para no confundirlo visualmente
+   con "Vencido -- procede corte" (rojo, etiqueta-vencida). */
+.etiqueta-vencida-segundo {
+  background-color: #fff3cd;
+  color: #8a6d00;
+  font-weight: 600;
+}
+
 .fila-cancelada {
   opacity: 0.6;
 }
@@ -105,6 +115,21 @@
 
 .fila-procede-corte td {
   color: #c62828;
+  font-weight: 600;
+}
+
+/* Primer aviso ya vencido (pasó su fecha de presentación) sin atenderse y
+   sin Segundo aviso generado todavía -- procede generar el Segundo, NO el
+   corte (eso es exclusivo del Segundo aviso vencido, ver fila-procede-
+   corte). Color ámbar a propósito, distinto del rojo de corte, para no
+   confundir ambos casos de un vistazo (corrección pedida por Ely, oct.
+   2026). */
+.fila-requiere-segundo {
+  background-color: #fff8e1;
+}
+
+.fila-requiere-segundo td {
+  color: #8a6d00;
   font-weight: 600;
 }
 

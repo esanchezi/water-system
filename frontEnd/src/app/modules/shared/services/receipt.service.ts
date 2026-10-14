@@ -16,6 +16,15 @@ export class ReceiptService {
     return this.http.get(endpoint);
   }
 
+  // Recibos activos en un rango de fechas (yyyy-MM-dd); vacío = sin límite.
+  getReceiptPorRango(desde: string, hasta: string){
+    const params: string[] = [];
+    if (desde) params.push(`desde=${desde}`);
+    if (hasta) params.push(`hasta=${hasta}`);
+    const query = params.length ? `?${params.join('&')}` : '';
+    return this.http.get(`${base_url}/filtrar${query}`);
+  }
+
   saveReceipt(body:any){
     const endpoint = `${base_url}/`;
     return this.http.post(endpoint, body);

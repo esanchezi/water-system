@@ -54,6 +54,8 @@ export interface WaterUserModel{
     calleNombre: string;
     calleTexto: string;
     numeroTexto: string;
+    // Sección capturada en la dirección (para calles repetidas entre secciones).
+    seccionTextoId?: number;
   }
 
   export interface WaterUserDetailModel{

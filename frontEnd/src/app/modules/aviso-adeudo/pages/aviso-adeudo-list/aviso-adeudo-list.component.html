@@ -343,7 +343,13 @@
       </ng-container>
       <ng-container matColumnDef="fechaPresentacion">
         <th mat-header-cell *matHeaderCellDef>Debía presentarse</th>
-        <td mat-cell *matCellDef="let a">{{ a.fechaPresentacion ? formatearFechaNaive(a.fechaPresentacion) : '--' }}</td>
+        <td mat-cell *matCellDef="let a">
+          {{ a.fechaPresentacion ? formatearFechaNaive(a.fechaPresentacion) : '--' }}
+          <span *ngIf="a.fechaPresentacionOriginal" class="etiqueta etiqueta-pendiente"
+                [title]="'Reprogramada. La carta impresa dice ' + formatearFechaNaive(a.fechaPresentacionOriginal) + (a.comentarioCambioFechaPresentacion ? ' -- Motivo: ' + a.comentarioCambioFechaPresentacion : '')">
+            Reprogramada
+          </span>
+        </td>
       </ng-container>
       <ng-container matColumnDef="entrega">
         <th mat-header-cell *matHeaderCellDef>Entrega</th>
@@ -378,7 +384,12 @@
                 title="Ya pasó su fecha de presentación sin atenderse -- procede el corte">
             Vencido -- procede corte
           </span>
-          <span *ngIf="!a.cancelada && a.entregado && !a.atendido && !tieneSegundoPosterior(a) && !procedeCorte(a)"
+          <span *ngIf="!a.cancelada && a.entregado && !a.atendido && !tieneSegundoPosterior(a) && procedeSegundoAviso(a)"
+                class="etiqueta etiqueta-vencida-segundo"
+                title="Ya pasó su fecha de presentación sin atenderse -- procede generar el Segundo aviso, el corte aplica hasta que venza el Segundo">
+            Vencido -- procede Segundo aviso
+          </span>
+          <span *ngIf="!a.cancelada && a.entregado && !a.atendido && !tieneSegundoPosterior(a) && !procedeCorte(a) && !procedeSegundoAviso(a)"
                 class="etiqueta etiqueta-pendiente">Pendiente de cobro</span>
           <span *ngIf="!a.cancelada && a.entregado && !a.atendido && tieneSegundoPosterior(a)"
                 class="etiqueta etiqueta-superado"
@@ -413,6 +424,14 @@
                   (click)="generarSegundoDesdeAviso(a)">
             <mat-icon>forward_to_inbox</mat-icon>
           </button>
+          <button mat-icon-button color="primary" *ngIf="!a.cancelada"
+                  title="Reimprimir (mismo folio)" (click)="reimprimirAviso(a)">
+            <mat-icon>print</mat-icon>
+          </button>
+          <button mat-icon-button color="primary" *ngIf="!a.cancelada && !a.atendido && !tieneSegundoPosterior(a)"
+                  title="Cambiar fecha de presentación" (click)="cambiarFechaPresentacion(a)">
+            <mat-icon>event_repeat</mat-icon>
+          </button>
           <button mat-icon-button color="warn" *ngIf="!a.cancelada && !tieneSegundoPosterior(a)"
                   title="Cancelar" (click)="cancelarAviso(a)">
             <mat-icon>cancel</mat-icon>
@@ -428,7 +447,8 @@
       <tr mat-row *matRowDef="let row; columns: historialColumns"
           [class.fila-cancelada]="row.cancelada"
           [class.fila-procede-corte]="procedeCorte(row)"
-          [title]="procedeCorte(row) ? 'Ya pasó su fecha de presentación sin atenderse -- procede el corte' : ''"></tr>
+          [class.fila-requiere-segundo]="procedeSegundoAviso(row)"
+          [title]="procedeCorte(row) ? 'Ya pasó su fecha de presentación sin atenderse -- procede el corte' : (procedeSegundoAviso(row) ? 'Ya pasó su fecha de presentación sin atenderse -- procede generar el Segundo aviso' : '')"></tr>
     </table>
 
     <p class="hint" *ngIf="!cargandoHistorial && historialVisible.length === 0">

@@ -30,6 +30,11 @@ public class AvisoAdeudoDto implements Serializable {
     // Fecha completa en la que debía presentarse en el Comité, elegida al
     // generar la carta -- ver AvisoAdeudoEntity.fechaPresentacion.
     private LocalDate fechaPresentacion;
+    // Si la fecha se reprogramó: la que traía impresa la carta original, y
+    // cuándo/por qué se cambió -- ver AvisoAdeudoEntity.
+    private LocalDate fechaPresentacionOriginal;
+    private LocalDateTime dateCambioFechaPresentacion;
+    private String comentarioCambioFechaPresentacion;
     private LocalDateTime dateAdd;
 
     // Derivado de estatus (0 = cancelada) -- se oculta del historial por
